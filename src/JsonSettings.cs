@@ -16,7 +16,7 @@ namespace nucs.JsonSettings {
         /// </summary>
         public static Encoding Encoding { get; set; } = Encoding.UTF8;
 
-        private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include};
+        protected static readonly JsonSerializerSettings _settings = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include};
 
         private static bool hasDefaultConstructor(Type t) =>
 #if NET40 || NET462
@@ -56,6 +56,8 @@ namespace nucs.JsonSettings {
             _childtype = GetType();
             if (!hasDefaultConstructor(_childtype))
                 throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
+            if (string.IsNullOrEmpty(this.FileName))
+                throw new JsonSettingsException($"Type {_childtype.Name} doesn't have default value for a filename. Please override FileName and give it a logical value.");
         }
 
         [JsonIgnore]
@@ -115,8 +117,11 @@ namespace nucs.JsonSettings {
         #endregion
 
         /// <summary>
-        ///     Saves settings to a given path.
+        ///     Saves settings to a given path using custom password.
         /// </summary>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name. <br></br>Without path the file will be located at the executing directory</param>
+        /// <param name="intype"></param>
+        /// <param name="pSettings">The settings file to save</param>
         public static void Save(Type intype, object pSettings, string filename = "##DEFAULT##") {
             if (pSettings is ISavable == false)
                 throw new ArgumentException("Given param is not ISavable!", nameof(pSettings));
@@ -149,21 +154,26 @@ namespace nucs.JsonSettings {
             }
         }
 
-        public static object Load(Type intype, string filename = "##DEFAULT##") {
-            return Load((ISavable) Activator.CreateInstance(intype), filename);
+        /// <summary>
+        ///     Saves settings to a given path using custom password.
+        /// </summary>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name. <br></br>Without path the file will be located at the executing directory</param>
+        /// <param name="pSettings">The settings file to save</param>
+        public static void Save<T>(T pSettings, string filename = "##DEFAULT##") where T : ISavable {
+            Save(typeof(T), pSettings, filename);
         }
+
 
         /// <summary>
         ///     Loads a settings file or creates a new settings file.
         /// </summary>
-        /// <param name="intype">The type of this object</param>
+        /// <param name="instance">The instance inwhich to load into</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
-        /// <param name="preventoverride">If the file did not exist or corrupt, dont resave it</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static T Load<T>(T instance, string filename = "##DEFAULT##") where T : ISavable {
             byte[] ReadAllBytes(Stream instream) {
-                if (instream is MemoryStream)
-                    return ((MemoryStream) instream).ToArray();
+                if (instream is MemoryStream stream)
+                    return stream.ToArray();
 
                 using (var memoryStream = new MemoryStream()) {
                     instream.CopyTo(memoryStream);
@@ -213,12 +223,14 @@ namespace nucs.JsonSettings {
 
             return (T) o;
         }
-
         /// <summary>
-        ///     Saves settings to a given path.
+        ///     Loads a settings file or creates a new settings file.
         /// </summary>
-        public static void Save<T>(T pSettings, string filename = "##DEFAULT##") where T : ISavable {
-            Save(typeof(T), pSettings, filename);
+        /// <param name="intype">The type of this object</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static object Load(Type intype, string filename = "##DEFAULT##") {
+            return Load((ISavable) Activator.CreateInstance(intype), filename);
         }
 
         /// <summary>
