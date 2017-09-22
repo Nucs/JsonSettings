@@ -8,7 +8,7 @@ using nucs.JsonSettings.Inline;
 using Newtonsoft.Json;
 
 namespace nucs.JsonSettings {
-    public abstract class JsonSettings : ISaveable {
+    public abstract class JsonSettings : ISavable {
         #region Static
 
         /// <summary>
@@ -71,7 +71,7 @@ namespace nucs.JsonSettings {
         }
 
         /// <summary>
-        ///     Save the settings file to a predefined location <see cref="ISaveable.FileName" />
+        ///     Save the settings file to a predefined location <see cref="ISavable.FileName" />
         /// </summary>
         public void Save() {
             Save("##DEFAULT##");
@@ -118,9 +118,9 @@ namespace nucs.JsonSettings {
         ///     Saves settings to a given path.
         /// </summary>
         public static void Save(Type intype, object pSettings, string filename = "##DEFAULT##") {
-            if (pSettings is ISaveable == false)
+            if (pSettings is ISavable == false)
                 throw new ArgumentException("Given param is not ISavable!", nameof(pSettings));
-            var o = (ISaveable) pSettings;
+            var o = (ISavable) pSettings;
             if (filename == "##DEFAULT##")
 #if NETSTANDARD1_6 || NETSTANDARD2_0
                 filename = (string) intype.GetTypeInfo().GetProperty("FileName", typeof(string))?.GetMethod.Invoke(o, null);
@@ -150,7 +150,7 @@ namespace nucs.JsonSettings {
         }
 
         public static object Load(Type intype, string filename = "##DEFAULT##") {
-            return Load((ISaveable) Activator.CreateInstance(intype), filename);
+            return Load((ISavable) Activator.CreateInstance(intype), filename);
         }
 
         /// <summary>
@@ -160,7 +160,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <param name="preventoverride">If the file did not exist or corrupt, dont resave it</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(T instance, string filename = "##DEFAULT##") where T : ISaveable {
+        public static T Load<T>(T instance, string filename = "##DEFAULT##") where T : ISavable {
             byte[] ReadAllBytes(Stream instream) {
                 if (instream is MemoryStream)
                     return ((MemoryStream) instream).ToArray();
@@ -171,7 +171,7 @@ namespace nucs.JsonSettings {
                 }
             }
 
-            ISaveable o = (ISaveable) instance ?? (T) Activator.CreateInstance(typeof(T));
+            ISavable o = (ISavable) instance ?? (T) Activator.CreateInstance(typeof(T));
             if (filename == "##DEFAULT##")
                 filename = o.FileName;
 
@@ -217,7 +217,7 @@ namespace nucs.JsonSettings {
         /// <summary>
         ///     Saves settings to a given path.
         /// </summary>
-        public static void Save<T>(T pSettings, string filename = "##DEFAULT##") where T : ISaveable {
+        public static void Save<T>(T pSettings, string filename = "##DEFAULT##") where T : ISavable {
             Save(typeof(T), pSettings, filename);
         }
 
@@ -227,7 +227,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <param name="preventoverride">If the file did not exist or corrupt, dont resave it</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(string filename = "##DEFAULT##") where T : ISaveable, new() {
+        public static T Load<T>(string filename = "##DEFAULT##") where T : ISavable, new() {
             return (T) Load(typeof(T), filename);
         }
     }

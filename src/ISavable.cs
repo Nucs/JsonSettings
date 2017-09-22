@@ -1,5 +1,5 @@
 namespace nucs.JsonSettings {
-    public interface ISaveable {
+    public interface ISavable {
         /// <summary>
         ///     The path for this ISaveable file, relative pathing allowed to current executing file.
         /// </summary>
