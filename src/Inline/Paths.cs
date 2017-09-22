@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
-namespace Common {
+namespace nucs.JsonSettings.Inline {
     /// <summary>
     ///     Class that determines paths.
     /// </summary>
@@ -108,9 +108,14 @@ namespace Common {
         ///     Normalizes path to prepare for comparison or storage
         /// </summary>
         public static string NormalizePath(string path) {
+
             path = path.Replace("/", "\\")
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                .ToUpperInvariant();
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+#if NETSTANDARD1_6 || NETSTANDARD2_0
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) path = path.ToUpperInvariant();
+#else
+                 path = path.ToUpperInvariant();
+#endif
             if (path.Contains("\\"))
                 if (Uri.IsWellFormedUriString(path, UriKind.RelativeOrAbsolute))
                     try {

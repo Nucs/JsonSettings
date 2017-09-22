@@ -1,0 +1,175 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>nucs.JsonSettings</id>
+        <version>1.0.0</version>
+        <title>JsonSettings</title>
+        <authors>Nucs / Eli Belash</authors>
+        <owners>Nucs / Eli Belash</owners>
+        <licenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</licenseUrl>
+        <projectUrl>https://github.com/Nucs/JsonSettings</projectUrl>
+        <iconUrl>http://i.imgur.com/GQ6RiXB.png</iconUrl>
+        <requireLicenseAcceptance>true</requireLicenseAcceptance>
+        <description>Easiest way you'll ever write settings for your app. Save as readable Json or encrypted byte file.</description>
+        <summary>Easiest way you'll ever write settings for your app.</summary>
+        <releaseNotes>see github.</releaseNotes>
+        <copyright>Copyright 2017</copyright>
+        <tags>nucs nlib settings json configuration preferences config file</tags>
+        <dependencies>
+            <dependency id="Newtonsoft.Json" version="9.0.1" />
+        </dependencies>
+    </metadata>
+    <files>
+        <file src=".git\hooks\applypatch-msg.sample" target=".git\hooks\applypatch-msg.sample" />
+        <file src=".git\hooks\commit-msg.sample" target=".git\hooks\commit-msg.sample" />
+        <file src=".git\hooks\post-update.sample" target=".git\hooks\post-update.sample" />
+        <file src=".git\hooks\pre-applypatch.sample" target=".git\hooks\pre-applypatch.sample" />
+        <file src=".git\hooks\pre-commit.sample" target=".git\hooks\pre-commit.sample" />
+        <file src=".git\hooks\pre-push.sample" target=".git\hooks\pre-push.sample" />
+        <file src=".git\hooks\pre-rebase.sample" target=".git\hooks\pre-rebase.sample" />
+        <file src=".git\hooks\pre-receive.sample" target=".git\hooks\pre-receive.sample" />
+        <file src=".git\hooks\prepare-commit-msg.sample" target=".git\hooks\prepare-commit-msg.sample" />
+        <file src=".git\hooks\update.sample" target=".git\hooks\update.sample" />
+        <file src=".git\credential.log" target=".git\credential.log" />
+        <file src="src\bin\Release\net4\nucs.JsonSettings.dll" target="lib\net40\nucs.JsonSettings.dll" />
+        <file src="src\bin\Release\net4\nucs.JsonSettings.pdb" target="lib\net40\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Release\net462\nucs.JsonSettings.dll" target="lib\net462\nucs.JsonSettings.dll" />
+        <file src="src\bin\Release\net462\nucs.JsonSettings.pdb" target="lib\net462\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Release\netstandard1.6\nucs.JsonSettings.dll" target="lib\netstandard1.6\nucs.JsonSettings.dll" />
+        <file src="src\bin\Release\netstandard1.6\nucs.JsonSettings.pdb" target="lib\netstandard1.6\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Release\netstandard2.0\nucs.JsonSettings.dll" target="lib\netstandard2.0\nucs.JsonSettings.dll" />
+        <file src="src\bin\Release\netstandard2.0\nucs.JsonSettings.pdb" target="lib\netstandard2.0\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Debug\net4\Newtonsoft.Json.dll" target="src\bin\Debug\net4\Newtonsoft.Json.dll" />
+        <file src="src\bin\Debug\net4\nucs.JsonSettings.dll" target="src\bin\Debug\net4\nucs.JsonSettings.dll" />
+        <file src="src\bin\Debug\net4\nucs.JsonSettings.pdb" target="src\bin\Debug\net4\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Debug\net462\Newtonsoft.Json.dll" target="src\bin\Debug\net462\Newtonsoft.Json.dll" />
+        <file src="src\bin\Debug\net462\nucs.JsonSettings.dll" target="src\bin\Debug\net462\nucs.JsonSettings.dll" />
+        <file src="src\bin\Debug\net462\nucs.JsonSettings.pdb" target="src\bin\Debug\net462\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Debug\netstandard1.3\nucs.JsonSettings.deps.json" target="src\bin\Debug\netstandard1.3\nucs.JsonSettings.deps.json" />
+        <file src="src\bin\Debug\netstandard1.6\nucs.JsonSettings.deps.json" target="src\bin\Debug\netstandard1.6\nucs.JsonSettings.deps.json" />
+        <file src="src\bin\Debug\netstandard1.6\nucs.JsonSettings.dll" target="src\bin\Debug\netstandard1.6\nucs.JsonSettings.dll" />
+        <file src="src\bin\Debug\netstandard1.6\nucs.JsonSettings.pdb" target="src\bin\Debug\netstandard1.6\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Debug\netstandard2.0\nucs.JsonSettings.deps.json" target="src\bin\Debug\netstandard2.0\nucs.JsonSettings.deps.json" />
+        <file src="src\bin\Debug\netstandard2.0\nucs.JsonSettings.dll" target="src\bin\Debug\netstandard2.0\nucs.JsonSettings.dll" />
+        <file src="src\bin\Debug\netstandard2.0\nucs.JsonSettings.pdb" target="src\bin\Debug\netstandard2.0\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Debug\netstandard2.0\nucs.Settings.deps.json" target="src\bin\Debug\netstandard2.0\nucs.Settings.deps.json" />
+        <file src="src\bin\Debug\netstandard2.0\nucs.Settings.dll" target="src\bin\Debug\netstandard2.0\nucs.Settings.dll" />
+        <file src="src\bin\Debug\netstandard2.0\nucs.Settings.pdb" target="src\bin\Debug\netstandard2.0\nucs.Settings.pdb" />
+        <file src="src\bin\Release\net4\Newtonsoft.Json.dll" target="src\bin\Release\net4\Newtonsoft.Json.dll" />
+        <file src="src\bin\Release\net4\nucs.JsonSettings.dll" target="src\bin\Release\net4\nucs.JsonSettings.dll" />
+        <file src="src\bin\Release\net4\nucs.JsonSettings.pdb" target="src\bin\Release\net4\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Release\net462\Newtonsoft.Json.dll" target="src\bin\Release\net462\Newtonsoft.Json.dll" />
+        <file src="src\bin\Release\net462\nucs.JsonSettings.dll" target="src\bin\Release\net462\nucs.JsonSettings.dll" />
+        <file src="src\bin\Release\net462\nucs.JsonSettings.pdb" target="src\bin\Release\net462\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Release\netstandard1.6\nucs.JsonSettings.deps.json" target="src\bin\Release\netstandard1.6\nucs.JsonSettings.deps.json" />
+        <file src="src\bin\Release\netstandard1.6\nucs.JsonSettings.dll" target="src\bin\Release\netstandard1.6\nucs.JsonSettings.dll" />
+        <file src="src\bin\Release\netstandard1.6\nucs.JsonSettings.pdb" target="src\bin\Release\netstandard1.6\nucs.JsonSettings.pdb" />
+        <file src="src\bin\Release\netstandard2.0\nucs.JsonSettings.deps.json" target="src\bin\Release\netstandard2.0\nucs.JsonSettings.deps.json" />
+        <file src="src\bin\Release\netstandard2.0\nucs.JsonSettings.dll" target="src\bin\Release\netstandard2.0\nucs.JsonSettings.dll" />
+        <file src="src\bin\Release\netstandard2.0\nucs.JsonSettings.pdb" target="src\bin\Release\netstandard2.0\nucs.JsonSettings.pdb" />
+        <file src="src\Inline\Paths.cs" target="src\Inline\Paths.cs" />
+        <file src="src\Inline\SafeDictionary.cs" target="src\Inline\SafeDictionary.cs" />
+        <file src="src\obj\Debug\net4\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Debug\net4\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Debug\net4\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Debug\net4\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Debug\net4\nucs.JsonSettings.csproj.CopyComplete" target="src\obj\Debug\net4\nucs.JsonSettings.csproj.CopyComplete" />
+        <file src="src\obj\Debug\net4\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Debug\net4\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Debug\net4\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Debug\net4\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Debug\net4\nucs.JsonSettings.csprojResolveAssemblyReference.cache" target="src\obj\Debug\net4\nucs.JsonSettings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Debug\net4\nucs.JsonSettings.dll" target="src\obj\Debug\net4\nucs.JsonSettings.dll" />
+        <file src="src\obj\Debug\net4\nucs.JsonSettings.pdb" target="src\obj\Debug\net4\nucs.JsonSettings.pdb" />
+        <file src="src\obj\Debug\net462\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Debug\net462\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Debug\net462\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Debug\net462\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Debug\net462\nucs.JsonSettings.csproj.CopyComplete" target="src\obj\Debug\net462\nucs.JsonSettings.csproj.CopyComplete" />
+        <file src="src\obj\Debug\net462\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Debug\net462\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Debug\net462\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Debug\net462\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Debug\net462\nucs.JsonSettings.csprojResolveAssemblyReference.cache" target="src\obj\Debug\net462\nucs.JsonSettings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Debug\net462\nucs.JsonSettings.dll" target="src\obj\Debug\net462\nucs.JsonSettings.dll" />
+        <file src="src\obj\Debug\net462\nucs.JsonSettings.pdb" target="src\obj\Debug\net462\nucs.JsonSettings.pdb" />
+        <file src="src\obj\Debug\net462\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" target="src\obj\Debug\net462\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" />
+        <file src="src\obj\Debug\net462\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" target="src\obj\Debug\net462\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" />
+        <file src="src\obj\Debug\net462\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" target="src\obj\Debug\net462\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" />
+        <file src="src\obj\Debug\netstandard1.3\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Debug\netstandard1.3\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Debug\netstandard1.3\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Debug\netstandard1.3\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Debug\netstandard1.3\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Debug\netstandard1.3\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Debug\netstandard1.3\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Debug\netstandard1.3\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Debug\netstandard1.3\nucs.JsonSettings.csprojResolveAssemblyReference.cache" target="src\obj\Debug\netstandard1.3\nucs.JsonSettings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Debug\netstandard1.3\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" target="src\obj\Debug\netstandard1.3\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" />
+        <file src="src\obj\Debug\netstandard1.3\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" target="src\obj\Debug\netstandard1.3\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" />
+        <file src="src\obj\Debug\netstandard1.3\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" target="src\obj\Debug\netstandard1.3\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" />
+        <file src="src\obj\Debug\netstandard1.6\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Debug\netstandard1.6\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Debug\netstandard1.6\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Debug\netstandard1.6\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Debug\netstandard1.6\nucs.JsonSettings.csproj.CopyComplete" target="src\obj\Debug\netstandard1.6\nucs.JsonSettings.csproj.CopyComplete" />
+        <file src="src\obj\Debug\netstandard1.6\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Debug\netstandard1.6\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Debug\netstandard1.6\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Debug\netstandard1.6\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Debug\netstandard1.6\nucs.JsonSettings.csprojResolveAssemblyReference.cache" target="src\obj\Debug\netstandard1.6\nucs.JsonSettings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Debug\netstandard1.6\nucs.JsonSettings.dll" target="src\obj\Debug\netstandard1.6\nucs.JsonSettings.dll" />
+        <file src="src\obj\Debug\netstandard1.6\nucs.JsonSettings.pdb" target="src\obj\Debug\netstandard1.6\nucs.JsonSettings.pdb" />
+        <file src="src\obj\Debug\netstandard1.6\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" target="src\obj\Debug\netstandard1.6\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" />
+        <file src="src\obj\Debug\netstandard1.6\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" target="src\obj\Debug\netstandard1.6\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" />
+        <file src="src\obj\Debug\netstandard1.6\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" target="src\obj\Debug\netstandard1.6\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Debug\netstandard2.0\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Debug\netstandard2.0\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Debug\netstandard2.0\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Debug\netstandard2.0\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.JsonSettings.csprojResolveAssemblyReference.cache" target="src\obj\Debug\netstandard2.0\nucs.JsonSettings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.JsonSettings.dll" target="src\obj\Debug\netstandard2.0\nucs.JsonSettings.dll" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.JsonSettings.pdb" target="src\obj\Debug\netstandard2.0\nucs.JsonSettings.pdb" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.Settings.AssemblyInfo.cs" target="src\obj\Debug\netstandard2.0\nucs.Settings.AssemblyInfo.cs" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.Settings.AssemblyInfoInputs.cache" target="src\obj\Debug\netstandard2.0\nucs.Settings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.Settings.csproj.CoreCompileInputs.cache" target="src\obj\Debug\netstandard2.0\nucs.Settings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.Settings.csproj.FileListAbsolute.txt" target="src\obj\Debug\netstandard2.0\nucs.Settings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.Settings.csprojResolveAssemblyReference.cache" target="src\obj\Debug\netstandard2.0\nucs.Settings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.Settings.dll" target="src\obj\Debug\netstandard2.0\nucs.Settings.dll" />
+        <file src="src\obj\Debug\netstandard2.0\nucs.Settings.pdb" target="src\obj\Debug\netstandard2.0\nucs.Settings.pdb" />
+        <file src="src\obj\Release\net4\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Release\net4\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Release\net4\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Release\net4\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Release\net4\nucs.JsonSettings.csproj.CopyComplete" target="src\obj\Release\net4\nucs.JsonSettings.csproj.CopyComplete" />
+        <file src="src\obj\Release\net4\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Release\net4\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Release\net4\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Release\net4\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Release\net4\nucs.JsonSettings.csprojResolveAssemblyReference.cache" target="src\obj\Release\net4\nucs.JsonSettings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Release\net4\nucs.JsonSettings.dll" target="src\obj\Release\net4\nucs.JsonSettings.dll" />
+        <file src="src\obj\Release\net4\nucs.JsonSettings.pdb" target="src\obj\Release\net4\nucs.JsonSettings.pdb" />
+        <file src="src\obj\Release\net462\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Release\net462\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Release\net462\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Release\net462\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Release\net462\nucs.JsonSettings.csproj.CopyComplete" target="src\obj\Release\net462\nucs.JsonSettings.csproj.CopyComplete" />
+        <file src="src\obj\Release\net462\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Release\net462\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Release\net462\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Release\net462\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Release\net462\nucs.JsonSettings.csprojResolveAssemblyReference.cache" target="src\obj\Release\net462\nucs.JsonSettings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Release\net462\nucs.JsonSettings.dll" target="src\obj\Release\net462\nucs.JsonSettings.dll" />
+        <file src="src\obj\Release\net462\nucs.JsonSettings.pdb" target="src\obj\Release\net462\nucs.JsonSettings.pdb" />
+        <file src="src\obj\Release\net462\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" target="src\obj\Release\net462\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" />
+        <file src="src\obj\Release\net462\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" target="src\obj\Release\net462\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" />
+        <file src="src\obj\Release\net462\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" target="src\obj\Release\net462\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" />
+        <file src="src\obj\Release\netstandard1.6\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Release\netstandard1.6\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Release\netstandard1.6\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Release\netstandard1.6\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Release\netstandard1.6\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Release\netstandard1.6\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Release\netstandard1.6\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Release\netstandard1.6\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Release\netstandard1.6\nucs.JsonSettings.csprojResolveAssemblyReference.cache" target="src\obj\Release\netstandard1.6\nucs.JsonSettings.csprojResolveAssemblyReference.cache" />
+        <file src="src\obj\Release\netstandard1.6\nucs.JsonSettings.dll" target="src\obj\Release\netstandard1.6\nucs.JsonSettings.dll" />
+        <file src="src\obj\Release\netstandard1.6\nucs.JsonSettings.pdb" target="src\obj\Release\netstandard1.6\nucs.JsonSettings.pdb" />
+        <file src="src\obj\Release\netstandard1.6\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" target="src\obj\Release\netstandard1.6\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" />
+        <file src="src\obj\Release\netstandard1.6\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" target="src\obj\Release\netstandard1.6\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" />
+        <file src="src\obj\Release\netstandard1.6\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" target="src\obj\Release\netstandard1.6\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" />
+        <file src="src\obj\Release\netstandard2.0\nucs.JsonSettings.AssemblyInfo.cs" target="src\obj\Release\netstandard2.0\nucs.JsonSettings.AssemblyInfo.cs" />
+        <file src="src\obj\Release\netstandard2.0\nucs.JsonSettings.AssemblyInfoInputs.cache" target="src\obj\Release\netstandard2.0\nucs.JsonSettings.AssemblyInfoInputs.cache" />
+        <file src="src\obj\Release\netstandard2.0\nucs.JsonSettings.csproj.CoreCompileInputs.cache" target="src\obj\Release\netstandard2.0\nucs.JsonSettings.csproj.CoreCompileInputs.cache" />
+        <file src="src\obj\Release\netstandard2.0\nucs.JsonSettings.csproj.FileListAbsolute.txt" target="src\obj\Release\netstandard2.0\nucs.JsonSettings.csproj.FileListAbsolute.txt" />
+        <file src="src\obj\Release\netstandard2.0\nucs.JsonSettings.dll" target="src\obj\Release\netstandard2.0\nucs.JsonSettings.dll" />
+        <file src="src\obj\Release\netstandard2.0\nucs.JsonSettings.pdb" target="src\obj\Release\netstandard2.0\nucs.JsonSettings.pdb" />
+        <file src="src\obj\nucs.JsonSettings.csproj.nuget.cache" target="src\obj\nucs.JsonSettings.csproj.nuget.cache" />
+        <file src="src\obj\nucs.JsonSettings.csproj.nuget.g.props" target="src\obj\nucs.JsonSettings.csproj.nuget.g.props" />
+        <file src="src\obj\nucs.JsonSettings.csproj.nuget.g.targets" target="src\obj\nucs.JsonSettings.csproj.nuget.g.targets" />
+        <file src="src\obj\nucs.Settings.csproj.nuget.cache" target="src\obj\nucs.Settings.csproj.nuget.cache" />
+        <file src="src\obj\nucs.Settings.csproj.nuget.g.props" target="src\obj\nucs.Settings.csproj.nuget.g.props" />
+        <file src="src\obj\nucs.Settings.csproj.nuget.g.targets" target="src\obj\nucs.Settings.csproj.nuget.g.targets" />
+        <file src="src\obj\project.assets.json" target="src\obj\project.assets.json" />
+        <file src="src\ISaveable.cs" target="src\ISaveable.cs" />
+        <file src="src\JsonSettings.cs" target="src\JsonSettings.cs" />
+        <file src="src\nucs.JsonSettings.csproj" target="src\nucs.JsonSettings.csproj" />
+        <file src="src\SettingsBag.cs" target="src\SettingsBag.cs" />
+        <file src=".gitignore" target=".gitignore" />
+        <file src="nucs.JsonSettings.1.0.0.nupkg" target="nucs.JsonSettings.1.0.0.nupkg" />
+        <file src="nuget.exe" target="nuget.exe" />
+        <file src="README.md" target="README.md" />
+    </files>
+</package>

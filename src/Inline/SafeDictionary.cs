@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace nucs.Collections {
@@ -7,6 +8,7 @@ namespace nucs.Collections {
     ///     A dictionary that returns default(T) incase of not existing value.
     ///     And Add will add or set value.
     /// </summary>
+    [DebuggerStepThrough]
     internal class SafeDictionary<TKey, TValue> : Dictionary<TKey, TValue> {
         /// <summary>
         ///     Returns either the value or if not found - the default.

@@ -5,7 +5,7 @@ using System.Reflection;
 using nucs.Collections;
 using Newtonsoft.Json;
 
-namespace nucs.Settings {
+namespace nucs.JsonSettings {
     public class SettingsBag : JsonSettings {
         public bool Autosave { get; set; }
         [JsonIgnore]

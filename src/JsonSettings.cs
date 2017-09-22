@@ -1,17 +1,61 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
-using Common;
+using System.Text;
+using nucs.JsonSettings.Inline;
 using Newtonsoft.Json;
 
-namespace nucs.Settings {
+namespace nucs.JsonSettings {
     public abstract class JsonSettings : ISaveable {
+        #region Static
+
+        /// <summary>
+        ///     The encoding inwhich the text will be written, by default Encoding.UTF8.
+        /// </summary>
+        public static Encoding Encoding { get; set; } = Encoding.UTF8;
+
         private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include};
+
+        private static bool hasDefaultConstructor(Type t) =>
+#if NET40 || NET462
+            t.IsValueType || t.GetConstructors().Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional));
+#else
+            t.GetTypeInfo().IsValueType || t.GetTypeInfo().GetConstructors().Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional));
+#endif
+
+        #region Singletons
+
+        /*private static Dictionary<Type, ISaveable> singletons { get; } = new Dictionary<Type, ISaveable>();
+        static JsonSettings() {
+            IEnumerable<T> GetEnumerableOfInterface<T>(params object[] constructorArgs) where T : class {
+                var type = typeof(T);
+                var types = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(s => s.GetTypes())
+#if NET40 || NET462
+                    .Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(Activator.CreateInstance).Cast<T>();
+#else
+                    .Where(p => type.GetTypeInfo().IsAssignableFrom(p) && !p.GetTypeInfo().IsInterface && !p.GetTypeInfo().IsAbstract).Select(Activator.CreateInstance).Cast<T>();
+#endif
+                return types;
+            }
+
+            foreach (var savable in GetEnumerableOfInterface<ISaveable>()) {
+                singletons.Add(savable.GetType(), savable);
+            }
+        }*/
+
+        #endregion
+
+        #endregion
+
         private readonly Type _childtype;
 
         protected JsonSettings() {
             _childtype = GetType();
+            if (!hasDefaultConstructor(_childtype))
+                throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
         }
 
         [JsonIgnore]
@@ -33,22 +77,42 @@ namespace nucs.Settings {
             Save("##DEFAULT##");
         }
 
-        /// <summary>
-        ///     Invoked after loading to this new object. <br></br>
-        ///     Can be used to validate the inputted data.<br></br>
-        ///     Incase of a new instance, AfterLoad first and then saving.
-        /// </summary>
+        public void Load() {
+            Load(this, FileName);
+        }
+
+        public void Load(string filename) {
+            if (filename == null) throw new ArgumentNullException(nameof(filename));
+            Load(this, filename);
+        }
+
+        #region Inheritable Events
+
+        public virtual void BeforeLoad(ref string destinition) { }
+
+        public virtual void Decrypt(ref byte[] data) { }
+
+        public virtual void AfterDecrypt(ref byte[] data) { }
+
+        public virtual void BeforeDeserialize(ref string data) { }
+
+        public virtual void AfterDeserialize() { }
+
         public virtual void AfterLoad() { }
 
-        /// <summary>
-        ///     Invoked before saving this object.
-        /// </summary>
-        public virtual void BeforeSave() { }
+        public virtual void BeforeSave(ref string destinition) { }
 
-        /// <summary>
-        ///     Invoked after saving this object.
-        /// </summary>
-        public virtual void AfterSave() { }
+        public virtual void BeforeSerialize() { }
+
+        public virtual void AfterSerialize(ref string data) { }
+
+        public virtual void Encrypt(ref byte[] data) { }
+
+        public virtual void AfterEncrypt(ref byte[] data) { }
+
+        public virtual void AfterSave(string destinition) { }
+
+        #endregion
 
         /// <summary>
         ///     Saves settings to a given path.
@@ -58,12 +122,10 @@ namespace nucs.Settings {
                 throw new ArgumentException("Given param is not ISavable!", nameof(pSettings));
             var o = (ISaveable) pSettings;
             if (filename == "##DEFAULT##")
-#if NETSTANDARD1_6
-                filename = (string)intype.GetTypeInfo().GetProperty("FileName", typeof(string))?.GetMethod.Invoke(o, null);
-#elif NET40
-                filename = (string)intype.GetProperty("FileName", typeof(string))?.GetGetMethod().Invoke(o, null);
-#elif NET462
-                filename = (string)intype.GetProperty("FileName", typeof(string))?.GetGetMethod().Invoke(o, null);
+#if NETSTANDARD1_6 || NETSTANDARD2_0
+                filename = (string) intype.GetTypeInfo().GetProperty("FileName", typeof(string))?.GetMethod.Invoke(o, null);
+#elif NET40 || NET462
+                filename = (string) intype.GetProperty("FileName", typeof(string))?.GetGetMethod().Invoke(o, null);
 #endif
             if (filename.Contains("/") || filename.Contains("\\")) {
                 filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename)), Path.GetFileName(filename));
@@ -72,37 +134,72 @@ namespace nucs.Settings {
             } else {
                 filename = Paths.CombineToExecutingBase(filename).FullName;
             }
+
             lock (o) {
-                o.BeforeSave();
-                File.WriteAllText(filename, JsonConvert.SerializeObject(o, intype, _settings));
-                o.AfterSave();
+                //todo catch and so on..
+                o.BeforeSave(ref filename);
+                o.BeforeSerialize();
+                var json = JsonConvert.SerializeObject(o, intype, _settings);
+                o.AfterSerialize(ref json);
+                var bytes = Encoding.GetBytes(json);
+                o.Encrypt(ref bytes);
+                o.AfterEncrypt(ref bytes);
+                File.WriteAllBytes(filename, bytes);
+                o.AfterSave(filename);
             }
         }
 
+        public static object Load(Type intype, string filename = "##DEFAULT##") {
+            return Load((ISaveable) Activator.CreateInstance(intype), filename);
+        }
+
         /// <summary>
-        ///     Loads or creates a settings file.
+        ///     Loads a settings file or creates a new settings file.
         /// </summary>
         /// <param name="intype">The type of this object</param>
-        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <param name="preventoverride">If the file did not exist or corrupt, dont resave it</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static object Load(Type intype, string filename = "##DEFAULT##") {
-            JsonSettings fresh = null;
+        public static T Load<T>(T instance, string filename = "##DEFAULT##") where T : ISaveable {
+            byte[] ReadAllBytes(Stream instream) {
+                if (instream is MemoryStream)
+                    return ((MemoryStream) instream).ToArray();
+
+                using (var memoryStream = new MemoryStream()) {
+                    instream.CopyTo(memoryStream);
+                    return memoryStream.ToArray();
+                }
+            }
+
+            ISaveable o = (ISaveable) instance ?? (T) Activator.CreateInstance(typeof(T));
             if (filename == "##DEFAULT##")
-                filename = (fresh = (JsonSettings) Activator.CreateInstance(intype)).FileName;
+                filename = o.FileName;
 
             if (filename.Contains("/") || filename.Contains("\\"))
                 filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename)), Path.GetFileName(filename));
+            else
+                filename = Paths.CombineToExecutingBase(filename).FullName;
+
+            o.BeforeLoad(ref filename);
 
             if (File.Exists(filename))
                 try {
-                    var fc = File.ReadAllText(filename);
+                    byte[] bytes;
+                    using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                        bytes = ReadAllBytes(fs);
+
+                    o.Decrypt(ref bytes);
+                    o.AfterDecrypt(ref bytes);
+
+                    var fc = Encoding.GetString(bytes);
                     if (string.IsNullOrEmpty((fc ?? "").Replace("\r", "").Replace("\n", "").Trim()))
                         throw new JsonSettingsException("The settings file is empty!");
-                    var o = (ISaveable) JsonConvert.DeserializeObject(fc, intype, _settings);
+                    o.BeforeDeserialize(ref fc);
+                    JsonConvert.PopulateObject(fc, o, _settings);
+                    o.AfterDeserialize();
                     o.FileName = filename;
                     o.AfterLoad();
-                    return o;
+                    return (T) o;
                 } catch (InvalidOperationException e) when (e.Message.Contains("Cannot convert")) {
                     throw new JsonSettingsException("Unable to deserialize settings file, value<->type mismatch. see inner exception", e);
                 } catch (ArgumentException e) when (e.Message.StartsWith("Invalid")) {
@@ -110,12 +207,11 @@ namespace nucs.Settings {
                 }
 
             //doesnt exist.
-            fresh = fresh ?? (JsonSettings) Activator.CreateInstance(intype);
-            fresh.AfterLoad();
-            fresh.FileName = filename;
-            fresh.Save(filename);
+            o.AfterLoad();
+            o.FileName = filename;
+            o.Save(filename);
 
-            return fresh;
+            return (T) o;
         }
 
         /// <summary>
@@ -136,7 +232,6 @@ namespace nucs.Settings {
         }
     }
 
-    [Serializable]
     public class JsonSettingsException : Exception {
         public JsonSettingsException() { }
         public JsonSettingsException(string message) : base(message) { }
