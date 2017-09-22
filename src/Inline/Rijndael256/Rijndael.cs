@@ -262,7 +262,7 @@ namespace Rijndael256
         /// <returns>The symmetric encryptor.</returns>
         public static ICryptoTransform CreateEncryptor(string password, byte[] iv, KeySize keySize)
         {
-#if NET452
+#if NET452 || NET46 || NET461 || NET462 || NET47
             var rijndael = new RijndaelManaged { Mode = BlockCipherMode };
 #else
             var rijndael = Aes.Create();
@@ -280,7 +280,7 @@ namespace Rijndael256
         /// <returns>The symmetric decryptor.</returns>
         public static ICryptoTransform CreateDecryptor(string password, byte[] iv, KeySize keySize)
         {
-#if NET452
+#if NET452 || NET46 || NET461 || NET462 || NET47
             var rijndael = new RijndaelManaged { Mode = BlockCipherMode };
 #else
             var rijndael = Aes.Create();

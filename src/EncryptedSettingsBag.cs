@@ -2,18 +2,38 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Security;
 using nucs.Collections;
+using nucs.JsonSettings.Inline;
 using Newtonsoft.Json;
 
 namespace nucs.JsonSettings {
-    public class SettingsBag : JsonSettings {
+    public class EncryptedSettingsBag : EncryptedJsonSettings {
         public bool Autosave { get; set; }
+
         [JsonIgnore]
         public override string FileName { get; set; }
-        public SettingsBag() { }
 
-        public SettingsBag(string fileName) {
+        public EncryptedSettingsBag() { }
+
+        public EncryptedSettingsBag(string password) : base(password) {
+            LoadProperties();
+        }
+
+        public EncryptedSettingsBag(string password, string fileName) : base(password, fileName) {
+            LoadProperties();
+        }
+
+        public EncryptedSettingsBag(SecureString password) : base(password) {
+            LoadProperties();
+        }
+
+        public EncryptedSettingsBag(SecureString password, string fileName) : base(password) {
             FileName = fileName;
+            LoadProperties();
+        }
+
+        private void LoadProperties() {
 #if NET
             foreach (var pi in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
 #else

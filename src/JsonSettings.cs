@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using nucs.JsonSettings.Inline;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace nucs.JsonSettings {
     public abstract class JsonSettings : ISavable {
@@ -16,10 +17,10 @@ namespace nucs.JsonSettings {
         /// </summary>
         public static Encoding Encoding { get; set; } = Encoding.UTF8;
 
-        protected static readonly JsonSerializerSettings _settings = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include};
+        protected static readonly JsonSerializerSettings _settings = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include, ContractResolver = new FileNameIgnoreResolver()};
 
         private static bool hasDefaultConstructor(Type t) =>
-#if NET40 || NET462
+#if NET
             t.IsValueType || t.GetConstructors().Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional));
 #else
             t.GetTypeInfo().IsValueType || t.GetTypeInfo().GetConstructors().Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional));
@@ -33,7 +34,7 @@ namespace nucs.JsonSettings {
                 var type = typeof(T);
                 var types = AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(s => s.GetTypes())
-#if NET40 || NET462
+#if NET
                     .Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(Activator.CreateInstance).Cast<T>();
 #else
                     .Where(p => type.GetTypeInfo().IsAssignableFrom(p) && !p.GetTypeInfo().IsInterface && !p.GetTypeInfo().IsAbstract).Select(Activator.CreateInstance).Cast<T>();
@@ -56,10 +57,18 @@ namespace nucs.JsonSettings {
             _childtype = GetType();
             if (!hasDefaultConstructor(_childtype))
                 throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
-            if (string.IsNullOrEmpty(this.FileName))
-                throw new JsonSettingsException($"Type {_childtype.Name} doesn't have default value for a filename. Please override FileName and give it a logical value.");
+/*            if (string.IsNullOrEmpty(this.FileName))
+                throw new JsonSettingsException($"Type {_childtype.Name} doesn't have default value for a filename. Please override FileName and give it a logical value.");*/
         }
 
+        protected JsonSettings(string fileName) : this() {
+            FileName = fileName;
+        }
+
+        /// <summary>
+        ///     Serves as a reminder where to save or from where to load (if it is loaded on construction and doesnt change between constructions).<br></br>
+        ///     Can be relative to executing file's directory.
+        /// </summary>
         [JsonIgnore]
         public abstract string FileName { get; set; }
 
@@ -125,13 +134,20 @@ namespace nucs.JsonSettings {
         public static void Save(Type intype, object pSettings, string filename = "##DEFAULT##") {
             if (pSettings is ISavable == false)
                 throw new ArgumentException("Given param is not ISavable!", nameof(pSettings));
+            if (string.IsNullOrEmpty(filename))
+                throw new ArgumentException("message", nameof(filename));
+
             var o = (ISavable) pSettings;
-            if (filename == "##DEFAULT##")
-#if NETSTANDARD1_6 || NETSTANDARD2_0
+            if (filename == "##DEFAULT##") {
+                if (string.IsNullOrEmpty(o.FileName))
+                    throw new JsonSettingsException("Could not save settings to default path since FileName is null or empty.");
+#if NETCORE
                 filename = (string) intype.GetTypeInfo().GetProperty("FileName", typeof(string))?.GetMethod.Invoke(o, null);
-#elif NET40 || NET462
+#else
                 filename = (string) intype.GetProperty("FileName", typeof(string))?.GetGetMethod().Invoke(o, null);
 #endif
+            }
+
             if (filename.Contains("/") || filename.Contains("\\")) {
                 filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename)), Path.GetFileName(filename));
                 if (Directory.Exists(Path.GetDirectoryName(filename)) == false)
@@ -139,10 +155,10 @@ namespace nucs.JsonSettings {
             } else {
                 filename = Paths.CombineToExecutingBase(filename).FullName;
             }
-
             lock (o) {
                 //todo catch and so on..
                 o.BeforeSave(ref filename);
+                o.FileName = filename;
                 o.BeforeSerialize();
                 var json = JsonConvert.SerializeObject(o, intype, _settings);
                 o.AfterSerialize(ref json);
@@ -242,11 +258,14 @@ namespace nucs.JsonSettings {
         public static T Load<T>(string filename = "##DEFAULT##") where T : ISavable, new() {
             return (T) Load(typeof(T), filename);
         }
-    }
 
-    public class JsonSettingsException : Exception {
-        public JsonSettingsException() { }
-        public JsonSettingsException(string message) : base(message) { }
-        public JsonSettingsException(string message, Exception inner) : base(message, inner) { }
+        private class FileNameIgnoreResolver : DefaultContractResolver {
+            protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization) {
+                var prop =  base.CreateProperty(member, memberSerialization);
+                if (prop.PropertyName.Equals("FileName", StringComparison.OrdinalIgnoreCase))
+                    prop.Ignored = true;
+                return prop;
+            }
+        }
     }
 }

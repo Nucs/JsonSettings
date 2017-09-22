@@ -10,13 +10,35 @@ using Rijndael256;
 
 namespace nucs.JsonSettings {
     public abstract class EncryptedJsonSettings : JsonSettings, IEncryptedSavable {
+        public static SecureString EmptyString { get; } = "".ToSecureString();
+
         [JsonIgnore]
         public SecureString Password { get; set; }
 
         protected EncryptedJsonSettings() : base() { }
 
-        protected EncryptedJsonSettings(string password) : base() {
-            Password = password.ToSecureString();
+        protected EncryptedJsonSettings(string password) : this(password, "##DEFAULT##") { }
+
+        protected EncryptedJsonSettings(string password, string fileName = "##DEFAULT##") : this(password?.ToSecureString(), fileName) { }
+
+        protected EncryptedJsonSettings(SecureString password) : this(password, "##DEFAULT##") { }
+
+        protected EncryptedJsonSettings(SecureString password, string fileName = "##DEFAULT##") : base(fileName) {
+            ChangePassword(password);
+        }
+
+        public void ChangePassword(string pass) {
+            ChangePassword(pass?.ToSecureString());
+        }
+
+        public void ChangePassword(SecureString pass) {
+            setpass(pass);
+        }
+
+        private void setpass(SecureString password) {
+            Password = password ?? EmptyString;
+            if (!Password.IsReadOnly())
+                Password.MakeReadOnly();
         }
 
         public override string FileName { get; set; }

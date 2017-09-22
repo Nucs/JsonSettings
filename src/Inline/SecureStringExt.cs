@@ -2,7 +2,8 @@
 using System.Runtime.InteropServices;
 using System.Security;
 
-namespace nucs.JsonSettings.Inline {
+// ReSharper disable once CheckNamespace
+namespace System.Security {
     public static class SecureStringExt {
         public static SecureString ToSecureString(this string str) {
             SecureString output = new SecureString();
@@ -16,7 +17,7 @@ namespace nucs.JsonSettings.Inline {
             IntPtr valuePtr = IntPtr.Zero;
             try {
                 valuePtr =
-#if NETSTANDARD1_6 || NETSTANDARD2_0
+#if NETCORE
                     SecureStringMarshal.SecureStringToGlobalAllocUnicode(sstr);
 #else
                     Marshal.SecureStringToGlobalAllocUnicode(sstr);

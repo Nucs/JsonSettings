@@ -1,17 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard1.6;net45;net462;net461;net47;net4;netcoreapp2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard1.6;net45;net462;net461;net47;netcoreapp2.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">
-    <DefineConstants>TRACE;RELEASE;</DefineConstants>
-  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="4.19.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0-preview-20170628-02" />
+    <PackageReference Include="xunit" Version="2.2.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.2.0" />
+  </ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard1.6|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;</DefineConstants>
-  </PropertyGroup>
-
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\nucs.JsonSettings.csproj" />
+    <ProjectReference Include="..\nucs.Settings\src\nucs.JsonSettings.csproj" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
   </ItemGroup>
@@ -24,20 +28,20 @@
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' OR '$(TargetFramework)' == 'netcoreapp2.0'  Or '$(TargetFramework)' == 'netstandard2.0'">
     <DefineConstants>$(DefineConstants);NETCORE;</DefineConstants>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' OR '$(TargetFramework)' == 'netcoreapp2.0'  Or '$(TargetFramework)' == 'netstandard2.0'">
     <DefineConstants>$(DefineConstants);CROSSPLATFORM;</DefineConstants>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net45' Or '$(TargetFramework)' == 'net461' Or '$(TargetFramework)' == 'net4' Or '$(TargetFramework)' == 'net47'  Or '$(TargetFramework)' == 'net35'  Or '$(TargetFramework)' == 'net452'  Or '$(TargetFramework)' == 'net451'  Or '$(TargetFramework)' == 'net403'  Or '$(TargetFramework)' == 'net40'  Or '$(TargetFramework)' == 'net20' Or '$(TargetFramework)' == 'net11'">
     <DefineConstants>$(DefineConstants);WINDOWS;</DefineConstants>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net45' Or '$(TargetFramework)' == 'net461' Or '$(TargetFramework)' == 'net4' Or '$(TargetFramework)' == 'net47'  Or '$(TargetFramework)' == 'netstandard2.0'">
     <DefineConstants>$(DefineConstants);NET;</DefineConstants>
   </PropertyGroup>
 
-  
+
   <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
   </ItemGroup>
 
@@ -59,4 +63,7 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
+  </ItemGroup>
 </Project>

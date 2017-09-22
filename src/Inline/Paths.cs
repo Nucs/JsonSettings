@@ -21,8 +21,12 @@ namespace nucs.JsonSettings.Inline {
         /// <summary>
         ///     The path to the entry exe.
         /// </summary>
-        public static FileInfo ExecutingExe => new FileInfo(Assembly.GetEntryAssembly().Location);
-
+        public static FileInfo ExecutingExe => new FileInfo((Assembly.GetEntryAssembly()
+#if NETSTANDARD1_6
+            ?? throw new NotSupportedException("Cant support fallback of ExecutingExe in NETSTANDARD1.6")).Location);
+#else
+            ?? Assembly.GetExecutingAssembly())?.Location);
+#endif
         /// <summary>
         ///     The config dir inside user profile.
         /// </summary>
@@ -33,10 +37,19 @@ namespace nucs.JsonSettings.Inline {
         /// </summary>
         public static FileInfo ConfigFile(string configname) => new FileInfo(Path.Combine(ConfigDirectory.FullName, Environment.MachineName +$".{configname}.json"));
 
+
         /// <summary>
         ///     The path to the entry exe's directory.
         /// </summary>
-        public static DirectoryInfo ExecutingDirectory => ExecutingExe.Directory;
+        public static DirectoryInfo ExecutingDirectory {
+            get {
+                try {
+                    return ExecutingExe.Directory;
+                } catch {
+                    return new DirectoryInfo(Path.GetDirectoryName(Uri.UnescapeDataString(new UriBuilder(Assembly.GetEntryAssembly().CodeBase).Path)));
+                }
+            }
+        }
 
         /// <summary>
         ///     Checks the ability to create and write to a file in the supplied directory.
@@ -72,7 +85,7 @@ namespace nucs.JsonSettings.Inline {
         /// <returns></returns>
         public static FileInfo CombineToExecutingBase(string filename) {
             if (ExecutingExe.DirectoryName != null)
-                return new FileInfo(Path.Combine(ExecutingExe.DirectoryName, filename));
+                return new FileInfo(Path.Combine(ExecutingDirectory.FullName, filename));
             return null;
         }
 
@@ -84,7 +97,7 @@ namespace nucs.JsonSettings.Inline {
         /// <returns></returns>
         public static DirectoryInfo CombineToExecutingBaseDir(string filename) {
             if (ExecutingExe.DirectoryName != null)
-                return new DirectoryInfo(Path.Combine(ExecutingExe.DirectoryName, filename));
+                return new DirectoryInfo(Path.Combine(ExecutingDirectory.FullName, filename));
             return null;
         }
 
@@ -111,10 +124,10 @@ namespace nucs.JsonSettings.Inline {
 
             path = path.Replace("/", "\\")
                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-#if NETSTANDARD1_6 || NETSTANDARD2_0
+#if CROSSPLATFORM
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) path = path.ToUpperInvariant();
 #else
-                 path = path.ToUpperInvariant();
+            path = path.ToUpperInvariant();
 #endif
             if (path.Contains("\\"))
                 if (Uri.IsWellFormedUriString(path, UriKind.RelativeOrAbsolute))
