@@ -16,12 +16,10 @@ namespace System.Security {
         public static string ToRawString(this SecureString sstr) {
             IntPtr valuePtr = IntPtr.Zero;
             try {
-                valuePtr =
 #if NETCORE
-                    SecureStringMarshal.SecureStringToGlobalAllocUnicode(sstr);
+                valuePtr = SecureStringMarshal.SecureStringToGlobalAllocUnicode(sstr);
 #else
-                    Marshal.SecureStringToGlobalAllocUnicode(sstr);
-
+                valuePtr = Marshal.SecureStringToGlobalAllocUnicode(sstr);
 #endif
                 return Marshal.PtrToStringUni(valuePtr);
             } finally {
