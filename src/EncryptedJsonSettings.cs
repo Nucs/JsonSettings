@@ -147,7 +147,7 @@ namespace nucs.JsonSettings {
         /// <param name="password">The password for decrypting</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static object Load(Type intype, string password, string filename = "##DEFAULT##") {
-            return Load((IEncryptedSavable) Activator.CreateInstance(intype), password?.ToSecureString(), filename);
+            return Load((IEncryptedSavable)intype.CreateInstance(), password?.ToSecureString(), filename);
         }
 
         /// <summary>
@@ -156,7 +156,7 @@ namespace nucs.JsonSettings {
         /// <param name="password">The password for decrypting</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(string password, string filename = "##DEFAULT##") where T : IEncryptedSavable, new() {
+        public static T Load<T>(string password, string filename = "##DEFAULT##") where T : IEncryptedSavable {
             return (T) Load(typeof(T), password?.ToSecureString(), filename);
         }
 
@@ -180,7 +180,7 @@ namespace nucs.JsonSettings {
         /// <param name="password">The password for decrypting</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static object Load(Type intype, SecureString password, string filename = "##DEFAULT##") {
-            return Load((IEncryptedSavable) Activator.CreateInstance(intype), password, filename);
+            return Load((IEncryptedSavable)intype.CreateInstance(), password, filename);
         }
 
         /// <summary>
@@ -189,7 +189,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <param name="password">The password for decrypting</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(SecureString password, string filename = "##DEFAULT##") where T : IEncryptedSavable, new() {
+        public static T Load<T>(SecureString password, string filename = "##DEFAULT##") where T : IEncryptedSavable {
             return (T) Load(typeof(T), password, filename);
         }
 

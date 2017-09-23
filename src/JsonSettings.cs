@@ -19,12 +19,7 @@ namespace nucs.JsonSettings {
 
         protected static readonly JsonSerializerSettings _settings = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include, ContractResolver = new FileNameIgnoreResolver()};
 
-        private static bool hasDefaultConstructor(Type t) =>
-#if NET
-            t.IsValueType || t.GetConstructors().Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional));
-#else
-            t.GetTypeInfo().IsValueType || t.GetTypeInfo().GetConstructors().Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional));
-#endif
+
 
         #region Singletons
 
@@ -55,7 +50,7 @@ namespace nucs.JsonSettings {
 
         protected JsonSettings() {
             _childtype = GetType();
-            if (!hasDefaultConstructor(_childtype))
+            if (!_childtype.HasDefaultConstructor())
                 throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
 /*            if (string.IsNullOrEmpty(this.FileName))
                 throw new JsonSettingsException($"Type {_childtype.Name} doesn't have default value for a filename. Please override FileName and give it a logical value.");*/
@@ -197,7 +192,7 @@ namespace nucs.JsonSettings {
                 }
             }
 
-            ISavable o = (ISavable) instance ?? (T) Activator.CreateInstance(typeof(T));
+            ISavable o = (ISavable) instance ?? (T)typeof(T).CreateInstance();
 
             if (string.IsNullOrEmpty(filename) || (filename == "##DEFAULT##" && string.IsNullOrEmpty(o.FileName)))
                 throw new JsonSettingsException("Could not save settings to default path since FileName is null or empty.");
@@ -250,7 +245,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static object Load(Type intype, string filename = "##DEFAULT##") {
-            return Load((ISavable) Activator.CreateInstance(intype), filename);
+            return Load((ISavable)intype.CreateInstance(), filename);
         }
 
         /// <summary>
@@ -259,7 +254,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <param name="preventoverride">If the file did not exist or corrupt, dont resave it</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(string filename = "##DEFAULT##") where T : ISavable, new() {
+        public static T Load<T>(string filename = "##DEFAULT##") where T : ISavable {
             return (T) Load(typeof(T), filename);
         }
 

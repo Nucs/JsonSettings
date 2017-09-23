@@ -6,8 +6,12 @@ using nucs.Collections;
 using Newtonsoft.Json;
 
 namespace nucs.JsonSettings {
-    public class SettingsBag : JsonSettings {
-        public bool Autosave { get; set; }
+    public sealed class SettingsBag : JsonSettings {
+        /// <summary>
+        ///     Will perform a safe after a change in any non-hardcoded public property.
+        /// </summary>
+        public bool Autosave { get; set; } = false;
+
         [JsonIgnore]
         public override string FileName { get; set; }
         public SettingsBag() { }
@@ -84,6 +88,11 @@ namespace nucs.JsonSettings {
                 }
                 return ret;
             }
+        }
+
+        public SettingsBag EnableAutosave() {
+            Autosave = true;
+            return this;
         }
     }
 }

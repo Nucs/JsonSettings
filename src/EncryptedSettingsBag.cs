@@ -8,27 +8,20 @@ using nucs.JsonSettings.Inline;
 using Newtonsoft.Json;
 
 namespace nucs.JsonSettings {
-    public class EncryptedSettingsBag : EncryptedJsonSettings {
+    public sealed class EncryptedSettingsBag : EncryptedJsonSettings {
+        /// <summary>
+        ///     Will perform a safe after a change in any non-hardcoded public property.
+        /// </summary>
         public bool Autosave { get; set; }
 
         [JsonIgnore]
         public override string FileName { get; set; }
-
-        public EncryptedSettingsBag() { }
-
-        public EncryptedSettingsBag(string password) : base(password) {
-            LoadProperties();
-        }
-
+        private EncryptedSettingsBag() { }
         public EncryptedSettingsBag(string password, string fileName) : base(password, fileName) {
             LoadProperties();
         }
 
-        public EncryptedSettingsBag(SecureString password) : base(password) {
-            LoadProperties();
-        }
-
-        public EncryptedSettingsBag(SecureString password, string fileName) : base(password) {
+        public EncryptedSettingsBag(SecureString password, string fileName) : base(password, fileName) {
             FileName = fileName;
             LoadProperties();
         }
@@ -104,6 +97,11 @@ namespace nucs.JsonSettings {
                 }
                 return ret;
             }
+        }
+
+        public EncryptedSettingsBag EnableAutosave() {
+            Autosave = true;
+            return this;
         }
     }
 }
