@@ -4,9 +4,11 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Security.Cryptography;
 using nucs.JsonSettings.Inline;
 using Newtonsoft.Json;
 using Rijndael256;
+using Rijndael = Rijndael256.Rijndael;
 
 namespace nucs.JsonSettings {
     public abstract class EncryptedJsonSettings : JsonSettings, IEncryptedSavable {
@@ -47,7 +49,11 @@ namespace nucs.JsonSettings {
 
         public override void Decrypt(ref byte[] data) {
             base.Decrypt(ref data);
-            data = Rijndael.DecryptBytes(data, Password.ToRawString(), KeySize.Aes256);
+            try {
+                data = Rijndael.DecryptBytes(data, Password.ToRawString(), KeySize.Aes256);
+            } catch (CryptographicException inner) {
+                throw new JsonSettingsException("Password appears to be invalid.", inner);
+            }
         }
 
         public override void Encrypt(ref byte[] data) {
@@ -79,7 +85,7 @@ namespace nucs.JsonSettings {
         /// <param name="pSettings">The settings file to save</param>
         /// <param name="password">The password for decrypting</param>
         public static void Save(Type intype, IEncryptedSavable pSettings, string password, string filename = "##DEFAULT##") {
-            Save(intype, pSettings, password.ToSecureString(), filename);
+            Save(intype, pSettings, password?.ToSecureString(), filename);
         }
 
         /// <summary>
@@ -120,7 +126,7 @@ namespace nucs.JsonSettings {
         /// <param name="password">The password for decrypting</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static T Load<T>(T instance, string password, string filename = "##DEFAULT##") where T : IEncryptedSavable {
-            return Load(instance, password.ToSecureString(), filename);
+            return Load(instance, password?.ToSecureString(), filename);
         }
 
         /// <summary>
@@ -141,7 +147,7 @@ namespace nucs.JsonSettings {
         /// <param name="password">The password for decrypting</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static object Load(Type intype, string password, string filename = "##DEFAULT##") {
-            return Load((IEncryptedSavable) Activator.CreateInstance(intype), password.ToSecureString(), filename);
+            return Load((IEncryptedSavable) Activator.CreateInstance(intype), password?.ToSecureString(), filename);
         }
 
         /// <summary>
@@ -151,7 +157,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static T Load<T>(string password, string filename = "##DEFAULT##") where T : IEncryptedSavable, new() {
-            return (T) Load(typeof(T), password.ToSecureString(), filename);
+            return (T) Load(typeof(T), password?.ToSecureString(), filename);
         }
 
         /// <summary>
@@ -162,7 +168,7 @@ namespace nucs.JsonSettings {
         /// <param name="password">The password for decrypting</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static T Load<T>(T instance, SecureString password, string filename = "##DEFAULT##") where T : IEncryptedSavable {
-            instance.Password = password;
+            instance.Password = password ?? EmptyString;
             return JsonSettings.Load(instance, filename);
         }
 

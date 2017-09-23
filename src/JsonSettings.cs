@@ -198,6 +198,10 @@ namespace nucs.JsonSettings {
             }
 
             ISavable o = (ISavable) instance ?? (T) Activator.CreateInstance(typeof(T));
+
+            if (string.IsNullOrEmpty(filename) || (filename == "##DEFAULT##" && string.IsNullOrEmpty(o.FileName)))
+                throw new JsonSettingsException("Could not save settings to default path since FileName is null or empty.");
+
             if (filename == "##DEFAULT##")
                 filename = o.FileName;
 

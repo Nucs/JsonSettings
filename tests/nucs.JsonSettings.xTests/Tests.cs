@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Security;
 using FluentAssertions;
 using nucs.JsonSettings.xTests.Utils;
 using Xunit;
@@ -31,6 +32,33 @@ namespace nucs.JsonSettings.xTests {
                 var x = EncryptedJsonSettings.Load<EncryptedSettingsBag>("swag", f);
                 x["lol"].ShouldBeEquivalentTo("xoxo");
                 x["loly"].ShouldBeEquivalentTo(2);
+            }
+        }
+        [Fact]
+        public void EncryptedSettingsBag_Passless() {
+            using (var f = new TempfileLife()) {
+                var o = EncryptedJsonSettings.Load<EncryptedSettingsBag>((string)null, f);
+                o.Password.ShouldBeEquivalentTo(EncryptedSettingsBag.EmptyString);
+                o.Autosave = false;
+                o["lol"] = "xoxo";
+                o["loly"] = 2;
+                o.Save();
+                var x = EncryptedJsonSettings.Load<EncryptedSettingsBag>((string)null, f);
+                x["lol"].ShouldBeEquivalentTo("xoxo");
+                x["loly"].ShouldBeEquivalentTo(2);
+            }
+        }
+
+        [Fact]
+        public void EncryptedSettingsBag_InvalidPassword() {
+            using (var f = new TempfileLife()) {
+                var o = EncryptedJsonSettings.Load<EncryptedSettingsBag>("Yo", f);
+                o.Autosave = false;
+                o["lol"] = "xoxo";
+                o["loly"] = 2;
+                o.Save();
+                Action func = () => EncryptedJsonSettings.Load<EncryptedSettingsBag>("Yo2", f);
+                func.ShouldThrow<JsonSettingsException>("Password is invalid").Where(e=>e.Message.StartsWith("Password", StringComparison.OrdinalIgnoreCase));
             }
         }
 
@@ -70,10 +98,44 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
+        [Fact]
+        public void JsonSettings_FileNameIsNullByDefault() {
+            Assert.Throws<JsonSettingsException>(() => {
+                JsonSettings.Load<FilenamelessSettings>();
+            });
+        }
+
+        [Fact]
+        public void EncryptedJsonSettings_FileNameIsNullByDefault() {
+            Assert.Throws<JsonSettingsException>(() => {
+                EncryptedJsonSettings.Load<EncryptedFilenamelessSettings>("password", "##DEFAULT##");
+            });
+            Assert.Throws<JsonSettingsException>(() => {
+                EncryptedJsonSettings.Load<EncryptedFilenamelessSettings>("password");
+            });
+        }
+
         class FilterFileNameSettings : JsonSettings {
             public override string FileName { get; set; }
             public FilterFileNameSettings() { }
             public FilterFileNameSettings(string fileName) : base(fileName) { }
+        }
+
+        class FilenamelessSettings : JsonSettings {
+            public override string FileName { get; set; } = null;
+            public string someprop { get; set; }
+
+            public FilenamelessSettings() { }
+            public FilenamelessSettings(string fileName) : base(fileName) { }
+        }
+        class EncryptedFilenamelessSettings : EncryptedJsonSettings {
+            public override string FileName { get; set; } = null;
+            public string someprop { get; set; }
+            public EncryptedFilenamelessSettings() { }
+            public EncryptedFilenamelessSettings(string password) : base(password) { }
+            public EncryptedFilenamelessSettings(string password, string fileName = "##DEFAULT##") : base(password, fileName) { }
+            public EncryptedFilenamelessSettings(SecureString password) : base(password) { }
+            public EncryptedFilenamelessSettings(SecureString password, string fileName = "##DEFAULT##") : base(password, fileName) { }
         }
     }
 }
