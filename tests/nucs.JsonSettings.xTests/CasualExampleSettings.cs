@@ -11,8 +11,9 @@ namespace nucs.JsonSettings.xTests {
         protected override void OnConfigure() {
             base.OnConfigure();
         }
-
         public CasualExampleSettings() { }
-        public CasualExampleSettings(string fileName) : base(fileName) { }
+        public CasualExampleSettings(string someprop) {
+            SomeProperty = someprop;
+        }
     }
 }

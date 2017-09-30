@@ -163,15 +163,27 @@ namespace nucs.JsonSettings {
 
         #region Load
 
+        #region Regular Load
+
         public void Load() {
-            Load(this, FileName);
+            Load(this, (Action) null, FileName);
         }
 
         public void Load(string filename) {
             if (filename == null) throw new ArgumentNullException(nameof(filename));
-            Load(this, filename);
+            Load(this, (Action) null, filename);
         }
 
+        /// <summary>
+        ///     Loads or creates a settings file.
+        /// </summary>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public void Load(string filename, Action<JsonSettings> configure) {
+            if (filename == null) throw new ArgumentNullException(nameof(filename));
+            Load(this, configure, filename);
+        }
 
         /// <summary>
         ///     Loads a settings file or creates a new settings file.
@@ -180,26 +192,150 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static object Load(Type intype, string filename = "<DEFAULT>") {
-            return Load((ISavable) intype.CreateInstance(), filename);
+            return Load(intype.CreateInstance(), (Action) null, filename);
         }
 
         /// <summary>
         ///     Loads or creates a settings file.
         /// </summary>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
-        /// <param name="preventoverride">If the file did not exist or corrupt, dont resave it</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static T Load<T>(string filename = "<DEFAULT>") where T : ISavable {
             return (T) Load(typeof(T), filename);
+        }
+
+
+        /// <summary>
+        ///     Loads a settings file or creates a new settings file.
+        /// </summary>
+        /// <param name="intype">The type of this object</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static object Load<T>(Type intype, Action<T> configure, string filename = "<DEFAULT>") where T : ISavable {
+            return Load((T) intype.CreateInstance(), configure, filename);
+        }
+
+        #endregion
+
+        #region Load With Args
+
+        /// <summary>
+        ///     Loads or creates a settings file.
+        /// </summary>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static T Load<T>(Action<T> configure, string filename, object[] args) where T : ISavable {
+            return (T) Load(typeof(T), configure, filename);
+        }
+
+        /// <summary>
+        ///     Loads or creates a settings file.
+        /// </summary>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static T Load<T>(string filename, Action<T> configure, object[] args) where T : ISavable {
+            T o = (T) typeof(T).CreateInstance(args);
+            return Load(o, () => configure?.Invoke(o), filename);
+        }
+
+        /// <summary>
+        ///     Loads a settings file or creates a new settings file.
+        /// </summary>
+        /// <param name="intype">The type of this object</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static object Load(Type intype, object[] args) {
+            return Load(intype, null, "<DEFAULT>", args);
+        }
+
+        /// <summary>
+        ///     Loads a settings file or creates a new settings file.
+        /// </summary>
+        /// <param name="intype">The type of this object</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static object Load(Type intype, string filename, object[] args) {
+            return Load(intype, null, filename, args);
+        }
+
+        /// <summary>
+        ///     Loads or creates a settings file.
+        /// </summary>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static T Load<T>(object[] args) where T : ISavable {
+            return (T) Load(typeof(T), args);
+        }
+
+
+        /// <summary>
+        ///     Loads or creates a settings file.
+        /// </summary>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static T Load<T>(Action<T> configure, string filename = "<DEFAULT>") where T : ISavable {
+            return (T) Load(typeof(T), configure, filename);
+        }
+
+        /// <summary>
+        ///     Loads or creates a settings file.
+        /// </summary>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static T Load<T>(string filename, Action<T> configure) where T : ISavable {
+            return (T) Load(typeof(T), configure, filename);
+        }
+
+        /// <summary>
+        ///     Loads a settings file or creates a new settings file.
+        /// </summary>
+        /// <param name="intype">The type of this object</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static object Load(Type intype, Action configure, string filename, object[] args) {
+            return Load(intype.CreateInstance(args), configure, filename);
+        }
+
+        #endregion
+
+        /// <summary>
+        ///     Loads a settings file or creates a new settings file.
+        /// </summary>
+        /// <param name="instance">The instance inwhich to load into</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static T Load<T>(T instance, Action<T> configure, string filename = "<DEFAULT>") where T : ISavable {
+            return Load(instance, () => configure?.Invoke(instance), filename);
         }
 
         /// <summary>
         ///     Loads a settings file or creates a new settings file.
         /// </summary>
         /// <param name="instance">The instance inwhich to load into</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(T instance, string filename = "<DEFAULT>") where T : ISavable {
+        public static T Load<T>(T instance, Action configure, string filename = "<DEFAULT>") where T : ISavable {
+            return (T) Load((object) instance, configure, filename);
+        }
+
+        /// <summary>
+        ///     Loads a settings file or creates a new settings file.
+        /// </summary>
+        /// <param name="instance">The instance inwhich to load into</param>
+        /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
+        /// <returns>The loaded or freshly new saved object</returns>
+        public static object Load(object instance, Action configure, string filename = "<DEFAULT>") {
             byte[] ReadAllBytes(Stream instream) {
                 if (instream is MemoryStream stream)
                     return stream.ToArray();
@@ -210,9 +346,12 @@ namespace nucs.JsonSettings {
                 }
             }
 
-            JsonSettings o = (JsonSettings) ((ISavable) instance ?? (T) typeof(T).CreateInstance());
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+
+            JsonSettings o = (JsonSettings) (ISavable) instance;
             filename = ResolvePath(o, filename);
             o.EnsureConfigured();
+            configure?.Invoke();
 
             o.OnBeforeLoad(ref filename);
 
@@ -233,7 +372,7 @@ namespace nucs.JsonSettings {
                     o.OnAfterDeserialize();
                     o.FileName = filename;
                     o.OnAfterLoad();
-                    return (T) (object) o;
+                    return o;
                 } catch (InvalidOperationException e) when (e.Message.Contains("Cannot convert")) {
                     throw new JsonSettingsException("Unable to deserialize settings file, value<->type mismatch. see inner exception", e);
                 } catch (ArgumentException e) when (e.Message.StartsWith("Invalid")) {
@@ -245,7 +384,7 @@ namespace nucs.JsonSettings {
             o.FileName = filename;
             o.Save(filename);
 
-            return (T) (object) o;
+            return o;
         }
 
         #endregion

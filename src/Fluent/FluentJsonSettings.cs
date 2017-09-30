@@ -81,7 +81,7 @@ namespace nucs.JsonSettings.Fluent {
         /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
         /// <returns>Self</returns>
         public static T WithEncryption<T>(this T _instance, Func<string> password) where T : JsonSettings {
-            return _instance.WithEncryption(password);
+            return _instance.WithEncryption(() => password?.Invoke()?.ToSecureString());
         }
 
         /// <summary>
@@ -93,6 +93,28 @@ namespace nucs.JsonSettings.Fluent {
         /// <returns>Self</returns>
         public static T WithEncryption<T>(this T _instance, Func<SecureString> password) where T : JsonSettings {
             return _instance.WithModule<T, RijndaelModule>(password);
+        }
+        
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="_instance"></param>
+        /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, Func<T,string> password) where T : JsonSettings {
+            return _instance.WithEncryption(()=>password?.Invoke(_instance));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="_instance"></param>
+        /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, Func<T,SecureString> password) where T : JsonSettings {
+            return _instance.WithModule<T, RijndaelModule>((Func<SecureString>)(()=>password?.Invoke(_instance)));
         }
 
         public static T WithBase64<T>(this T _instance) where T : JsonSettings {

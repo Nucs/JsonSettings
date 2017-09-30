@@ -83,5 +83,8 @@ namespace nucs.JsonSettings.xTests {
             base.OnConfigure(); //Important!
             this.WithEncryption("password");
         }
+
+        private CasualConfiguredSettings() { }
+        public CasualConfiguredSettings(string someprop) : base(someprop) { }
     }
 }

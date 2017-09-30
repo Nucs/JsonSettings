@@ -8,14 +8,15 @@ using Module = nucs.JsonSettings.Modulation.Module;
 
 namespace nucs.JsonSettings {
     public static class Activation {
-        public static IEnumerable<ConstructorInfo> GetAllConstructors(this Type t) => t.GetConstructors(BindingFlags.Public | BindingFlags.Instance).Concat(t.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance));
+        public static IEnumerable<ConstructorInfo> GetAllConstructors(this Type t) => t.GetConstructors().Concat(t.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance));
         /// <summary>
         ///     Does the type have public/private/protected/internal.
         /// </summary>
         /// <param name="t"></param>
         /// <returns></returns>
         public static bool HasDefaultConstructor(this Type t) {
-            var ctrs = t.GetAllConstructors().Where(c=>c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional)).ToArray();
+            var ctrs = t.GetAllConstructors();
+            ctrs=ctrs.Where(c=>c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional)).ToArray();
             return ReflectionHelpers.IsValueType(t) || (ctrs.Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional)));
         }
 
