@@ -123,19 +123,30 @@ namespace nucs.JsonSettings {
             var o = (JsonSettings) pSettings;
             filename = ResolvePath(o, filename);
             o.EnsureConfigured();
+            FileStream stream = null;
 
-            lock (o) {
-                //todo catch and handle filewrite properly.
-                o.OnBeforeSave(ref filename);
-                o.FileName = filename;
-                o.OnBeforeSerialize();
-                var json = JsonConvert.SerializeObject(o, intype, _settings);
-                o.OnAfterSerialize(ref json);
-                var bytes = Encoding.GetBytes(json);
-                o.OnEncrypt(ref bytes);
-                o.OnAfterEncrypt(ref bytes);
-                File.WriteAllBytes(filename, bytes);
-                o.OnAfterSave(filename);
+            try {
+                lock (o) {
+                    o.OnBeforeSave(ref filename);
+                    stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+                    o.FileName = filename;
+                    o.OnBeforeSerialize();
+                    var json = JsonConvert.SerializeObject(o, intype, _settings);
+                    o.OnAfterSerialize(ref json);
+                    var bytes = Encoding.GetBytes(json);
+                    o.OnEncrypt(ref bytes);
+                    o.OnAfterEncrypt(ref bytes);
+
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Close();
+                    stream = null;
+
+                    o.OnAfterSave(filename);
+                }
+            } catch (IOException e) {
+                throw new JsonSettingsException("Failed writing into the file", e);
+            } finally {
+                stream?.Close();
             }
         }
 
