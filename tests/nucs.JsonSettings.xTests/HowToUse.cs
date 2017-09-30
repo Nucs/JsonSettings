@@ -22,7 +22,6 @@ namespace nucs.JsonSettings.xTests {
                 o.SomeClassProperty = new SmallClass() {Name = "Small", Value = "Class"};
                 o.Save();
 
-
                 //validate
                 o = JsonSettings.Load<CasualExampleSettings>(f.FileName);
                 o.SomeProperty.Should().Be("with some value");
@@ -69,7 +68,7 @@ namespace nucs.JsonSettings.xTests {
         [Fact]
         public void Use_Configure_CasualSettingsExample_LoadSelf() {
             using (var f = new TempfileLife()) {
-                //load using Load      with configuration and custom constructor and password fetcher from itself.
+                //load using Load      with configuration and custom constructor and password fetcher from one of the class's property.
                 var o = JsonSettings.Load<CasualExampleSettings>(f.FileName, s => s.WithBase64().WithEncryption(set => set.SomeProperty), new object[] {"SuperPassword"});
                 o.SomeNumeralProperty = 1;
                 o.SomeClassProperty = new SmallClass() {Name = "Small", Value = "Class"};
@@ -116,25 +115,6 @@ namespace nucs.JsonSettings.xTests {
                 o["somekeyforclass"].Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
             }
         }
-
-        /*
-        [Fact]
-        public void Use_EncryptedCasualSettingsExample() {
-            using (var f = new TempfileLife()) {
-                //used for autodelete file after test ends
-                var o = EncryptedJsonSettings.Load<CasualExampleSettings>("password", f.FileName);
-                o.SomeNumeralProperty = 1;
-                o.SomeProperty = "with some value";
-                o.SomeClassProperty = new SmallClass() {Name = "Small", Value = "Class"};
-                o.Save();
-
-                //validate
-                o = EncryptedJsonSettings.Load<CasualExampleSettings>("password", f.FileName);
-                o.SomeProperty.Should().Be("with some value");
-                o.SomeNumeralProperty.ShouldBeEquivalentTo(1);
-                o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
-            }
-        }*/
 
         [Fact]
         public void Use__CasualSettingsExample() {

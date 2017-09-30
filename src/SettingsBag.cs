@@ -94,5 +94,9 @@ namespace nucs.JsonSettings {
             Autosave = true;
             return this;
         }
+
+        public dynamic AsDynamic() {
+            return new DynamicSettingsBag(this);
+        }
     }
 }
