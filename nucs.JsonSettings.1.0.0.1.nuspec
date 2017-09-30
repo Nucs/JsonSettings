@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>nucs.JsonSettings</id>
+        <version>1.0.0.1</version>
+        <title>JsonSettings</title>
+        <authors>Nucs / Eli Belash</authors>
+        <owners>Nucs / Eli Belash</owners>
+        <licenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</licenseUrl>
+        <projectUrl>https://github.com/Nucs/JsonSettings</projectUrl>
+        <iconUrl>http://i.imgur.com/GQ6RiXB.png</iconUrl>
+        <requireLicenseAcceptance>true</requireLicenseAcceptance>
+        <description>Easiest way you'll ever write settings for your app. Cross-platform and modular - and still a one-liner.
+Encrypt, Encode and have full control over hardcoded / dynamic settings.</description>
+        <summary>Easiest way you'll ever write settings for your app. Cross-platform and modular - and still a one-liner.</summary>
+        <releaseNotes>see github.</releaseNotes>
+        <copyright>Copyright Eli Belash (C) 2017</copyright>
+        <tags>nucs nlib settings json configuration preferences config file</tags>
+        <dependencies>
+            <dependency id="Newtonsoft.Json" version="10.0.3" />
+        </dependencies>
+    </metadata>
+    <files>
+        <file src=".\src\bin\Release\net4\nucs.JsonSettings.dll" target="lib\net40\nucs.JsonSettings.dll" />
+        <file src=".\src\bin\Release\net4\nucs.JsonSettings.pdb" target="lib\net40\nucs.JsonSettings.pdb" />
+        <file src=".\src\bin\Release\net45\nucs.JsonSettings.dll" target="lib\net45\nucs.JsonSettings.dll" />
+        <file src=".\src\bin\Release\net45\nucs.JsonSettings.pdb" target="lib\net45\nucs.JsonSettings.pdb" />
+        <file src=".\src\bin\Release\net461\nucs.JsonSettings.dll" target="lib\net461\nucs.JsonSettings.dll" />
+        <file src=".\src\bin\Release\net461\nucs.JsonSettings.pdb" target="lib\net461\nucs.JsonSettings.pdb" />
+        <file src=".\src\bin\Release\net462\nucs.JsonSettings.dll" target="lib\net462\nucs.JsonSettings.dll" />
+        <file src=".\src\bin\Release\net462\nucs.JsonSettings.pdb" target="lib\net462\nucs.JsonSettings.pdb" />
+        <file src=".\src\bin\Release\net47\nucs.JsonSettings.dll" target="lib\net47\nucs.JsonSettings.dll" />
+        <file src=".\src\bin\Release\net47\nucs.JsonSettings.pdb" target="lib\net47\nucs.JsonSettings.pdb" />
+        <file src=".\src\bin\Release\netcoreapp2.0\nucs.JsonSettings.deps.json" target="lib\netcoreapp2.0\nucs.JsonSettings.deps.json" />
+        <file src=".\src\bin\Release\netcoreapp2.0\nucs.JsonSettings.dll" target="lib\netcoreapp2.0\nucs.JsonSettings.dll" />
+        <file src=".\src\bin\Release\netcoreapp2.0\nucs.JsonSettings.pdb" target="lib\netcoreapp2.0\nucs.JsonSettings.pdb" />
+        <file src=".\src\bin\Release\netstandard1.6\nucs.JsonSettings.deps.json" target="lib\netstandard1.6\nucs.JsonSettings.deps.json" />
+        <file src=".\src\bin\Release\netstandard1.6\nucs.JsonSettings.dll" target="lib\netstandard1.6\nucs.JsonSettings.dll" />
+        <file src=".\src\bin\Release\netstandard1.6\nucs.JsonSettings.pdb" target="lib\netstandard1.6\nucs.JsonSettings.pdb" />
+        <file src=".\src\bin\Release\netstandard2.0\nucs.JsonSettings.deps.json" target="lib\netstandard2.0\nucs.JsonSettings.deps.json" />
+        <file src=".\src\bin\Release\netstandard2.0\nucs.JsonSettings.dll" target="lib\netstandard2.0\nucs.JsonSettings.dll" />
+        <file src=".\src\bin\Release\netstandard2.0\nucs.JsonSettings.pdb" target="lib\netstandard2.0\nucs.JsonSettings.pdb" />
+    </files>
+</package>

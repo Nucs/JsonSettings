@@ -10,6 +10,7 @@ namespace nucs.JsonSettings {
         /// <summary>
         ///     Will perform a safe after a change in any non-hardcoded public property.
         /// </summary>
+        [JsonIgnore]
         public bool Autosave { get; set; } = false;
 
         [JsonIgnore]
