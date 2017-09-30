@@ -8,7 +8,7 @@ namespace nucs.JsonSettings.Modulation {
     ///     A subclass to manage modulation of a JsonSettings
     /// </summary>
     public class ModuleSocket : ISocket, IDisposable {
-        private JsonSettings _settings { get; }
+        private JsonSettings _settings { get; set; }
 
         public ModuleSocket(JsonSettings settings) {
             _settings = settings;
@@ -73,6 +73,7 @@ namespace nucs.JsonSettings.Modulation {
             foreach (var module in _modules.ToArray()) {
                 module.Dispose();
             }
+            _settings = null;
         }
     }
 }
