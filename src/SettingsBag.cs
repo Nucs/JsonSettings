@@ -47,7 +47,7 @@ namespace nucs.JsonSettings {
                 if (PropertyData.ContainsKey(key))
                     return (T) PropertyData[key].GetValue(this, null);
 
-                var ret = Data[key];
+                var ret = _data[key];
                 if (ret == null || ret.Equals(default(T)))
                     return @default;
 
@@ -60,7 +60,7 @@ namespace nucs.JsonSettings {
                 if (PropertyData.ContainsKey(key))
                     PropertyData[key].SetValue(this, value, null);
                 else
-                    Data[key] = value;
+                    _data[key] = value;
 
                 if (Autosave)
                     Save();
@@ -70,7 +70,7 @@ namespace nucs.JsonSettings {
         public bool Remove(string key) {
             bool ret = false;
             lock (this)
-                ret = Data.Remove(key);
+                ret = _data.Remove(key);
             if (Autosave)
                 Save();
 
@@ -80,7 +80,7 @@ namespace nucs.JsonSettings {
         public int Remove(Func<KeyValuePair<string, object>, bool> comprarer) {
             lock (this) {
                 int ret = 0;
-                foreach (var kv in Data.ToArray()) {
+                foreach (var kv in _data.ToArray()) {
                     if (comprarer(kv))
                         if (Remove(kv.Key)) {
                             ret += 1;

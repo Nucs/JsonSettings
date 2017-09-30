@@ -33,34 +33,33 @@ namespace nucs.JsonSettings {
         ///     Invoked after path has been resolved and before reading. <br></br>
         ///     FileInfo can be modified now.
         /// </summary>
-        void BeforeLoad(ref string destinition);
+        event BeforeLoadHandler BeforeLoad;
         /// <summary>
         ///     Called during loading right after <see cref="BeforeLoad"/> to decrypt the readed bytes, if <see cref="Encrypt"/> is not implemented - no reason to perform decryption.
         /// </summary>
         /// <param name="data">The data that was read from the file.</param>
-        void Decrypt(ref byte[] data);
+        event DecryptHandler Decrypt;
         /// <summary>
         ///     Called after <see cref="Decrypt"/>.
         /// </summary>
         /// <param name="data"></param>
-        void AfterDecrypt(ref byte[] data);
+        event AfterDecryptHandler AfterDecrypt;
 
         /// <summary>
         ///     Invoked after file was read and decrypted successfully right before deserializing into an object.
         /// </summary>
-        /// <param name="data"></param>
-        void BeforeDeserialize(ref string data);
+        event BeforeDeserializeHandler BeforeDeserialize;
 
         /// <summary>
         ///     Invoked after deserialization of <see cref="this"/> was successful.
         /// </summary>
-        void AfterDeserialize();
+        event AfterDeserializeHandler AfterDeserialize;
 
 
         /// <summary>
         ///     Invoked at the end of the loading progress.
         /// </summary>
-        void AfterLoad();
+        event AfterLoadHandler AfterLoad;
         #endregion
 
         #region Saving
@@ -68,20 +67,26 @@ namespace nucs.JsonSettings {
         /// <summary>
         ///     Invoked before saving this object.
         /// </summary>
-        void BeforeSave(ref string destinition);
+        event BeforeSaveHandler BeforeSave;
 
-        void BeforeSerialize();
+        event BeforeSerializeHandler BeforeSerialize;
 
-        void AfterSerialize(ref string data);
+        event AfterSerializeHandler AfterSerialize;
+        
+        /// <summary>
+        ///     After serializing, encryption can be applied now.
+        /// </summary>
+        event EncryptHandler Encrypt;
 
-        void Encrypt(ref byte[] data);
-
-        void AfterEncrypt(ref byte[] data);
+        /// <summary>
+        ///     After encryption successful.
+        /// </summary>
+        event AfterEncryptHandler AfterEncrypt;
 
         /// <summary>
         ///     Invoked after saving this object.
         /// </summary>
-        void AfterSave(string destinition);
+        event AfterSaveHandler AfterSave;
 
         #endregion
     }

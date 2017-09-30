@@ -5,6 +5,6 @@ namespace nucs.JsonSettings {
         /// <summary>
         ///     The password which is used to encrypt and decrypt the file.
         /// </summary>
-        SecureString Password { get; set; }
+        SecureString Password { get; }
     }
 }
