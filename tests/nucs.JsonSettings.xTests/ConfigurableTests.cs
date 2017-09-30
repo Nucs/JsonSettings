@@ -18,8 +18,8 @@ namespace nucs.JsonSettings.xTests {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
                 var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
-                o.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
-                Assert.True(o.Modules.Count == 1, "o.Modules.Count == 1");
+                o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+                Assert.True(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
             }
         }
 
@@ -28,8 +28,8 @@ namespace nucs.JsonSettings.xTests {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
                 var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName);
-                o.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
-                Assert.True(o.Modules.Count == 1, "o.Modules.Count == 1");
+                o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+                Assert.True(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
             }
         }
 
@@ -38,8 +38,8 @@ namespace nucs.JsonSettings.xTests {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
                 var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
-                o.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
-                Assert.True(o.Modules.Count == 1, "o.Modules.Count == 1");
+                o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+                Assert.True(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
 
                 o.SomeNumeralProperty = 1;
                 o.SomeProperty = "with some value";
@@ -48,7 +48,7 @@ namespace nucs.JsonSettings.xTests {
 
                 //validate
                 o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
-                o.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+                o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
                 o.SomeProperty.Should().Be("with some value");
                 o.SomeNumeralProperty.ShouldBeEquivalentTo(1);
                 o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
@@ -60,8 +60,8 @@ namespace nucs.JsonSettings.xTests {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
                 var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName);
-                o.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
-                Assert.True(o.Modules.Count == 1, "o.Modules.Count == 1");
+                o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+                Assert.True(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
                 o.LoadNow();
                 o.SomeNumeralProperty = 1;
                 o.SomeProperty = "with some value";
@@ -70,7 +70,7 @@ namespace nucs.JsonSettings.xTests {
 
                 //validate
                 o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
-                o.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+                o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
                 o.SomeProperty.Should().Be("with some value");
                 o.SomeNumeralProperty.ShouldBeEquivalentTo(1);
                 o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");

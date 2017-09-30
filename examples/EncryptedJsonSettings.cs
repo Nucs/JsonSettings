@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using nucs.JsonSettings.Fluent;
 
 namespace nucs.JsonSettings.Examples {
     static class EncryptedProgram {
@@ -12,7 +13,7 @@ namespace nucs.JsonSettings.Examples {
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
-        private static EncryptedSettings Settings { get; } = EncryptedJsonSettings.Load<EncryptedSettings>("mysupercomplex_password","memory.jsn");
+        private static EncryptedSettings Settings { get; } = JsonSettings.Construct<EncryptedSettings>("mysupercomplex_password","memory.jsn").LoadNow();
 
         [STAThread]
         static void Main2(string[] args) {
@@ -43,14 +44,23 @@ namespace nucs.JsonSettings.Examples {
         }
     }
 
-    public class EncryptedSettings : EncryptedJsonSettings {
+    public class EncryptedSettings : JsonSettings {
+        public SecureString Password { get; }
         public override string FileName { get; set; } = "some.default.just.in.case.jsn";
         public string LastPath { get; set; }
 
+        protected override void OnConfigure() {
+            base.OnConfigure();
+            this.WithEncryption(() => Password);
+        }
+
         public EncryptedSettings() { }
-        public EncryptedSettings(string password) : base(password) { }
-        public EncryptedSettings(string password, string fileName = "##DEFAULT##") : base(password, fileName) { }
-        public EncryptedSettings(SecureString password) : base(password) { }
-        public EncryptedSettings(SecureString password, string fileName = "##DEFAULT##") : base(password, fileName) { }
+        public EncryptedSettings(string password) : this(password, "<DEFAULT>") { }
+        public EncryptedSettings(string password, string fileName = "<DEFAULT>") : this(password?.ToSecureString(), fileName) { }
+        public EncryptedSettings(SecureString password) : this(password, "<DEFAULT>") { }
+
+        public EncryptedSettings(SecureString password, string fileName = "<DEFAULT>") : base(fileName) {
+            Password = password;
+        }
     }
 }

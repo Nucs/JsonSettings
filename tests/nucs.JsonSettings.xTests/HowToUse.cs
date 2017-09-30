@@ -11,6 +11,7 @@ using Xunit.Sdk;
 namespace nucs.JsonSettings.xTests {
     public class HowToUse {
         #region Settings Bag
+/*
 
         [Fact]
         public void Use_EncryptedSettingsBag() {
@@ -29,6 +30,7 @@ namespace nucs.JsonSettings.xTests {
                 o["somekeyforclass"].Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
             }
         }
+*/
 
         [Fact]
         public void Use_SettingsBag() {
@@ -47,7 +49,7 @@ namespace nucs.JsonSettings.xTests {
                 o["somekeyforclass"].Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
             }
         }
-
+/*
         [Fact]
         public void Use_EncryptedSettingsBag_AutoSave() {
             using (var f = new TempfileLife()) {
@@ -63,7 +65,7 @@ namespace nucs.JsonSettings.xTests {
                 o["someotherkey"].ShouldBeEquivalentTo(1);
                 o["somekeyforclass"].Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
             }
-        }
+        }*/
 
         [Fact]
         public void Use_SettingsBag_AutoSave() {
@@ -82,7 +84,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        
+        /*
         [Fact]
         public void Use_EncryptedCasualSettingsExample() {
             using (var f = new TempfileLife()) {
@@ -99,7 +101,7 @@ namespace nucs.JsonSettings.xTests {
                 o.SomeNumeralProperty.ShouldBeEquivalentTo(1);
                 o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
             }
-        }
+        }*/
 
         [Fact]
         public void Use__CasualSettingsExample() {

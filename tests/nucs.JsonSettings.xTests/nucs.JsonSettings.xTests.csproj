@@ -11,11 +11,6 @@
     <PackageReference Include="xunit" Version="2.2.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.2.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\nucs.JsonSettings.csproj" />
-    <ProjectReference Include="..\nucs.Settings\src\nucs.JsonSettings.csproj" />
-  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
   </ItemGroup>
@@ -61,6 +56,10 @@
     <PackageReference Include="System.Security.SecureString">
       <Version>4.3.0</Version>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\nucs.JsonSettings.csproj" />
   </ItemGroup>
 
   <ItemGroup>

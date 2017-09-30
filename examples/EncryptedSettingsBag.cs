@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using nucs.JsonSettings.Fluent;
 
 namespace nucs.JsonSettings.Examples {
     static class EncryptedSettingsBagProgram {
@@ -12,7 +13,7 @@ namespace nucs.JsonSettings.Examples {
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
-        private static EncryptedSettingsBag Settings { get; } = EncryptedJsonSettings.Load<EncryptedSettingsBag>("mysupercomplex_password","memory.jsn").EnableAutosave();
+        private static SettingsBag Settings { get; } = JsonSettings.Construct<SettingsBag>("memory.jsn").WithEncryption("mysupercomplex_password").LoadNow().EnableAutosave();
 
         [STAThread]
         static void Main2(string[] args) {

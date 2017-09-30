@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Security;
 using FluentAssertions;
+using nucs.JsonSettings.Fluent;
 using nucs.JsonSettings.Modulation;
 using nucs.JsonSettings.xTests.Utils;
 using Xunit;
@@ -10,56 +11,55 @@ using Xunit.Sdk;
 namespace nucs.JsonSettings.xTests {
     public class Tests {
         [Fact]
-        public void EncryptedSettingsBag_Autosave() {
+        public void SettingsBag_WithEncryption_Autosave() {
             using (var f = new TempfileLife()) {
-                var o = EncryptedJsonSettings.Load<EncryptedSettingsBag>("swag", f);
+                var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow().EnableAutosave();
                 o.Autosave = true;
                 o["lol"] = "xoxo";
                 o["loly"] = 2;
-                var x = EncryptedJsonSettings.Load<EncryptedSettingsBag>("swag", f);
+                var x = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
                 x["lol"].ShouldBeEquivalentTo("xoxo");
                 x["loly"].ShouldBeEquivalentTo(2);
             }
         }
 
         [Fact]
-        public void EncryptedSettingsBag_RegularSave() {
+        public void SettingsBag_WithEncryption_RegularSave() {
             using (var f = new TempfileLife()) {
-                var o = EncryptedJsonSettings.Load<EncryptedSettingsBag>("swag", f);
+                var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
                 o.Autosave = false;
                 o["lol"] = "xoxo";
                 o["loly"] = 2;
                 o.Save();
-                var x = EncryptedJsonSettings.Load<EncryptedSettingsBag>("swag", f);
+                var x = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
                 x["lol"].ShouldBeEquivalentTo("xoxo");
                 x["loly"].ShouldBeEquivalentTo(2);
             }
         }
 
         [Fact]
-        public void EncryptedSettingsBag_Passless() {
+        public void SettingsBag_Passless() {
             using (var f = new TempfileLife()) {
-                var o = EncryptedJsonSettings.Load<EncryptedSettingsBag>((string) null, f);
-                o.Password.ShouldBeEquivalentTo(SecureStringExt.EmptyString);
+                var o = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
+                ((RijndaelModule) o.Modulation.Modules[0]).Password.ShouldBeEquivalentTo(SecureStringExt.EmptyString);
                 o.Autosave = false;
                 o["lol"] = "xoxo";
                 o["loly"] = 2;
                 o.Save();
-                var x = EncryptedJsonSettings.Load<EncryptedSettingsBag>((string) null, f);
+                var x = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
                 x["lol"].ShouldBeEquivalentTo("xoxo");
                 x["loly"].ShouldBeEquivalentTo(2);
             }
         }
 
         [Fact]
-        public void EncryptedSettingsBag_InvalidPassword() {
+        public void SettingsBag_InvalidPassword() {
             using (var f = new TempfileLife()) {
-                var o = EncryptedJsonSettings.Load<EncryptedSettingsBag>("Yo", f);
-                o.Autosave = false;
+                var o = JsonSettings.Configure<SettingsBag>().WithEncryption("yoyo").WithFileName(f.FileName).LoadNow();
                 o["lol"] = "xoxo";
                 o["loly"] = 2;
                 o.Save();
-                Action func = () => EncryptedJsonSettings.Load<EncryptedSettingsBag>("Yo2", f);
+                Action func = () => JsonSettings.Configure<SettingsBag>().WithEncryption("invalidpass").WithFileName(f.FileName).LoadNow();
                 func.ShouldThrow<JsonSettingsException>("Password is invalid").Where(e => e.Message.StartsWith("Password", StringComparison.OrdinalIgnoreCase));
             }
         }
@@ -106,12 +106,6 @@ namespace nucs.JsonSettings.xTests {
         }
 
         [Fact]
-        public void EncryptedJsonSettings_FileNameIsNullByDefault() {
-            Assert.Throws<JsonSettingsException>(() => { EncryptedJsonSettings.Load<EncryptedFilenamelessSettings>("password", "<DEFAULT>"); });
-            Assert.Throws<JsonSettingsException>(() => { EncryptedJsonSettings.Load<EncryptedFilenamelessSettings>("password"); });
-        }
-
-        [Fact]
         public void JsonSettings_ModuleLoader() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<ModuleLoadingSttings>(f);
@@ -143,15 +137,6 @@ namespace nucs.JsonSettings.xTests {
             public FilenamelessSettings(string fileName) : base(fileName) { }
         }
 
-        class EncryptedFilenamelessSettings : EncryptedJsonSettings {
-            public override string FileName { get; set; } = null;
-            public string someprop { get; set; }
-            public EncryptedFilenamelessSettings() { }
-            public EncryptedFilenamelessSettings(string password) : base(password) { }
-            public EncryptedFilenamelessSettings(string password, string fileName = "<DEFAULT>") : base(password, fileName) { }
-            public EncryptedFilenamelessSettings(SecureString password) : base(password) { }
-            public EncryptedFilenamelessSettings(SecureString password, string fileName = "<DEFAULT>") : base(password, fileName) { }
-        }
 
         public class MySettings : JsonSettings {
             public override string FileName { get; set; } = "TheDefaultFilename"; //for loading and saving.
@@ -174,29 +159,5 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        class MyEncryptedSettings : EncryptedJsonSettings {
-            public override string FileName { get; set; } = "TheDefaultFilename"; //for loading and saving.
-
-            #region Settings
-
-            public string SomeProperty { get; set; }
-            public int SomeNumberWithDefaultValue { get; set; } = 1;
-
-            #endregion
-
-            public MyEncryptedSettings() { }
-            public MyEncryptedSettings(string password) : base(password) { }
-            public MyEncryptedSettings(string password, string fileName = "<DEFAULT>") : base(password, fileName) { }
-            public MyEncryptedSettings(SecureString password) : base(password) { }
-            public MyEncryptedSettings(SecureString password, string fileName = "<DEFAULT>") : base(password, fileName) { }
-
-            public void test() {
-                var settings1 = EncryptedJsonSettings.Load<EncryptedSettingsBag>("password").EnableAutosave();
-                var settings = JsonSettings.Load<SettingsBag>().EnableAutosave();
-                settings["key"] = 123; //Already saved to file.
-                if ((int?) settings["key"] != 123) ;
-                //do something
-            }
-        }
     }
 }

@@ -110,19 +110,6 @@ namespace nucs.JsonSettings.xTests {
         }
 
         [Fact]
-        public void EncryptedSettingsBag_InvalidPassword() {
-            using (var f = new TempfileLife()) {
-                var o = EncryptedJsonSettings.Load<EncryptedSettingsBag>("Yo", f);
-                o.Autosave = false;
-                o["lol"] = "xoxo";
-                o["loly"] = 2;
-                o.Save();
-                Action func = () => EncryptedJsonSettings.Load<EncryptedSettingsBag>("Yo2", f);
-                func.ShouldThrow<JsonSettingsException>("Password is invalid").Where(e => e.Message.StartsWith("Password", StringComparison.OrdinalIgnoreCase));
-            }
-        }
-
-        [Fact]
         public void Fluent_ConstructorFileNameComparison() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
@@ -191,15 +178,7 @@ namespace nucs.JsonSettings.xTests {
             public FilenamelessSettings(string fileName) : base(fileName) { }
         }
 
-        class EncryptedFilenamelessSettings : EncryptedJsonSettings {
-            public override string FileName { get; set; } = null;
-            public string someprop { get; set; }
-            public EncryptedFilenamelessSettings() { }
-            public EncryptedFilenamelessSettings(string password) : base(password) { }
-            public EncryptedFilenamelessSettings(string password, string fileName = "<DEFAULT>") : base(password, fileName) { }
-            public EncryptedFilenamelessSettings(SecureString password) : base(password) { }
-            public EncryptedFilenamelessSettings(SecureString password, string fileName = "<DEFAULT>") : base(password, fileName) { }
-        }
+
 
         public class MySettings : JsonSettings {
             public override string FileName { get; set; } = "TheDefaultFilename"; //for loading and saving.

@@ -44,7 +44,7 @@ namespace nucs.JsonSettings {
 
     #endregion
 
-    public abstract class JsonSettings : ISavable, ISocket, IDisposable {
+    public abstract class JsonSettings : ISavable, IDisposable {
         #region Static
 
         /// <summary>
@@ -60,6 +60,7 @@ namespace nucs.JsonSettings {
         private readonly Type _childtype;
 
         protected JsonSettings() {
+            Modulation = new ModuleSocket(this);
             _childtype = GetType();
             if (!_childtype.HasDefaultConstructor())
                 throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
@@ -78,59 +79,17 @@ namespace nucs.JsonSettings {
 
         #region Modularity
 
-#if NET40
-        public ReadOnlyCollection<Module> Modules {
-#else
-        public IReadOnlyList<Module> Modules {
-#endif
-            get {
-                lock (_modules)
-                    return _modules.ToList().AsReadOnly();
-            }
-        }
-
-        public bool IsAttached(Func<Module, bool> checker) {
-            return Modules.Any(checker);
-        }
-
-        public bool IsAttachedOfType<T>() where T : Module {
-            return IsAttachedOfType(typeof(T));
-        }
-
-        public bool IsAttachedOfType(Type t) {
-            return IsAttached(m => m.GetType() == t);
-        }
-
-        protected readonly List<Module> _modules = new List<Module>();
-
-        public void Attach(Module t) {
-            if (_isdisposed)
-                throw new ObjectDisposedException("Can't attach, this object is already disposed.");
-            t.Attach(this);
-            lock (_modules)
-                _modules.Add(t);
-        }
-
-        public void Deattach(Module t) {
-            t.Deattach(this);
-            lock (_modules)
-                _modules.Remove(t);
-        }
-
         /// <summary>
-        ///     Will invoke attach to a freshly new object of type <see cref="T"/>.
+        ///     Modulation Manager, handles everything related to modules in this instance.
         /// </summary>
-        /// <typeparam name="T">A module class</typeparam>
-        /// <param name="args">The arguments that'll be passed to the constructor</param>
-        public T Attach<T>(params object[] args) where T : Module {
-            var t = (Module) Activator.CreateInstance(typeof(T), args);
-            Attach(t);
-            return (T) t;
-        }
+        [JsonIgnore]
+        public ModuleSocket Modulation { get; }
 
         #endregion
 
         #region Loading & Saving
+
+        #region Save
 
         /// <summary>
         ///     The filename that was originally loaded from. saving to other file does not change this field!
@@ -146,15 +105,6 @@ namespace nucs.JsonSettings {
         /// </summary>
         public void Save() {
             Save("<DEFAULT>");
-        }
-
-        public void Load() {
-            Load(this, FileName);
-        }
-
-        public void Load(string filename) {
-            if (filename == null) throw new ArgumentNullException(nameof(filename));
-            Load(this, filename);
         }
 
 
@@ -197,6 +147,20 @@ namespace nucs.JsonSettings {
         public static void Save<T>(T pSettings, string filename = "<DEFAULT>") where T : ISavable {
             Save(typeof(T), pSettings, filename);
         }
+
+        #endregion
+
+        #region Load
+
+        public void Load() {
+            Load(this, FileName);
+        }
+
+        public void Load(string filename) {
+            if (filename == null) throw new ArgumentNullException(nameof(filename));
+            Load(this, filename);
+        }
+
 
         /// <summary>
         ///     Loads a settings file or creates a new settings file.
@@ -273,6 +237,10 @@ namespace nucs.JsonSettings {
             return (T) (object) o;
         }
 
+        #endregion
+
+        #region Configure
+
         /// <summary>
         ///     Create a settings object for further configuration.
         /// </summary>
@@ -299,10 +267,27 @@ namespace nucs.JsonSettings {
         /// <returns>A freshly new object or <paramref name="instance"/>.</returns>
         public static T Configure<T>(T instance, string filename = "<DEFAULT>") where T : ISavable {
             JsonSettings o = (JsonSettings) ((ISavable) instance ?? (T) typeof(T).CreateInstance());
-            FluentlyExt._withFileName(o, filename, true);
+            FluentJsonSettings._withFileName(o, filename, true);
             o.EnsureConfigured();
             return (T) (object) o;
         }
+
+        #endregion
+
+        #region Construct
+
+        /// <summary>
+        ///     Constucts a settings object for further configuration.
+        /// </summary>
+        /// <param name="args">The arguments that will be passed into the constructor.</param>
+        /// <returns>A freshly new object.</returns>
+        public static T Construct<T>(params object[] args) where T : ISavable {
+            JsonSettings o = (JsonSettings) (ISavable) Activator.CreateInstance(typeof(T), args);
+            o.EnsureConfigured();
+            return (T) (object) o;
+        }
+
+        #endregion
 
         internal static string ResolvePath<T>(T o, string filename, bool throwless = false) where T : JsonSettings {
             if (!throwless && (string.IsNullOrEmpty(filename) || (filename == "<DEFAULT>" && string.IsNullOrEmpty(o.FileName))))
@@ -310,6 +295,9 @@ namespace nucs.JsonSettings {
 
             if (filename == "<DEFAULT>")
                 filename = o.FileName; //load default - TODO: load from a cached of type default value.
+
+            if (filename == null)
+                return filename;
 
             if (filename.Contains("/") || filename.Contains("\\"))
                 filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename)), Path.GetFileName(filename));
@@ -362,7 +350,7 @@ namespace nucs.JsonSettings {
         private bool _hasconfigured = false;
 
         /// <summary>
-        ///     Configurate properties of this JsonSettings, for example - call <see cref="FluentlyExt.WithBase64{T}"/> on this.<br></br>
+        ///     Configurate properties of this JsonSettings, for example - call <see cref="FluentJsonSettings.WithBase64{T}"/> on this.<br></br>
         /// </summary>
         protected virtual void OnConfigure() {
             if (_hasconfigured) throw new InvalidOperationException("Can't run configure twice!");
@@ -441,9 +429,7 @@ namespace nucs.JsonSettings {
             if (_isdisposed)
                 return;
             _isdisposed = true;
-            foreach (var module in _modules.ToArray()) {
-                module.Dispose();
-            }
+            Modulation.Dispose();
         }
     }
 }
