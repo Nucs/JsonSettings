@@ -6,5 +6,5 @@ See https://github.com/Nucs/JsonSettings/wiki/Tl;dr<br>
 or for all features goto test project: https://github.com/Nucs/JsonSettings/tree/master/tests/nucs.JsonSettings.xTests
 ### Install
 ```
-PM> Install-Package nucs.JsonSettings -Version 1.0.0.1
+PM> Install-Package nucs.JsonSettings
 ```
