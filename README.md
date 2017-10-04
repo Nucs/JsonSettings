@@ -15,7 +15,7 @@ PM> Install-Package nucs.JsonSettings
 See https://github.com/Nucs/JsonSettings/wiki/<br>
 or for all features goto test project: https://github.com/Nucs/JsonSettings/tree/master/tests/nucs.JsonSettings.xTests
 
-JsonSettings is the base abstract class that inherits ISavable.
+JsonSettings is the base abstract class that inherits ISavable.<br>
 Here is a self explanatory quicky of to how and what:
 
 * **I want a hardcoded settings file**
