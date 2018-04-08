@@ -2,9 +2,21 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard1.6;net45;net462;net461;net47;net4;netcoreapp2.0</TargetFrameworks>
-    <AssemblyVersion>1.0.0.1</AssemblyVersion>
-    <FileVersion>1.0.0.1</FileVersion>
-    <Version>1.0.0.1</Version>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
+    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.0.2</Version>
+    <Authors>Nucs / Eli Belash</Authors>
+    <Company>Ebby Technology</Company>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
+    <PackageIconUrl>http://i.imgur.com/GQ6RiXB.png</PackageIconUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Description>Easiest way you'll ever write settings for your app. Cross-platform and modular - and still a one-liner.
+Encrypt, Encode and have full control over hardcoded / dynamic settings.</Description>
+    <PackageTags>nucs config file nlib settings json configuration preferences</PackageTags>
+    <NeutralLanguage />
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">
