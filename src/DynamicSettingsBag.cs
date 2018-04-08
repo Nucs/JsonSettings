@@ -17,7 +17,7 @@ namespace nucs.JsonSettings {
         }
 
         public DynamicSettingsBag(SettingsBag bag) {
-            _bag = bag;
+            _bag = bag ?? throw new ArgumentNullException(nameof(bag));
         }
 
 
