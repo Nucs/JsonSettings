@@ -4,6 +4,9 @@ using System.Linq;
 using System.Reflection;
 using nucs.Collections;
 using Newtonsoft.Json;
+#if NET40
+using ReadOnlyCollectionsExtensions.Wrappers;
+#endif
 
 namespace nucs.JsonSettings {
     /// <summary>
@@ -17,8 +20,11 @@ namespace nucs.JsonSettings {
         /// <summary>
         ///     All the settings in this bag.
         /// </summary>
+#if NET40
+        public IReadOnlyDictionary<string, object> Data => new ReadOnlyDictionaryWrapper<string, object>(_data);
+#else
         public IReadOnlyDictionary<string, object> Data => _data;
-
+#endif
         [JsonIgnore]
         public override string FileName { get; set; }
 
