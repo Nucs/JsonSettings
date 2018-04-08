@@ -6,15 +6,44 @@ using nucs.Collections;
 using Newtonsoft.Json;
 
 namespace nucs.JsonSettings {
+    /// <summary>
+    ///     A dynamic settings class, adds settings as you go.
+    /// </summary>
+    /// <remarks>SettingsBag is threadsafe via accessing lock.</remarks>
     public sealed class SettingsBag : JsonSettings {
+        private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
+        private readonly SafeDictionary<string, PropertyInfo> PropertyData = new SafeDictionary<string, PropertyInfo>();
+
+        /// <summary>
+        ///     All the settings in this bag.
+        /// </summary>
+        public IReadOnlyDictionary<string, object> Data => _data;
+
+        [JsonIgnore]
+        public override string FileName { get; set; }
+
+        /// <summary>
+        ///     Enable autosave when a property is written.
+        /// </summary>
+        /// <returns></returns>
+        public SettingsBag EnableAutosave() {
+            Autosave = true;
+            return this;
+        }
+
+        /// <summary>
+        ///     Return a dynamic accessor that will accept any variable that can be serialized by <see cref="Newtonsoft.Json"/>.
+        ///     Index access ([]) or Property/Field is working.
+        /// </summary>
+        /// <returns></returns>
+        public dynamic AsDynamic() { return new DynamicSettingsBag(this); }
+
         /// <summary>
         ///     Will perform a safe after a change in any non-hardcoded public property.
         /// </summary>
         [JsonIgnore]
         public bool Autosave { get; set; } = false;
 
-        [JsonIgnore]
-        public override string FileName { get; set; }
         public SettingsBag() { }
 
         public SettingsBag(string fileName) {
@@ -32,17 +61,22 @@ namespace nucs.JsonSettings {
 
         public object this[string key] {
             get {
-                lock (this) return Get<object>(key);
+                lock (this)
+                    return Get<object>(key);
             }
             set {
-                lock (this) Set(key, value);
+                lock (this)
+                    Set(key, value);
             }
         }
 
-        public Dictionary<string, object> Data => _data;
-        private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
-        private readonly SafeDictionary<string, PropertyInfo> PropertyData = new SafeDictionary<string, PropertyInfo>();
-
+        /// <summary>
+        ///     Gets the value corresponding to the given <paramref name="key"/> or returns <see cref="default(T)"/>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="default"></param>
+        /// <returns></returns>
         public T Get<T>(string key, T @default = default(T)) {
             lock (this) {
                 if (PropertyData.ContainsKey(key))
@@ -56,6 +90,9 @@ namespace nucs.JsonSettings {
             }
         }
 
+        /// <summary>
+        ///     Sets or adds a value.
+        /// </summary>
         public void Set(string key, object value) {
             lock (this) {
                 if (PropertyData.ContainsKey(key))
@@ -78,7 +115,14 @@ namespace nucs.JsonSettings {
             return ret;
         }
 
-        public int Remove(Func<KeyValuePair<string, object>, bool> comprarer) {
+        [Obsolete("Use RemoveWhere instead")]
+        public int Remove(Func<KeyValuePair<string, object>, bool> comprarer) { return RemoveWhere(comprarer); }
+
+        /// <summary>
+        ///     Removes all items that <paramref name="comprarer"/> returns true to. <Br></Br>
+        ///     Remove where is similar to <see cref="List{T}.RemoveAll"/>.
+        /// </summary>
+        public int RemoveWhere(Func<KeyValuePair<string, object>, bool> comprarer) {
             lock (this) {
                 int ret = 0;
                 foreach (var kv in _data.ToArray()) {
@@ -87,17 +131,9 @@ namespace nucs.JsonSettings {
                             ret += 1;
                         }
                 }
+
                 return ret;
             }
-        }
-
-        public SettingsBag EnableAutosave() {
-            Autosave = true;
-            return this;
-        }
-
-        public dynamic AsDynamic() {
-            return new DynamicSettingsBag(this);
         }
     }
 }

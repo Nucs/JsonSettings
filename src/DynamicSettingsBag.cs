@@ -2,31 +2,38 @@
 using System.Dynamic;
 
 namespace nucs.JsonSettings {
+    /// <summary>
+    ///     A dynamic wrapper to a <see cref="SettingsBag"/>.
+    /// </summary>
     public sealed class DynamicSettingsBag : DynamicObject, IDisposable {
+        private SettingsBag _bag { get; set; }
 
+        /// <summary>
+        ///     Casts back a from <see cref="DynamicSettingsBag"/> to <see cref="SettingsBag"/>.
+        /// </summary>
+        /// <returns></returns>
         public SettingsBag AsBag() {
-            return __bag;
+            return _bag;
         }
 
         public DynamicSettingsBag(SettingsBag bag) {
-            __bag = bag;
+            _bag = bag;
         }
 
-        private SettingsBag __bag { get; set; }
 
         public void Dispose() {
-            __bag = null;
+            _bag = null;
         }
 
         // Get the property value.
         public override bool TryGetMember(GetMemberBinder binder, out object result) {
-            result = __bag[binder.Name];
+            result = _bag[binder.Name];
             return true;
         }
 
         // Set the property value.
         public override bool TrySetMember(SetMemberBinder binder, object value) {
-            __bag[binder.Name] = value;
+            _bag[binder.Name] = value;
             return true;
         }
 
@@ -35,7 +42,7 @@ namespace nucs.JsonSettings {
             var index = indexes[0] as string;
             if (string.IsNullOrEmpty(index))
                 return false;
-            __bag[index] = value;
+            _bag[index] = value;
             
             return true;
         }
@@ -47,7 +54,7 @@ namespace nucs.JsonSettings {
                 result = null;
                 return false;
             }
-            result = __bag[index];
+            result = _bag[index];
             return true;
         }
     }

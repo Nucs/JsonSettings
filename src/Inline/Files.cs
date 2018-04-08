@@ -3,7 +3,7 @@ using System.IO;
 
 namespace nucs.JsonSettings {
     public static class Files {
-        public static FileStream AttemptOpenFile(this FileInfo file, FileMode filemode = FileMode.Open, FileAccess fileaccess = FileAccess.Read, FileShare fileshare = FileShare.None) {
+        public static FileStream AttemptOpenFile(this FileInfo file, FileMode filemode = FileMode.Open, FileAccess fileaccess = FileAccess.Read, FileShare fileshare = FileShare.None, bool @throw = false) {
             return AttemptOpenFile(file?.FullName, filemode, fileaccess, fileshare);
         }
 
@@ -14,8 +14,9 @@ namespace nucs.JsonSettings {
         /// <param name="filemode"></param>
         /// <param name="fileaccess"></param>
         /// <param name="fileshare"></param>
+        /// <param name="throw">Should this be silent and return null on exception or throw?</param>
         /// <returns>The filestream. null if UnauthorizedAccess or IOException</returns>
-        public static FileStream AttemptOpenFile(string file, FileMode filemode = FileMode.Open, FileAccess fileaccess = FileAccess.Read, FileShare fileshare = FileShare.None) {
+        public static FileStream AttemptOpenFile(string file, FileMode filemode = FileMode.Open, FileAccess fileaccess = FileAccess.Read, FileShare fileshare = FileShare.None, bool @throw = false) {
             if (string.IsNullOrEmpty(file)) throw new ArgumentException("message", nameof(file));
 
             FileStream stream = null;
@@ -37,8 +38,12 @@ namespace nucs.JsonSettings {
                 //still being written to
                 //or being processed by another thread
                 //or does not exist (has already been processed)
+                if (@throw)
+                    throw;
                 return null;
             } catch (UnauthorizedAccessException) {
+                if (@throw)
+                    throw;
                 return null;
             }
         }

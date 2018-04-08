@@ -5,16 +5,25 @@ using Rijndael256;
 using Rijndael = Rijndael256.Rijndael;
 
 namespace nucs.JsonSettings.Modulation {
+    /// <summary>
+    ///     This module encrypts the configuration with Rijndael Algorithm, aka AES256.
+    /// </summary>
+    /// <remarks>This module uses internal class to perform the encryption and is not publicly exposed.<br></br>The password is stored as <see cref="SecureString"/> in memory.</remarks>
     public class RijndaelModule : Module {
-        public static SecureString EmptyString { get; } = "".ToSecureString();
+        public static readonly SecureString EmptyString = "".ToSecureString();
+
+        private Func<SecureString> _fetcher;
+
         internal KeySize KeySize { get; set; } = KeySize.Aes256;
 
+        /// <summary>
+        ///     The password passed during constructor stored as a <see cref="SecureString"/> in memory.
+        /// </summary>
         public SecureString Password {
             get => _fetcher?.Invoke();
             set { _fetcher = () => value; }
         }
 
-        private Func<SecureString> _fetcher;
         public RijndaelModule(string password) : this(password?.ToSecureString()) { }
 
         public RijndaelModule(SecureString password) : this(() => password) { }
@@ -42,9 +51,7 @@ namespace nucs.JsonSettings.Modulation {
             socket.Decrypt -= _Decrypt;
         }
 
-        protected void _Encrypt(ref byte[] data) {
-            data = Rijndael.Encrypt(data, Password.ToRawString(), Rng.GenerateRandomBytes(Rijndael.InitializationVectorSize), KeySize);
-        }
+        protected void _Encrypt(ref byte[] data) { data = Rijndael.Encrypt(data, Password.ToRawString(), Rng.GenerateRandomBytes(Rijndael.InitializationVectorSize), KeySize); }
 
         protected void _Decrypt(ref byte[] data) {
             try {

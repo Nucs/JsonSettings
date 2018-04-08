@@ -59,17 +59,6 @@ namespace nucs.JsonSettings {
 
         private readonly Type _childtype;
 
-        protected JsonSettings() {
-            Modulation = new ModuleSocket(this);
-            _childtype = GetType();
-            if (!_childtype.HasDefaultConstructor())
-                throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
-        }
-
-        protected JsonSettings(string fileName) : this() {
-            FileName = fileName;
-        }
-
         /// <summary>
         ///     Serves as a reminder where to save or from where to load (if it is loaded on construction and doesnt change between constructions).<br></br>
         ///     Can be relative to executing file's directory.
@@ -86,6 +75,18 @@ namespace nucs.JsonSettings {
         public ModuleSocket Modulation { get; }
 
         #endregion
+
+        protected JsonSettings() {
+            Modulation = new ModuleSocket(this);
+            _childtype = GetType();
+            if (!_childtype.HasDefaultConstructor())
+                throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
+        }
+
+        protected JsonSettings(string fileName) : this() {
+            FileName = fileName;
+        }
+
 
         #region Loading & Saving
 
