@@ -163,7 +163,22 @@ namespace nucs.JsonSettings.xTests {
             Assert.Throws<JsonSettingsException>(() => { JsonSettings.Load<FilenamelessSettings>(); });
         }
 
-
+        [Fact]
+        public void Fluent_ConstructLoadNow_Issue1_WithLocalPath() { //Issue #1 on github
+            using (var f = new TempfileLife()) {
+                //validate
+                Action act = () => JsonSettings.Construct<SettingsBag>(f.FileName).LoadNow().EnableAutosave();
+                act.ShouldNotThrow("LoadNow handles non existent folders and files.");
+            }
+        }
+        [Fact]
+        public void Fluent_ConstructLoadNow_Issue1_WithRemotePath() { //Issue #1 on github
+            using (var f = new TempfileLife( @"\MoalemYar\"+Path.GetRandomFileName())) {
+                //validate
+                Action act = () => JsonSettings.Construct<SettingsBag>(f.FileName).LoadNow().EnableAutosave();
+                act.ShouldNotThrow("LoadNow handles non existent folders and files.");
+            }
+        }
         class FilterFileNameSettings : JsonSettings {
             public override string FileName { get; set; }
             public FilterFileNameSettings() { }
