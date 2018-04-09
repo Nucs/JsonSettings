@@ -138,7 +138,7 @@ namespace nucs.JsonSettings.Inline {
                         path = Path.GetFullPath(new Uri(path).LocalPath);
                     } catch { }
             //is root, fix.
-            if ((path.Length == 2) && (path[1] == ':') && char.IsLetter(path[0])
+            if ((path.Length == 2) && (path[1] == ':') && char.IsLetter(path[0]))
                 path = path + "\\";
 
             return path;
