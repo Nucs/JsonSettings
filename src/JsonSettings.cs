@@ -451,7 +451,7 @@ namespace nucs.JsonSettings {
                 return filename;
 
             if (filename.Contains("/") || filename.Contains("\\"))
-                filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename)), Path.GetFileName(filename));
+                filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename),false), Path.GetFileName(filename));
             else
                 filename = Paths.CombineToExecutingBase(filename).FullName;
 

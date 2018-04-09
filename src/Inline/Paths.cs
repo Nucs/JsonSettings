@@ -106,7 +106,7 @@ namespace nucs.JsonSettings.Inline {
         /// </summary>
         /// <returns></returns>
         public static bool CompareTo(this FileSystemInfo fi, FileSystemInfo fi2) {
-            return NormalizePath(fi.FullName).Equals(NormalizePath(fi2.FullName), StringComparison.Ordinal);
+            return NormalizePath(fi.FullName,true).Equals(NormalizePath(fi2.FullName,true), StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -114,28 +114,31 @@ namespace nucs.JsonSettings.Inline {
         /// </summary>
         /// <returns></returns>
         public static bool CompareTo(string fi, string fi2) {
-            return NormalizePath(fi).Equals(NormalizePath(fi2), StringComparison.Ordinal);
+            return NormalizePath(fi,true).Equals(NormalizePath(fi2,true), StringComparison.Ordinal);
         }
 
         /// <summary>
         ///     Normalizes path to prepare for comparison or storage
         /// </summary>
-        public static string NormalizePath(string path) {
+        public static string NormalizePath(string path, bool forEquality=false) {
 
             path = path.Replace("/", "\\")
                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (forEquality) {
 #if CROSSPLATFORM
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) path = path.ToUpperInvariant();
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) path = path.ToUpperInvariant();
 #else
-            path = path.ToUpperInvariant();
+                path = path.ToUpperInvariant();
 #endif
+            }
+
             if (path.Contains("\\"))
                 if (Uri.IsWellFormedUriString(path, UriKind.RelativeOrAbsolute))
                     try {
                         path = Path.GetFullPath(new Uri(path).LocalPath);
                     } catch { }
             //is root, fix.
-            if ((path.Length == 2) && (path[1] == ':') && char.IsLetter(path[0]) && char.IsUpper(path[0]))
+            if ((path.Length == 2) && (path[1] == ':') && char.IsLetter(path[0])
                 path = path + "\\";
 
             return path;
@@ -187,7 +190,7 @@ namespace nucs.JsonSettings.Inline {
             }
 
             public int GetHashCode(string obj) {
-                return Paths.NormalizePath(obj).GetHashCode();
+                return Paths.NormalizePath(obj,true).GetHashCode();
             }
         }
         public class FileInfoPathEqualityComparer : IEqualityComparer<FileSystemInfo> {
@@ -196,7 +199,7 @@ namespace nucs.JsonSettings.Inline {
             }
 
             public int GetHashCode(FileSystemInfo obj) {
-                return Paths.NormalizePath(obj.FullName).GetHashCode();
+                return Paths.NormalizePath(obj.FullName,true).GetHashCode();
             }
         }
     }
