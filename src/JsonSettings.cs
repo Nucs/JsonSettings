@@ -52,8 +52,7 @@ namespace nucs.JsonSettings {
         /// </summary>
         public static Encoding Encoding { get; set; } = Encoding.UTF8;
 
-        protected static readonly JsonSerializerSettings _settings = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include, ContractResolver = new FileNameIgnoreResolver(), TypeNameHandling = TypeNameHandling.Auto};
-        protected static readonly JsonSerializerSettings _loadsettings = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include, TypeNameHandling = TypeNameHandling.Auto};
+        public static JsonSerializerSettings SerializationSettings { get; set; } = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include, ContractResolver = new FileNameIgnoreResolver(), TypeNameHandling = TypeNameHandling.Auto};
 
         #endregion
 
@@ -75,6 +74,12 @@ namespace nucs.JsonSettings {
         public ModuleSocket Modulation { get; }
 
         #endregion
+
+        /// <summary>
+        ///     If this property is set, this will be used instead of the static <see cref="SerializationSettings"/>.<br></br>
+        ///     Note: this property must be set during construction or as property's default value.
+        /// </summary>
+        protected virtual JsonSerializerSettings OverrideSerializerSettings { get; set; }
 
         protected JsonSettings() {
             Modulation = new ModuleSocket(this);
@@ -132,7 +137,7 @@ namespace nucs.JsonSettings {
                     stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
                     o.FileName = filename;
                     o.OnBeforeSerialize();
-                    var json = JsonConvert.SerializeObject(o, intype, _settings);
+                    var json = JsonConvert.SerializeObject(o, intype, o.OverrideSerializerSettings ?? SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke());
                     o.OnAfterSerialize(ref json);
                     var bytes = Encoding.GetBytes(json);
                     o.OnEncrypt(ref bytes);
@@ -369,7 +374,7 @@ namespace nucs.JsonSettings {
                     if (string.IsNullOrEmpty((fc ?? "").Replace("\r", "").Replace("\n", "").Trim()))
                         throw new JsonSettingsException("The settings file is empty!");
                     o.OnBeforeDeserialize(ref fc);
-                    JsonConvert.PopulateObject(fc, o, _loadsettings);
+                    JsonConvert.PopulateObject(fc, o, o.OverrideSerializerSettings ?? SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke());
                     o.OnAfterDeserialize();
                     o.FileName = filename;
                     o.OnAfterLoad();
