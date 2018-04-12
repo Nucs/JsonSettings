@@ -12,7 +12,7 @@
     <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
     <PackageIconUrl>http://i.imgur.com/GQ6RiXB.png</PackageIconUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Description>Easiest way you'll ever write settings for your app. Cross-platform and modular - and still a one-liner.
+    <Description>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
 Encrypt, Encode and have full control over hardcoded / dynamic settings.</Description>
     <PackageTags>nucs config file nlib settings json configuration preferences</PackageTags>
     <NeutralLanguage />
