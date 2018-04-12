@@ -140,7 +140,7 @@ namespace nucs.JsonSettings {
             try {
                 lock (o) {
                     o.OnBeforeSave(ref filename);
-                    stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+                    stream = Files.AttemptOpenFile(filename, FileMode.Truncate, FileAccess.Write, FileShare.None);
                     o.FileName = filename;
                     o.OnBeforeSerialize();
                     var json = JsonConvert.SerializeObject(o, intype, o.OverrideSerializerSettings ?? SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke());
