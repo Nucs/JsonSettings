@@ -81,6 +81,12 @@ namespace nucs.JsonSettings {
         /// </summary>
         protected virtual JsonSerializerSettings OverrideSerializerSettings { get; set; }
 
+        /// <summary>
+        ///     Defines how should <see cref="Load()"/> handle empty .json files, by default - false - do not throw.
+        ///     Note: this property must be set during construction or as property's default value.
+        /// </summary>
+        protected bool ThrowOnEmptyFile { get; set; } = false;
+
         protected JsonSettings() {
             Modulation = new ModuleSocket(this);
             _childtype = GetType();
@@ -372,7 +378,11 @@ namespace nucs.JsonSettings {
 
                     var fc = Encoding.GetString(bytes);
                     if (string.IsNullOrEmpty((fc ?? "").Replace("\r", "").Replace("\n", "").Trim()))
-                        throw new JsonSettingsException("The settings file is empty!");
+                        if (o.ThrowOnEmptyFile)
+                            throw new JsonSettingsException("The settings file is empty!");
+                        else
+                            goto _emptyfile;
+
                     o.OnBeforeDeserialize(ref fc);
                     JsonConvert.PopulateObject(fc, o, o.OverrideSerializerSettings ?? SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke());
                     o.OnAfterDeserialize();
@@ -385,7 +395,8 @@ namespace nucs.JsonSettings {
                     throw new JsonSettingsException("Settings file is corrupt.");
                 }
 
-            //doesnt exist.
+            //doesn't exist.
+            _emptyfile:
             o.OnAfterLoad();
             o.FileName = filename;
             o.Save(filename);
