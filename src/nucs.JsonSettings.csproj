@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard1.6;net45;net462;net461;net47;net4;netcoreapp2.0</TargetFrameworks>
-    <AssemblyVersion>1.0.2.0</AssemblyVersion>
-    <FileVersion>1.0.2.0</FileVersion>
-    <Version>1.0.2</Version>
+    <AssemblyVersion>1.0.3.0</AssemblyVersion>
+    <FileVersion>1.0.3.0</FileVersion>
+    <Version>1.0.3</Version>
     <Authors>Nucs / Eli Belash</Authors>
     <Company>Ebby Technology</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -17,6 +17,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
     <PackageTags>nucs config file nlib settings json configuration preferences</PackageTags>
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
+    <Copyright></Copyright>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">
