@@ -46,6 +46,8 @@ SomeProperty.Save();
 ```
 
 * **I want a dynamic settings**
+    * Dynamic settings will automatically create new keys.
+    * [`ValueType`s](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/value-types) are returned as `Nullable<Type>`, therefore if a key doesn't exist - a null is returned.    
 ```C#
 //Step 1: Just load it, it'll be created if doesn't exist.
 public SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json");
@@ -58,6 +60,8 @@ if ((int?)dyn.key2==123)
 dyn.Save(); /* or */ Settings.Save();
 ```
 * **I want a encrypted settings file**
+    * Uses AES/Rijndael
+    * Can be applied to any settings class because it is a module.
 ```C#
 MySettings Settings = JsonSettings.Load<MySettings>("config.json", q=>q.WithEncryption("mysupersecretpassword"));
 SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json", q=>q.WithEncryption("mysupersecretpassword"));
@@ -73,7 +77,8 @@ SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
                      .LoadNow();
 
 ```
-* **I want settings to auto save when changed**
+* **I want dynamic settings to auto save when changed**
+    * note: can be applied only to dynamic settings. proxy-classes are not .net-wide yet.
 ```C#
 //Step 1:
 SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json").EnableAutosave();
