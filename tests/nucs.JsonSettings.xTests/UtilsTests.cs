@@ -4,66 +4,67 @@ using System.Reflection;
 using System.Security;
 using FluentAssertions;
 using nucs.JsonSettings.xTests.Utils;
-using Xunit;
-using Xunit.Sdk;
+using NUnit.Framework;
+
 
 namespace nucs.JsonSettings.xTests {
+    [TestFixture]
     public class UtilsTests {
-        [Fact]
+        [Test]
         public void Activation_PrivateConst() {
             var a = Activation.CreateInstance(typeof(PrivateConst));
             a.Should().BeOfType<PrivateConst>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_ProtectedConst() {
             var a = Activation.CreateInstance(typeof(ProtectedConst));
             a.Should().BeOfType<ProtectedConst>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_PublicConst() {
             var a = Activation.CreateInstance(typeof(PublicConst));
             a.Should().BeOfType<PublicConst>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_InternalConst() {
             var a = Activation.CreateInstance(typeof(InternalConst));
             a.Should().BeOfType<InternalConst>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_NoEmptyConst() {
             Action a = () => Activation.CreateInstance(typeof(NoEmptyConst));
             a.ShouldThrow<ReflectiveException>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_FallbackWhenNullArgs() {
             var a = Activation.CreateInstance(typeof(PublicConst), null);
             a.Should().BeOfType<PublicConst>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_ObjectConstructor() {
             Func<object> a = () => Activation.CreateInstance(typeof(AmbiousClass), new object[] {null});
             a().Should().BeOfType<AmbiousClass>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_AmbiousDefaultClass() {
             Func<object> a = () => Activation.CreateInstance(typeof(AmbiousDefaultClass), new object[] {null});
             a().Should().BeOfType<AmbiousDefaultClass>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_AmbiousDefaultWithSameClass() {
             Func<object> a = () => Activation.CreateInstance(typeof(AmbiousDefaultWithSameClass), new object[] {null, null});
             a().Should().BeOfType<AmbiousDefaultWithSameClass>();
         }
 
-        [Fact]
+        [Test]
         public void Activation_NoMatchClass() {
             Action a = () => Activation.CreateInstance(typeof(NoMatchClass), new object[] {null});
             a.ShouldThrow<MissingMethodException>();

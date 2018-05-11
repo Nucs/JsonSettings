@@ -5,12 +5,12 @@ using FluentAssertions;
 using nucs.JsonSettings.Fluent;
 using nucs.JsonSettings.Modulation;
 using nucs.JsonSettings.xTests.Utils;
-using Xunit;
-using Xunit.Sdk;
+using NUnit.Framework;
 
 namespace nucs.JsonSettings.xTests {
+    [TestFixture]
     public class Tests {
-        [Fact]
+        [Test]
         public void SettingsBag_WithEncryption_Autosave() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow().EnableAutosave();
@@ -23,7 +23,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void SettingsBag_WithEncryption_RegularSave() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
@@ -37,7 +37,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void SettingsBag_Passless() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
@@ -52,7 +52,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void SettingsBag_InvalidPassword() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Configure<SettingsBag>().WithEncryption("yoyo").WithFileName(f.FileName).LoadNow();
@@ -64,7 +64,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void SettingsBag_RegularSave() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<SettingsBag>(f);
@@ -78,7 +78,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void SettingsBag_Autosave() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<SettingsBag>(f);
@@ -91,7 +91,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void FilterFileNameProperty() {
             using (var f = new TempfileLife()) {
                 var n = new FilterFileNameSettings(f);
@@ -100,12 +100,12 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void JsonSettings_FileNameIsNullByDefault() {
             Assert.Throws<JsonSettingsException>(() => { JsonSettings.Load<FilenamelessSettings>(); });
         }
 
-        [Fact]
+        [Test]
         public void JsonSettings_ModuleLoader() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<ModuleLoadingSttings>(f);

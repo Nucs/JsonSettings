@@ -7,13 +7,12 @@ using nucs.JsonSettings.Fluent;
 using nucs.JsonSettings.Modulation;
 using nucs.JsonSettings.xTests.Utils;
 using Newtonsoft.Json;
-using Xunit;
-using Xunit.Abstractions;
-using Xunit.Sdk;
+using NUnit.Framework;
 
 namespace nucs.JsonSettings.xTests {
+    [TestFixture]
     public class ConfigurableTests {
-        [Fact]
+        [Test]
         public void OnConfigure_AddSingleConfig() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
@@ -23,7 +22,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void OnConfigure_AddSingleConfig_PriorToLoadNow() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
@@ -33,7 +32,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void OnConfigure_Only_WithEncyption() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
@@ -55,7 +54,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void OnConfigure_Only_WithEncyption_CheckBeforeLoadNow() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends

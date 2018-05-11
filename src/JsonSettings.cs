@@ -140,7 +140,7 @@ namespace nucs.JsonSettings {
             try {
                 lock (o) {
                     o.OnBeforeSave(ref filename);
-                    stream = Files.AttemptOpenFile(filename, FileMode.Truncate, FileAccess.Write, FileShare.None);
+                    stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
                     o.FileName = filename;
                     o.OnBeforeSerialize();
                     var json = JsonConvert.SerializeObject(o, intype, o.OverrideSerializerSettings ?? SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke());
@@ -149,6 +149,7 @@ namespace nucs.JsonSettings {
                     o.OnEncrypt(ref bytes);
                     o.OnAfterEncrypt(ref bytes);
 
+                    stream.SetLength(0);
                     stream.Write(bytes, 0, bytes.Length);
                     stream.Close();
                     stream = null;
@@ -158,7 +159,7 @@ namespace nucs.JsonSettings {
             } catch (IOException e) {
                 throw new JsonSettingsException("Failed writing into the file", e);
             } finally {
-                stream?.Close();
+                stream?.Dispose();
             }
         }
 
@@ -456,6 +457,9 @@ namespace nucs.JsonSettings {
 
         #endregion
 
+        /// <summary>
+        ///     Resolves a path passed to a full absolute path.
+        /// </summary>
         internal static string ResolvePath<T>(T o, string filename, bool throwless = false) where T : JsonSettings {
             if (!throwless && (string.IsNullOrEmpty(filename) || (filename == "<DEFAULT>" && string.IsNullOrEmpty(o.FileName))))
                 throw new JsonSettingsException("Could not resolve path because FileName is null or empty.");

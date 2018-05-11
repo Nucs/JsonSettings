@@ -5,14 +5,15 @@ using FluentAssertions;
 using nucs.JsonSettings.Fluent;
 using nucs.JsonSettings.Modulation;
 using nucs.JsonSettings.xTests.Utils;
-using Xunit;
-using Xunit.Sdk;
+using NUnit.Framework;
+
 
 namespace nucs.JsonSettings.xTests {
+    [TestFixture]
     public class HowToUse {
         #region Settings Bag
 
-        [Fact]
+        [Test]
         public void Use_MostBasic() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
@@ -30,7 +31,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void Use_Configure_CasualSettingsExample() {
             using (var f = new TempfileLife()) {
                 //load using Configure
@@ -47,7 +48,7 @@ namespace nucs.JsonSettings.xTests {
                 o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
             }
         }
-        [Fact]
+        [Test]
         public void Use_Configure_CasualSettingsExample_Load() {
             using (var f = new TempfileLife()) {
                 //load using Load      with configuration
@@ -65,7 +66,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void Use_Configure_CasualSettingsExample_LoadSelf() {
             using (var f = new TempfileLife()) {
                 //load using Load      with configuration and custom constructor and password fetcher from one of the class's property.
@@ -81,7 +82,7 @@ namespace nucs.JsonSettings.xTests {
                 o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
             }
         }
-        [Fact]
+        [Test]
         public void Use_SettingsBag() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
@@ -99,7 +100,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void Use_SettingsBag_AutoSave() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
@@ -116,7 +117,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void Use__CasualSettingsExample() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends

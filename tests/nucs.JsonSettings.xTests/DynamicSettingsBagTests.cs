@@ -1,10 +1,11 @@
 ﻿using FluentAssertions;
 using nucs.JsonSettings.xTests.Utils;
-using Xunit;
+using NUnit.Framework;
 
 namespace nucs.JsonSettings.xTests {
+    [TestFixture]
     public class DynamicSettingsBagTests {
-        [Fact]
+        [Test]
         public void DynamicSettingsBag_DynamicAccess_Index() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<SettingsBag>(f);
@@ -22,7 +23,7 @@ namespace nucs.JsonSettings.xTests {
             }
         }
 
-        [Fact]
+        [Test]
         public void DynamicSettingsBag_DynamicAccess_Direct() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<SettingsBag>(f);
