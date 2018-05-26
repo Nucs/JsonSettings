@@ -25,7 +25,7 @@ namespace nucs.JsonSettings.Inline {
 #if NETSTANDARD1_6
             ?? throw new NotSupportedException("Cant support fallback of ExecutingExe in NETSTANDARD1.6")).Location);
 #else
-            ?? Assembly.GetExecutingAssembly())?.Location);
+                                                             ?? Assembly.GetExecutingAssembly())?.Location);
 #endif
         /// <summary>
         ///     The config dir inside user profile.
@@ -35,7 +35,7 @@ namespace nucs.JsonSettings.Inline {
         /// <summary>
         ///     The config file inside user profile.
         /// </summary>
-        public static FileInfo ConfigFile(string configname) => new FileInfo(Path.Combine(ConfigDirectory.FullName, Environment.MachineName +$".{configname}.json"));
+        public static FileInfo ConfigFile(string configname) => new FileInfo(Path.Combine(ConfigDirectory.FullName, Environment.MachineName + $".{configname}.json"));
 
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace nucs.JsonSettings.Inline {
         /// <returns>True if successful; otherwise false.</returns>
         public static bool IsDirectoryWritable(this DirectoryInfo directory) {
             var success = false;
-            var fullPath = directory + "testicales.txt";
+            var fullPath = directory + "toster.txt";
 
             if (directory.Exists)
                 try {
@@ -74,6 +74,7 @@ namespace nucs.JsonSettings.Inline {
                 } catch (Exception) {
                     success = false;
                 }
+
             return success;
         }
 
@@ -105,42 +106,57 @@ namespace nucs.JsonSettings.Inline {
         ///     Compares two FileSystemInfos the right way.
         /// </summary>
         /// <returns></returns>
-        public static bool CompareTo(this FileSystemInfo fi, FileSystemInfo fi2) {
-            return NormalizePath(fi.FullName,true).Equals(NormalizePath(fi2.FullName,true), StringComparison.Ordinal);
-        }
+        public static bool CompareTo(this FileSystemInfo fi, FileSystemInfo fi2) { return NormalizePath(fi.FullName, true).Equals(NormalizePath(fi2.FullName, true), StringComparison.Ordinal); }
 
         /// <summary>
         ///     Compares two FileSystemInfos the right way.
         /// </summary>
         /// <returns></returns>
-        public static bool CompareTo(string fi, string fi2) {
-            return NormalizePath(fi,true).Equals(NormalizePath(fi2,true), StringComparison.Ordinal);
-        }
+        public static bool CompareTo(string fi, string fi2) { return NormalizePath(fi, true).Equals(NormalizePath(fi2, true), StringComparison.Ordinal); }
 
         /// <summary>
         ///     Normalizes path to prepare for comparison or storage
         /// </summary>
-        public static string NormalizePath(string path, bool forEquality=false) {
-
-            path = path.Replace("/", "\\")
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (forEquality) {
+        public static string NormalizePath(string path, bool forComparsion = false) {
+            string validBackslash = "\\";
+            string invalidBackslash = "/";
 #if CROSSPLATFORM
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) path = path.ToUpperInvariant();
+            //override default backslash that is used in windows.
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                validBackslash = "/";
+                invalidBackslash = "\\";
+            }
+#endif
+
+            path = path
+                .Replace(invalidBackslash, validBackslash)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            if (forComparsion) {
+#if CROSSPLATFORM
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    path = path.ToUpperInvariant();
 #else
                 path = path.ToUpperInvariant();
 #endif
             }
 
-            if (path.Contains("\\"))
+            if (path.Contains(validBackslash))
                 if (Uri.IsWellFormedUriString(path, UriKind.RelativeOrAbsolute))
                     try {
                         path = Path.GetFullPath(new Uri(path).LocalPath);
-                    } catch { }
-            //is root, fix.
-            if ((path.Length == 2) && (path[1] == ':') && char.IsLetter(path[0]))
-                path = path + "\\";
+                    } catch {
+                        // ignored
+                    }
 
+#if CROSSPLATFORM
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                //is root, fix.
+                if ((path.Length == 2) && (path[1] == ':') && char.IsLetter(path[0]))
+                    path = path + validBackslash;
+            }
+#endif
             return path;
         }
 
@@ -185,22 +201,15 @@ namespace nucs.JsonSettings.Inline {
         public static string RemoveIllegalPathCharacters(string filename, string replacewith = "") => string.Join(replacewith, filename.Split(Path.GetInvalidFileNameChars()));
 
         public class FilePathEqualityComparer : IEqualityComparer<string> {
-            public bool Equals(string x, string y) {
-                return Paths.CompareTo(x, y);
-            }
+            public bool Equals(string x, string y) { return Paths.CompareTo(x, y); }
 
-            public int GetHashCode(string obj) {
-                return Paths.NormalizePath(obj,true).GetHashCode();
-            }
+            public int GetHashCode(string obj) { return Paths.NormalizePath(obj, true).GetHashCode(); }
         }
-        public class FileInfoPathEqualityComparer : IEqualityComparer<FileSystemInfo> {
-            public bool Equals(FileSystemInfo x, FileSystemInfo y) {
-                return Paths.CompareTo(x, y);
-            }
 
-            public int GetHashCode(FileSystemInfo obj) {
-                return Paths.NormalizePath(obj.FullName,true).GetHashCode();
-            }
+        public class FileInfoPathEqualityComparer : IEqualityComparer<FileSystemInfo> {
+            public bool Equals(FileSystemInfo x, FileSystemInfo y) { return Paths.CompareTo(x, y); }
+
+            public int GetHashCode(FileSystemInfo obj) { return Paths.NormalizePath(obj.FullName, true).GetHashCode(); }
         }
     }
 }
