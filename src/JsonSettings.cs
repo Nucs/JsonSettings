@@ -94,9 +94,7 @@ namespace nucs.JsonSettings {
                 throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
         }
 
-        protected JsonSettings(string fileName) : this() {
-            FileName = fileName;
-        }
+        protected JsonSettings(string fileName) : this() { FileName = fileName; }
 
 
         #region Loading & Saving
@@ -115,9 +113,7 @@ namespace nucs.JsonSettings {
         /// <summary>
         ///     Save the settings file to a predefined location <see cref="ISavable.FileName" />
         /// </summary>
-        public void Save() {
-            Save("<DEFAULT>");
-        }
+        public void Save() { Save("<DEFAULT>"); }
 
 
         /// <summary>
@@ -168,9 +164,7 @@ namespace nucs.JsonSettings {
         /// </summary>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name. <br></br>Without path the file will be located at the executing directory</param>
         /// <param name="pSettings">The settings file to save</param>
-        public static void Save<T>(T pSettings, string filename = "<DEFAULT>") where T : ISavable {
-            Save(typeof(T), pSettings, filename);
-        }
+        public static void Save<T>(T pSettings, string filename = "<DEFAULT>") where T : ISavable { Save(typeof(T), pSettings, filename); }
 
         #endregion
 
@@ -178,12 +172,11 @@ namespace nucs.JsonSettings {
 
         #region Regular Load
 
-        public void Load() {
-            Load(this, (Action) null, FileName);
-        }
+        public void Load() { Load(this, (Action) null, FileName); }
 
         public void Load(string filename) {
-            if (filename == null) throw new ArgumentNullException(nameof(filename));
+            if (filename == null)
+                throw new ArgumentNullException(nameof(filename));
             Load(this, (Action) null, filename);
         }
 
@@ -194,7 +187,8 @@ namespace nucs.JsonSettings {
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public void Load(string filename, Action<JsonSettings> configure) {
-            if (filename == null) throw new ArgumentNullException(nameof(filename));
+            if (filename == null)
+                throw new ArgumentNullException(nameof(filename));
             Load(this, configure, filename);
         }
 
@@ -204,9 +198,7 @@ namespace nucs.JsonSettings {
         /// <param name="intype">The type of this object</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static object Load(Type intype, string filename = "<DEFAULT>") {
-            return Load(intype.CreateInstance(), (Action) null, filename);
-        }
+        public static object Load(Type intype, string filename = "<DEFAULT>") { return Load(intype.CreateInstance(), (Action) null, filename); }
 
         /// <summary>
         ///     Loads or creates a settings file.
@@ -214,9 +206,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(string filename = "<DEFAULT>") where T : ISavable {
-            return (T) Load(typeof(T), filename);
-        }
+        public static T Load<T>(string filename = "<DEFAULT>") where T : ISavable { return (T) Load(typeof(T), filename); }
 
 
         /// <summary>
@@ -226,9 +216,7 @@ namespace nucs.JsonSettings {
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static object Load<T>(Type intype, Action<T> configure, string filename = "<DEFAULT>") where T : ISavable {
-            return Load((T) intype.CreateInstance(), configure, filename);
-        }
+        public static object Load<T>(Type intype, Action<T> configure, string filename = "<DEFAULT>") where T : ISavable { return Load((T) intype.CreateInstance(), configure, filename); }
 
         #endregion
 
@@ -240,9 +228,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(Action<T> configure, string filename, object[] args) where T : ISavable {
-            return (T) Load(typeof(T), configure, filename);
-        }
+        public static T Load<T>(Action<T> configure, string filename, object[] args) where T : ISavable { return (T) Load(typeof(T), configure, filename); }
 
         /// <summary>
         ///     Loads or creates a settings file.
@@ -261,9 +247,7 @@ namespace nucs.JsonSettings {
         /// <param name="intype">The type of this object</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static object Load(Type intype, object[] args) {
-            return Load(intype, null, "<DEFAULT>", args);
-        }
+        public static object Load(Type intype, object[] args) { return Load(intype, null, "<DEFAULT>", args); }
 
         /// <summary>
         ///     Loads a settings file or creates a new settings file.
@@ -271,9 +255,7 @@ namespace nucs.JsonSettings {
         /// <param name="intype">The type of this object</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static object Load(Type intype, string filename, object[] args) {
-            return Load(intype, null, filename, args);
-        }
+        public static object Load(Type intype, string filename, object[] args) { return Load(intype, null, filename, args); }
 
         /// <summary>
         ///     Loads or creates a settings file.
@@ -281,9 +263,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(object[] args) where T : ISavable {
-            return (T) Load(typeof(T), args);
-        }
+        public static T Load<T>(object[] args) where T : ISavable { return (T) Load(typeof(T), args); }
 
 
         /// <summary>
@@ -292,9 +272,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(Action<T> configure, string filename = "<DEFAULT>") where T : ISavable {
-            return (T) Load(typeof(T), configure, filename);
-        }
+        public static T Load<T>(Action<T> configure, string filename = "<DEFAULT>") where T : ISavable { return (T) Load(typeof(T), configure, filename); }
 
         /// <summary>
         ///     Loads or creates a settings file.
@@ -302,9 +280,7 @@ namespace nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.</param>
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(string filename, Action<T> configure) where T : ISavable {
-            return (T) Load(typeof(T), configure, filename);
-        }
+        public static T Load<T>(string filename, Action<T> configure) where T : ISavable { return (T) Load(typeof(T), configure, filename); }
 
         /// <summary>
         ///     Loads a settings file or creates a new settings file.
@@ -313,9 +289,7 @@ namespace nucs.JsonSettings {
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static object Load(Type intype, Action configure, string filename, object[] args) {
-            return Load(intype.CreateInstance(args), configure, filename);
-        }
+        public static object Load(Type intype, Action configure, string filename, object[] args) { return Load(intype.CreateInstance(args), configure, filename); }
 
         #endregion
 
@@ -326,9 +300,7 @@ namespace nucs.JsonSettings {
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(T instance, Action<T> configure, string filename = "<DEFAULT>") where T : ISavable {
-            return Load(instance, () => configure?.Invoke(instance), filename);
-        }
+        public static T Load<T>(T instance, Action<T> configure, string filename = "<DEFAULT>") where T : ISavable { return Load(instance, () => configure?.Invoke(instance), filename); }
 
         /// <summary>
         ///     Loads a settings file or creates a new settings file.
@@ -337,9 +309,7 @@ namespace nucs.JsonSettings {
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
-        public static T Load<T>(T instance, Action configure, string filename = "<DEFAULT>") where T : ISavable {
-            return (T) Load((object) instance, configure, filename);
-        }
+        public static T Load<T>(T instance, Action configure, string filename = "<DEFAULT>") where T : ISavable { return (T) Load((object) instance, configure, filename); }
 
         /// <summary>
         ///     Loads a settings file or creates a new settings file.
@@ -359,7 +329,8 @@ namespace nucs.JsonSettings {
                 }
             }
 
-            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
 
             JsonSettings o = (JsonSettings) (ISavable) instance;
             filename = ResolvePath(o, filename);
@@ -415,17 +386,13 @@ namespace nucs.JsonSettings {
         /// <param name="intype">The type of the configuration file.</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>A freshly new object or <paramref name="intype"/>.</returns>
-        public static object Configure(Type intype, string filename = "<DEFAULT>") {
-            return Configure((ISavable) intype.CreateInstance(), filename);
-        }
+        public static object Configure(Type intype, string filename = "<DEFAULT>") { return Configure((ISavable) intype.CreateInstance(), filename); }
 
         /// <summary>
         ///     Create a settings object for further configuration.
         /// </summary>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
-        public static T Configure<T>(string filename = "<DEFAULT>") where T : ISavable {
-            return (T) Configure(typeof(T), filename);
-        }
+        public static T Configure<T>(string filename = "<DEFAULT>") where T : ISavable { return (T) Configure(typeof(T), filename); }
 
         /// <summary>
         ///     Create a settings object for further configuration.
@@ -471,7 +438,7 @@ namespace nucs.JsonSettings {
                 return filename;
 
             if (filename.Contains("/") || filename.Contains("\\"))
-                filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename),false), Path.GetFileName(filename));
+                filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename), false), Path.GetFileName(filename));
             else
                 filename = Paths.CombineToExecutingBase(filename).FullName;
 
@@ -524,7 +491,8 @@ namespace nucs.JsonSettings {
         ///     Configurate properties of this JsonSettings, for example - call <see cref="FluentJsonSettings.WithBase64{T}"/> on this.<br></br>
         /// </summary>
         protected virtual void OnConfigure() {
-            if (_hasconfigured) throw new InvalidOperationException("Can't run configure twice!");
+            if (_hasconfigured)
+                throw new InvalidOperationException("Can't run configure twice!");
             _hasconfigured = true;
             Configurate?.Invoke();
         }
@@ -535,53 +503,29 @@ namespace nucs.JsonSettings {
             OnConfigure();
         }
 
-        internal virtual void OnBeforeLoad(ref string destinition) {
-            BeforeLoad?.Invoke(ref destinition);
-        }
+        internal virtual void OnBeforeLoad(ref string destinition) { BeforeLoad?.Invoke(ref destinition); }
 
-        public virtual void OnDecrypt(ref byte[] data) {
-            _decrypt?.Invoke(ref data);
-        }
+        public virtual void OnDecrypt(ref byte[] data) { _decrypt?.Invoke(ref data); }
 
-        internal virtual void OnAfterDecrypt(ref byte[] data) {
-            AfterDecrypt?.Invoke(ref data);
-        }
+        internal virtual void OnAfterDecrypt(ref byte[] data) { AfterDecrypt?.Invoke(ref data); }
 
-        internal virtual void OnBeforeDeserialize(ref string data) {
-            BeforeDeserialize?.Invoke(ref data);
-        }
+        internal virtual void OnBeforeDeserialize(ref string data) { BeforeDeserialize?.Invoke(ref data); }
 
-        internal virtual void OnAfterDeserialize() {
-            AfterDeserialize?.Invoke();
-        }
+        internal virtual void OnAfterDeserialize() { AfterDeserialize?.Invoke(); }
 
-        internal virtual void OnAfterLoad() {
-            AfterLoad?.Invoke();
-        }
+        internal virtual void OnAfterLoad() { AfterLoad?.Invoke(); }
 
-        internal virtual void OnBeforeSave(ref string destinition) {
-            BeforeSave?.Invoke(ref destinition);
-        }
+        internal virtual void OnBeforeSave(ref string destinition) { BeforeSave?.Invoke(ref destinition); }
 
-        internal virtual void OnBeforeSerialize() {
-            BeforeSerialize?.Invoke();
-        }
+        internal virtual void OnBeforeSerialize() { BeforeSerialize?.Invoke(); }
 
-        internal virtual void OnAfterSerialize(ref string data) {
-            AfterSerialize?.Invoke(ref data);
-        }
+        internal virtual void OnAfterSerialize(ref string data) { AfterSerialize?.Invoke(ref data); }
 
-        public virtual void OnEncrypt(ref byte[] data) {
-            Encrypt?.Invoke(ref data);
-        }
+        public virtual void OnEncrypt(ref byte[] data) { Encrypt?.Invoke(ref data); }
 
-        internal virtual void OnAfterEncrypt(ref byte[] data) {
-            AfterEncrypt?.Invoke(ref data);
-        }
+        internal virtual void OnAfterEncrypt(ref byte[] data) { AfterEncrypt?.Invoke(ref data); }
 
-        internal virtual void OnAfterSave(string destinition) {
-            AfterSave?.Invoke(destinition);
-        }
+        internal virtual void OnAfterSave(string destinition) { AfterSave?.Invoke(destinition); }
 
         #endregion
 
