@@ -469,27 +469,27 @@ namespace nucs.JsonSettings {
             remove => this._decrypt -= value;
         }
 
-        public event AfterDecryptHandler AfterDecrypt;
-
-        public event BeforeDeserializeHandler BeforeDeserialize;
-
-        public event AfterDeserializeHandler AfterDeserialize;
-
-        public event AfterLoadHandler AfterLoad;
-
-        public event BeforeSaveHandler BeforeSave;
-
-        public event BeforeSerializeHandler BeforeSerialize;
-
-        public event AfterSerializeHandler AfterSerialize;
-
-        public event EncryptHandler Encrypt;
-
-        public event AfterEncryptHandler AfterEncrypt;
-
-        public event AfterSaveHandler AfterSave;
-
-        public event ConfigurateHandler Configurate;
+        public virtual event AfterDecryptHandler AfterDecrypt;
+                
+        public virtual event BeforeDeserializeHandler BeforeDeserialize;
+                
+        public virtual event AfterDeserializeHandler AfterDeserialize;
+                
+        public virtual event AfterLoadHandler AfterLoad;
+                
+        public virtual event BeforeSaveHandler BeforeSave;
+                
+        public virtual event BeforeSerializeHandler BeforeSerialize;
+                
+        public virtual event AfterSerializeHandler AfterSerialize;
+                
+        public virtual event EncryptHandler Encrypt;
+                
+        public virtual event AfterEncryptHandler AfterEncrypt;
+                
+        public virtual event AfterSaveHandler AfterSave;
+                
+        public virtual event ConfigurateHandler Configurate;
 
         #endregion
 
