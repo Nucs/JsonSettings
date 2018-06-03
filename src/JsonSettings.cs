@@ -432,8 +432,13 @@ namespace nucs.JsonSettings {
             if (!throwless && (string.IsNullOrEmpty(filename) || (filename == "<DEFAULT>" && string.IsNullOrEmpty(o.FileName))))
                 throw new JsonSettingsException("Could not resolve path because 'FileName' is null or empty.");
 
-            if (filename == "<DEFAULT>")
+            if (filename == "<DEFAULT>") {
+                if (o.FileName == null) //param filename is default and o.FileName are null.
+                    return null;
                 filename = o.FileName; //load from instance.
+            }
+
+            
 
             return ResolvePath(filename, throwless);
         }

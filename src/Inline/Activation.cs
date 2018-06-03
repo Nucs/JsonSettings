@@ -63,7 +63,7 @@ namespace nucs.JsonSettings {
 
                     _nomatch:
                     return false;
-                }).FirstOrDefault().Invoke(args);
+                }).FirstOrDefault()?.Invoke(args);
             }
         }
     }

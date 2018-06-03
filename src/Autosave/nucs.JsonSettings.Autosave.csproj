@@ -2,10 +2,10 @@
 
   <PropertyGroup>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <TargetFrameworks>netstandard2.0;netstandard1.6;net45;net462;net461;net47;net4;netcoreapp2.0</TargetFrameworks>
-    <AssemblyVersion>1.0.7.0</AssemblyVersion>
-    <FileVersion>1.0.7.0</FileVersion>
-    <Version>1.0.7</Version>
+    <TargetFrameworks>netstandard2.0;netstandard1.6;net4;net45;net462;net461;net47;netcoreapp2.0</TargetFrameworks>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.0</Version>
     <Authors>Nucs / Eli Belash</Authors>
     <Company>Ebby Technology</Company>
 	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
@@ -15,9 +15,8 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
     <PackageIconUrl>http://i.imgur.com/GQ6RiXB.png</PackageIconUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Description>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
-Encrypt, Encode and have full control over hardcoded / dynamic settings.</Description>
-    <PackageTags>nucs config file nlib settings json configuration preferences</PackageTags>
+    <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy.</Description>
+    <PackageTags>nucs config file nlib settings json configuration preferences autosave</PackageTags>
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
     <Copyright></Copyright>
@@ -32,13 +31,8 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Autosave\**" />
-    <EmbeddedResource Remove="Autosave\**" />
-    <None Remove="Autosave\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Castle.Core" Version="4.2.1" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
@@ -66,14 +60,9 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
   <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-  </ItemGroup>
-
   <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net4'">
-  </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.6'">
     <PackageReference Include="System.AppDomain">
@@ -87,11 +76,11 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
   <ItemGroup Condition="'$(TargetFramework)' == 'net47'">
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
-
+  <ItemGroup>
+    <ProjectReference Include="..\nucs.JsonSettings.csproj" />
   </ItemGroup>
 
 </Project>
