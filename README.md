@@ -77,8 +77,8 @@ SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
                      .LoadNow();
 
 ```
-* **I want dynamic settings to auto save when changed**
-    * note: can be applied only to dynamic settings. proxy-classes are not .net-wide yet.
+* **I want dynamic settings to automatically save when changed**
+    * note: SettingsBag has it's own implementation of EnableAutosave().
 ```C#
 //Step 1:
 SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json").EnableAutosave();
@@ -87,3 +87,14 @@ SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json").EnableAutos
 Settings.AsDynamic().key = "wow"; //BOOM! SAVED!
 Settings["key"] = "wow two"; //BOOM! SAVED!
 ```
+
+* **I want hardcoded settings to automatically save when changed**
+    * Requires package `nucs.JsonSettings.Autosave` that uses `Castle.Core`.
+```C#
+var x = JsonSettings.Load<Settings>().EnableAutosave();
+//or:
+var x = JsonSettings.Load<Settings>().EnableIAutosave<ISettings>(); //Settings implements interface ISettings
+
+x.Property = "value"; //Booyah! SAVED!
+```
+
