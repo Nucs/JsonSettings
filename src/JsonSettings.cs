@@ -427,15 +427,23 @@ namespace nucs.JsonSettings {
         /// <summary>
         ///     Resolves a path passed to a full absolute path.
         /// </summary>
+        /// <remarks>This overload handles default value of passed <see cref="o"/></remarks>
         internal static string ResolvePath<T>(T o, string filename, bool throwless = false) where T : JsonSettings {
             if (!throwless && (string.IsNullOrEmpty(filename) || (filename == "<DEFAULT>" && string.IsNullOrEmpty(o.FileName))))
-                throw new JsonSettingsException("Could not resolve path because FileName is null or empty.");
+                throw new JsonSettingsException("Could not resolve path because 'FileName' is null or empty.");
 
             if (filename == "<DEFAULT>")
-                filename = o.FileName; //load default - TODO: load from a cached of type default value.
+                filename = o.FileName; //load from instance.
 
-            if (filename == null)
-                return filename;
+            return ResolvePath(filename, throwless);
+        }
+
+        /// <summary>
+        ///     Resolves a path passed to a full absolute path.
+        /// </summary>
+        internal static string ResolvePath(string filename, bool throwless = false) {
+            if (!throwless && string.IsNullOrEmpty(filename))
+                throw new JsonSettingsException("Could not resolve path because 'FileName' is null or empty.");
 
             if (filename.Contains("/") || filename.Contains("\\"))
                 filename = Path.Combine(Paths.NormalizePath(Path.GetDirectoryName(filename), false), Path.GetFileName(filename));
