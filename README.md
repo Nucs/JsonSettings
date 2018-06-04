@@ -91,9 +91,9 @@ Settings["key"] = "wow two"; //BOOM! SAVED!
 * **I want hardcoded settings to automatically save when changed**
     * Requires package `nucs.JsonSettings.Autosave` that uses `Castle.Core`.
 ```C#
-var x = JsonSettings.Load<Settings>().EnableAutosave();
+Settings x  = JsonSettings.Load<Settings>().EnableAutosave();
 //or:
-var x = JsonSettings.Load<Settings>().EnableIAutosave<ISettings>(); //Settings implements interface ISettings
+ISettings x = JsonSettings.Load<Settings>().EnableIAutosave<ISettings>(); //Settings implements interface ISettings
 
 x.Property = "value"; //Booyah! SAVED!
 ```
