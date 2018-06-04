@@ -42,7 +42,7 @@ class MySettings : JsonSettings {
 public MySettings Settings = JsonSettings.Load<MySettings>("config.json"); //relative path to executing file.
 //Step 5: Pwn.
 Settings.SomeProperty = "ok";
-SomeProperty.Save();
+Settings.Save();
 ```
 
 * **I want a dynamic settings**
