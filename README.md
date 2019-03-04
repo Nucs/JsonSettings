@@ -40,6 +40,9 @@ class MySettings : JsonSettings {
 }
 //Step 4: Load
 public MySettings Settings = JsonSettings.Load<MySettings>("config.json"); //relative path to executing file.
+//or create a new empty
+public MySettings Settings = JsonSettings.Construct<MySettings>("config.json");
+
 //Step 5: Pwn.
 Settings.SomeProperty = "ok";
 Settings.Save();
@@ -97,4 +100,3 @@ ISettings x = JsonSettings.Load<Settings>().EnableIAutosave<ISettings>(); //Sett
 
 x.Property = "value"; //Booyah! SAVED!
 ```
-
