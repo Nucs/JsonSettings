@@ -32,7 +32,8 @@ class MySettings : JsonSettings {
 
     public string SomeProperty { get; set; }
     public int SomeNumberWithDefaultValue { get; set; } = 1;
-
+    [JsonIgnore] public char ImIgnoredAndIWontBeSaved { get; set; }
+    
     #endregion
     //Step 3: Override parent's constructors
     public MySettings() { }
