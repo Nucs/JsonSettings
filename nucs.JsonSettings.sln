@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "nucs.JsonSettings", "src\nucs.JsonSettings.csproj", "{4040992B-F808-4875-B881-8C3A4397D8D3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "nucs.JsonSettings.xTests", "tests\nucs.JsonSettings.xTests\nucs.JsonSettings.xTests.csproj", "{4D12B31D-E6E2-4BD0-9B09-2842E33CC618}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "nucs.JsonSettings.Tests", "tests\nucs.JsonSettings.Tests\nucs.JsonSettings.Tests.csproj", "{4D12B31D-E6E2-4BD0-9B09-2842E33CC618}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nucs.JsonSettings.Examples", "examples\nucs.JsonSettings.Examples.csproj", "{A1D62AE9-2103-413B-BAFE-CD5F2BCB5DA5}"
 EndProject

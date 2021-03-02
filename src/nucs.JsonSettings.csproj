@@ -2,7 +2,6 @@
 
   <PropertyGroup>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <TargetFrameworks>netstandard2.0;netstandard1.6;net45;net462;net461;net47;net4;netcoreapp2.0</TargetFrameworks>
     <AssemblyVersion>1.0.7.0</AssemblyVersion>
     <FileVersion>1.0.7.0</FileVersion>
     <Version>1.0.7</Version>
@@ -21,6 +20,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
     <Copyright></Copyright>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">
@@ -38,7 +38,8 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
@@ -73,15 +74,6 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net4'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.6'">
-    <PackageReference Include="System.AppDomain">
-      <Version>2.0.11</Version>
-    </PackageReference>
-    <PackageReference Include="System.Security.SecureString">
-      <Version>4.3.0</Version>
-    </PackageReference>
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net47'">

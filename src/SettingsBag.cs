@@ -4,9 +4,6 @@ using System.Linq;
 using System.Reflection;
 using nucs.Collections;
 using Newtonsoft.Json;
-#if NET40
-using ReadOnlyCollectionsExtensions.Wrappers;
-#endif
 
 namespace nucs.JsonSettings {
     /// <summary>
