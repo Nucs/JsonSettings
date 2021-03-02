@@ -1,4 +1,4 @@
-namespace nucs.JsonSettings.xTests {
+namespace JsonSettings.xTests {
     public class SmallClass {
         public string Value { get; set; }
         public string Name { get; set; }

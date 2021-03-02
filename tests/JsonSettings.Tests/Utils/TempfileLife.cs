@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 
-namespace nucs.JsonSettings.xTests.Utils {
+namespace JsonSettings.xTests.Utils {
     public class TempfileLife : IDisposable {
         public string FileName { get; set; }
 

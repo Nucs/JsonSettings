@@ -2,7 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Runtime.Serialization;
 
-namespace nucs.JsonSettings.Modulation {
+namespace JsonSettings.Modulation {
     /// <summary>
     ///     A module that can be attached to a <see cref="ISocket"/>
     /// </summary>

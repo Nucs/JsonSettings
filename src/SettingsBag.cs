@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using nucs.Collections;
+using JsonSettings.Collections;
 using Newtonsoft.Json;
 
-namespace nucs.JsonSettings {
+namespace JsonSettings {
     /// <summary>
     ///     A dynamic settings class, adds settings as you go.
     /// </summary>
@@ -17,11 +17,8 @@ namespace nucs.JsonSettings {
         /// <summary>
         ///     All the settings in this bag.
         /// </summary>
-#if NET40
-        public IReadOnlyDictionary<string, object> Data => new ReadOnlyDictionaryWrapper<string, object>(_data);
-#else
         public IReadOnlyDictionary<string, object> Data => _data;
-#endif
+        
         [JsonIgnore]
         public override string FileName { get; set; }
 
@@ -51,11 +48,7 @@ namespace nucs.JsonSettings {
 
         public SettingsBag(string fileName) {
             FileName = fileName;
-#if NET
             foreach (var pi in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
-#else
-            foreach (var pi in this.GetType().GetTypeInfo().GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
-#endif
                 if ((pi.CanRead && pi.CanWrite) == false)
                     continue;
                 PropertyData.Add(pi.Name, pi);

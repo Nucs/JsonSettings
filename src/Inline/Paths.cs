@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
-namespace nucs.JsonSettings.Inline {
+namespace JsonSettings.Inline {
     /// <summary>
     ///     Class that determines paths.
     /// </summary>
@@ -22,11 +22,7 @@ namespace nucs.JsonSettings.Inline {
         ///     The path to the entry exe.
         /// </summary>
         public static FileInfo ExecutingExe => new FileInfo((Assembly.GetEntryAssembly()
-#if NETSTANDARD1_6
-            ?? throw new NotSupportedException("Cant support fallback of ExecutingExe in NETSTANDARD1.6")).Location);
-#else
                                                              ?? Assembly.GetExecutingAssembly())?.Location);
-#endif
         /// <summary>
         ///     The config dir inside user profile.
         /// </summary>
@@ -120,25 +116,20 @@ namespace nucs.JsonSettings.Inline {
         public static string NormalizePath(string path, bool forComparsion = false) {
             string validBackslash = "\\";
             string invalidBackslash = "/";
-#if CROSSPLATFORM
+            
             //override default backslash that is used in windows.
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 validBackslash = "/";
                 invalidBackslash = "\\";
             }
-#endif
 
             path = path
                 .Replace(invalidBackslash, validBackslash)
                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
             if (forComparsion) {
-#if CROSSPLATFORM
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     path = path.ToUpperInvariant();
-#else
-                path = path.ToUpperInvariant();
-#endif
             }
 
             if (path.Contains(validBackslash))
@@ -149,14 +140,12 @@ namespace nucs.JsonSettings.Inline {
                         // ignored
                     }
 
-#if CROSSPLATFORM
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 //is root, fix.
                 if ((path.Length == 2) && (path[1] == ':') && char.IsLetter(path[0]))
                     path = path + validBackslash;
             }
-#endif
             return path;
         }
 
@@ -179,7 +168,7 @@ namespace nucs.JsonSettings.Inline {
         /// <param name="dwFlags">MoveFileFlags</param>
         /// <returns>bool</returns>
         /// <remarks>http://msdn.microsoft.com/en-us/library/aa365240(VS.85).aspx</remarks>
-        [System.Runtime.InteropServices.DllImportAttribute("kernel32.dll", EntryPoint = "MoveFileEx")]
+        [DllImport("kernel32.dll", EntryPoint = "MoveFileEx")]
         private static extern bool MoveFileEx(string lpExistingFileName, string lpNewFileName, MoveFileFlags dwFlags);
 
         public static FileInfo MarkForDeletion(FileInfo file) {

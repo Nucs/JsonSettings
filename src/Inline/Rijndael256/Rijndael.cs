@@ -11,13 +11,11 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Rijndael256
-{
+namespace Rijndael256 {
     /// <summary>
     /// AES implementation of the Rijndael symmetric-key cipher.
     /// </summary>
-    internal class Rijndael
-    {
+    internal class Rijndael {
         internal const int InitializationVectorSize = 16;
         internal const CipherMode BlockCipherMode = CipherMode.CBC;
 
@@ -29,8 +27,7 @@ namespace Rijndael256
         /// <param name="password">The password to encrypt the plaintext with.</param>
         /// <param name="keySize">The cipher key size. 256-bit is stronger, but slower.</param>
         /// <returns>The Base64 encoded ciphertext.</returns>
-        public static string Encrypt(string plaintext, string password, KeySize keySize)
-        {
+        public static string Encrypt(string plaintext, string password, KeySize keySize) {
             return Encrypt(Encoding.UTF8.GetBytes(plaintext), password, keySize);
         }
 
@@ -42,8 +39,7 @@ namespace Rijndael256
         /// <param name="password">The password to encrypt the plaintext with.</param>
         /// <param name="keySize">The cipher key size. 256-bit is stronger, but slower.</param>
         /// <returns>The Base64 encoded ciphertext.</returns>
-        public static string Encrypt(byte[] plaintext, string password, KeySize keySize)
-        {
+        public static string Encrypt(byte[] plaintext, string password, KeySize keySize) {
             // Generate a random IV
             var iv = Rng.GenerateRandomBytes(InitializationVectorSize);
 
@@ -62,19 +58,16 @@ namespace Rijndael256
         /// <param name="iv">The initialization vector. Must be 128-bits.</param>
         /// <param name="keySize">The cipher key size. 256-bit is stronger, but slower.</param>
         /// <returns>The ciphertext.</returns>
-        public static byte[] Encrypt(byte[] plaintext, string password, byte[] iv, KeySize keySize)
-        {
+        public static byte[] Encrypt(byte[] plaintext, string password, byte[] iv, KeySize keySize) {
             if (iv.Length != InitializationVectorSize) throw new ArgumentOutOfRangeException(nameof(iv), "AES requires an Initialization Vector of 128-bits.");
 
             byte[] ciphertext;
-            using (var ms = new MemoryStream())
-            {
+            using (var ms = new MemoryStream()) {
                 // Insert IV at beginning of ciphertext
                 ms.Write(iv, 0, iv.Length);
 
                 // Create a CryptoStream to encrypt the plaintext
-                using (var cs = new CryptoStream(ms, CreateEncryptor(password, iv, keySize), CryptoStreamMode.Write))
-                {
+                using (var cs = new CryptoStream(ms, CreateEncryptor(password, iv, keySize), CryptoStreamMode.Write)) {
                     // Encrypt the plaintext
                     cs.Write(plaintext, 0, plaintext.Length);
                     cs.FlushFinalBlock();
@@ -95,21 +88,17 @@ namespace Rijndael256
         /// <param name="ciphertextFile">The resulting ciphertext file.</param>
         /// <param name="password">The password to encrypt the plaintext file with.</param>
         /// <param name="keySize">The cipher key size. 256-bit is stronger, but slower.</param>
-        public static void Encrypt(string plaintextFile, string ciphertextFile, string password, KeySize keySize)
-        {
+        public static void Encrypt(string plaintextFile, string ciphertextFile, string password, KeySize keySize) {
             // Create a new ciphertext file to write the ciphertext to
-            using (var fsc = new FileStream(ciphertextFile, FileMode.Create, FileAccess.Write))
-            {
+            using (var fsc = new FileStream(ciphertextFile, FileMode.Create, FileAccess.Write)) {
                 // Store the IV at the beginning of the ciphertext file
                 var iv = Rng.GenerateRandomBytes(InitializationVectorSize);
                 fsc.Write(iv, 0, iv.Length);
 
                 // Create a CryptoStream to encrypt the plaintext
-                using (var cs = new CryptoStream(fsc, CreateEncryptor(password, iv, keySize), CryptoStreamMode.Write))
-                {
+                using (var cs = new CryptoStream(fsc, CreateEncryptor(password, iv, keySize), CryptoStreamMode.Write)) {
                     // Open the plaintext file
-                    using (var fsp = new FileStream(plaintextFile, FileMode.Open, FileAccess.Read))
-                    {
+                    using (var fsp = new FileStream(plaintextFile, FileMode.Open, FileAccess.Read)) {
                         // Create a buffer to process the plaintext file in chunks
                         // Reading the whole file into memory can cause 
                         // Out of Memory exceptions if the file is large
@@ -117,8 +106,7 @@ namespace Rijndael256
 
                         // Read a chunk from the plaintext file
                         int bytesRead;
-                        while ((bytesRead = fsp.Read(buffer, 0, buffer.Length)) > 0)
-                        {
+                        while ((bytesRead = fsp.Read(buffer, 0, buffer.Length)) > 0) {
                             // Encrypt the plaintext and write it to the ciphertext file
                             cs.Write(buffer, 0, bytesRead);
                         }
@@ -137,8 +125,7 @@ namespace Rijndael256
         /// <param name="password">The password to decrypt the ciphertext with.</param>
         /// <param name="keySize">The size of the cipher key used to create the ciphertext.</param>
         /// <returns>The plaintext.</returns>
-        public static string Decrypt(string ciphertext, string password, KeySize keySize)
-        {
+        public static string Decrypt(string ciphertext, string password, KeySize keySize) {
             return Decrypt(Convert.FromBase64String(ciphertext), password, keySize);
         }
 
@@ -149,17 +136,14 @@ namespace Rijndael256
         /// <param name="password">The password to decrypt the ciphertext with.</param>
         /// <param name="keySize">The size of the cipher key used to create the ciphertext.</param>
         /// <returns>The plaintext.</returns>
-        public static string Decrypt(byte[] ciphertext, string password, KeySize keySize)
-        {
-            using (var ms = new MemoryStream(ciphertext))
-            {
+        public static string Decrypt(byte[] ciphertext, string password, KeySize keySize) {
+            using (var ms = new MemoryStream(ciphertext)) {
                 // Extract the IV from the ciphertext
                 var iv = new byte[InitializationVectorSize];
                 ms.Read(iv, 0, iv.Length);
 
                 // Create a CryptoStream to decrypt the ciphertext
-                using (var cs = new CryptoStream(ms, CreateDecryptor(password, iv, keySize), CryptoStreamMode.Read))
-                {
+                using (var cs = new CryptoStream(ms, CreateDecryptor(password, iv, keySize), CryptoStreamMode.Read)) {
                     // Decrypt the ciphertext
                     using (var sr = new StreamReader(cs, Encoding.UTF8)) return sr.ReadToEnd();
                 }
@@ -173,21 +157,18 @@ namespace Rijndael256
         /// <param name="password">The password to decrypt the ciphertext with.</param>
         /// <param name="keySize">The size of the cipher key used to create the ciphertext.</param>
         /// <returns>The plaintext.</returns>
-        public static byte[] DecryptBytes(byte[] ciphertext, string password, KeySize keySize)
-        {
-            byte[] ReadAllBytes(Stream instream)
-            {
+        public static byte[] DecryptBytes(byte[] ciphertext, string password, KeySize keySize) {
+            byte[] ReadAllBytes(Stream instream) {
                 if (instream is MemoryStream)
-                    return ((MemoryStream)instream).ToArray();
+                    return ((MemoryStream) instream).ToArray();
 
-                using (var memoryStream = new MemoryStream())
-                {
+                using (var memoryStream = new MemoryStream()) {
                     instream.CopyTo(memoryStream);
                     return memoryStream.ToArray();
                 }
             }
-            using (var ms = new MemoryStream(ciphertext))
-            {
+
+            using (var ms = new MemoryStream(ciphertext)) {
                 // Extract the IV from the ciphertext
                 var iv = new byte[InitializationVectorSize];
                 ms.Read(iv, 0, iv.Length);
@@ -206,21 +187,17 @@ namespace Rijndael256
         /// <param name="plaintextFile">The resulting plaintext file.</param>
         /// <param name="password">The password to decrypt the ciphertext file with.</param>
         /// <param name="keySize">The size of the cipher key used to create the ciphertext file.</param>
-        public static void Decrypt(string ciphertextFile, string plaintextFile, string password, KeySize keySize)
-        {
+        public static void Decrypt(string ciphertextFile, string plaintextFile, string password, KeySize keySize) {
             // Open the ciphertext file
-            using (var fsc = new FileStream(ciphertextFile, FileMode.Open, FileAccess.Read))
-            {
+            using (var fsc = new FileStream(ciphertextFile, FileMode.Open, FileAccess.Read)) {
                 // Read the IV from the beginning of the ciphertext file
                 var iv = new byte[InitializationVectorSize];
                 fsc.Read(iv, 0, iv.Length);
 
                 // Create a new plaintext file to write the plaintext to
-                using (var fsp = new FileStream(plaintextFile, FileMode.Create, FileAccess.Write))
-                {
+                using (var fsp = new FileStream(plaintextFile, FileMode.Create, FileAccess.Write)) {
                     // Create a CryptoStream to decrypt the ciphertext
-                    using (var cs = new CryptoStream(fsp, CreateDecryptor(password, iv, keySize), CryptoStreamMode.Write))
-                    {
+                    using (var cs = new CryptoStream(fsp, CreateDecryptor(password, iv, keySize), CryptoStreamMode.Write)) {
                         // Create a buffer to process the plaintext file in chunks
                         // Reading the whole file into memory can cause 
                         // Out of Memory exceptions if the file is large
@@ -228,8 +205,7 @@ namespace Rijndael256
 
                         // Read a chunk from the ciphertext file
                         int bytesRead;
-                        while ((bytesRead = fsc.Read(buffer, 0, buffer.Length)) > 0)
-                        {
+                        while ((bytesRead = fsc.Read(buffer, 0, buffer.Length)) > 0) {
                             // Decrypt the ciphertext and write it to the plaintext file
                             cs.Write(buffer, 0, bytesRead);
                         }
@@ -244,13 +220,12 @@ namespace Rijndael256
         /// <param name="password">The password.</param>
         /// <param name="keySize">The cipher key size. 256-bit is stronger, but slower.</param>
         /// <returns>The cryptographic key.</returns>
-        public static byte[] GenerateKey(string password, KeySize keySize)
-        {
+        public static byte[] GenerateKey(string password, KeySize keySize) {
             // Create a salt to help prevent rainbow table attacks
             var salt = Hash.Pbkdf2(password, Hash.Sha512(password + password.Length), Rijndael256Settings.HashIterations);
 
             // Generate a key from the password and salt
-            return Hash.Pbkdf2(password, salt, Rijndael256Settings.HashIterations, (int)keySize / 8);
+            return Hash.Pbkdf2(password, salt, Rijndael256Settings.HashIterations, (int) keySize / 8);
         }
 
         /// <summary>
@@ -260,14 +235,8 @@ namespace Rijndael256
         /// <param name="iv">The initialization vector. Must be 128-bits.</param>
         /// <param name="keySize">The cipher key size. 256-bit is stronger, but slower.</param>
         /// <returns>The symmetric encryptor.</returns>
-        public static ICryptoTransform CreateEncryptor(string password, byte[] iv, KeySize keySize)
-        {
-#if NET452 || NET46 || NET461 || NET462 || NET47
-            var rijndael = new RijndaelManaged { Mode = BlockCipherMode };
-#else
-            var rijndael = Aes.Create();
-            rijndael.Mode = BlockCipherMode;
-#endif
+        public static ICryptoTransform CreateEncryptor(string password, byte[] iv, KeySize keySize) {
+            var rijndael = new RijndaelManaged {Mode = BlockCipherMode};
             return rijndael.CreateEncryptor(GenerateKey(password, keySize), iv);
         }
 
@@ -278,14 +247,8 @@ namespace Rijndael256
         /// <param name="iv">The initialization vector. Must be 128-bits.</param>
         /// <param name="keySize">The cipher key size.</param>
         /// <returns>The symmetric decryptor.</returns>
-        public static ICryptoTransform CreateDecryptor(string password, byte[] iv, KeySize keySize)
-        {
-#if NET452 || NET46 || NET461 || NET462 || NET47
-            var rijndael = new RijndaelManaged { Mode = BlockCipherMode };
-#else
-            var rijndael = Aes.Create();
-            rijndael.Mode = BlockCipherMode;
-#endif
+        public static ICryptoTransform CreateDecryptor(string password, byte[] iv, KeySize keySize) {
+            var rijndael = new RijndaelManaged {Mode = BlockCipherMode};
             return rijndael.CreateDecryptor(GenerateKey(password, keySize), iv);
         }
     }

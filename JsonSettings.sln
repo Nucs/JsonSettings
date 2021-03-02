@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "nucs.JsonSettings", "src\nucs.JsonSettings.csproj", "{4040992B-F808-4875-B881-8C3A4397D8D3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings", "src\JsonSettings.csproj", "{4040992B-F808-4875-B881-8C3A4397D8D3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "nucs.JsonSettings.Tests", "tests\nucs.JsonSettings.Tests\nucs.JsonSettings.Tests.csproj", "{4D12B31D-E6E2-4BD0-9B09-2842E33CC618}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.Tests", "tests\JsonSettings.Tests\JsonSettings.Tests.csproj", "{4D12B31D-E6E2-4BD0-9B09-2842E33CC618}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nucs.JsonSettings.Examples", "examples\nucs.JsonSettings.Examples.csproj", "{A1D62AE9-2103-413B-BAFE-CD5F2BCB5DA5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsonSettings.Examples", "examples\JsonSettings.Examples.csproj", "{A1D62AE9-2103-413B-BAFE-CD5F2BCB5DA5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "nucs.JsonSettings.Autosave", "src\Autosave\nucs.JsonSettings.Autosave.csproj", "{D6C73FB9-033B-44D8-BC0E-85DC6EFF8CDE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.Autosave", "src\Autosave\JsonSettings.Autosave.csproj", "{D6C73FB9-033B-44D8-BC0E-85DC6EFF8CDE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

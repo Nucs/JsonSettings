@@ -1,3 +1,3 @@
 ﻿using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("nucs.JsonSettings.Tests")]
+[assembly: InternalsVisibleTo("JsonSettings.Tests")]

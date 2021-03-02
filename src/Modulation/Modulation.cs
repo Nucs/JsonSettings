@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace nucs.JsonSettings.Modulation {
+namespace JsonSettings.Modulation {
     /// <summary>
     ///     A subclass to manage modulation of a JsonSettings
     /// </summary>
@@ -14,11 +14,7 @@ namespace nucs.JsonSettings.Modulation {
             _settings = settings;
         }
 
-#if NET40
-        public ReadOnlyCollection<Module> Modules {
-#else
         public IReadOnlyList<Module> Modules {
-#endif
             get {
                 lock (_modules)
                     return _modules.ToList().AsReadOnly();

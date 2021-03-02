@@ -1,6 +1,6 @@
 using System.Security;
 
-namespace nucs.JsonSettings {
+namespace JsonSettings {
     public interface IEncryptedSavable : ISavable {
         /// <summary>
         ///     The password which is used to encrypt and decrypt the file.

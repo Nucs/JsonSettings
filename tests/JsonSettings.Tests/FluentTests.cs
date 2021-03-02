@@ -3,12 +3,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Security;
 using FluentAssertions;
-using nucs.JsonSettings.Fluent;
-using nucs.JsonSettings.xTests.Utils;
+using JsonSettings.xTests.Utils;
+using JsonSettings.Fluent;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
-namespace nucs.JsonSettings.xTests {
+namespace JsonSettings.xTests {
     [TestFixture]
     public class FluentTests {
 

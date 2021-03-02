@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
-namespace nucs.Collections {
+namespace JsonSettings.Collections {
     /// <summary>
     ///     A dictionary that returns default(T) incase of not existing value.
     ///     And Add will add or set value.

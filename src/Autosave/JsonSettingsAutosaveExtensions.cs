@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Castle.DynamicProxy;
 
-namespace nucs.JsonSettings.Autosave {
+namespace JsonSettings.Autosave {
     public static class JsonSettingsAutosaveExtensions {
         private static readonly string[] _jsonSettingsAbstractionVirtuals = {"FileName"};
 
@@ -30,7 +30,7 @@ namespace nucs.JsonSettings.Autosave {
             }
 
             _generator = _generator ?? new ProxyGenerator();
-            return _generator.CreateClassProxyWithTarget<TSettings>(settings, new JsonSettingsInterceptor((nucs.JsonSettings.JsonSettings) (object) settings));
+            return _generator.CreateClassProxyWithTarget<TSettings>(settings, new JsonSettingsInterceptor((JsonSettings) (object) settings));
         }
 
         public static ISettings EnableIAutosave<ISettings>(this JsonSettings settings) where ISettings : class {

@@ -7,7 +7,7 @@
     <ProjectGuid>{A1D62AE9-2103-413B-BAFE-CD5F2BCB5DA5}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>nucs.JsonSettings.Examples</RootNamespace>
-    <AssemblyName>nucs.JsonSettings.Examples</AssemblyName>
+    <AssemblyName>JsonSettings.Examples</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -64,9 +64,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\src\nucs.JsonSettings.csproj">
-      <Project>{77ea72c1-d15f-472f-978f-c59a6da43be4}</Project>
-      <Name>nucs.JsonSettings</Name>
+    <ProjectReference Include="..\src\JsonSettings.csproj">
+      <Project>{4040992b-f808-4875-b881-8c3a4397d8d3}</Project>
+      <Name>JsonSettings</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

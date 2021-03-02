@@ -1,23 +1,40 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <IsPackable>false</IsPackable>
-    <ApplicationIcon />
-    <OutputType>Library</OutputType>
-    <StartupObject />
-    <RootNamespace>nucs.JsonSettings.xTests</RootNamespace>
-    <TargetFramework>net48</TargetFramework>
+	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.0</Version>
+    <Authors>Nucs / Eli Belash</Authors>
+    <Company>Ebby Technology</Company>
+	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
+Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summary>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
+    <PackageIconUrl>http://i.imgur.com/GQ6RiXB.png</PackageIconUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy.</Description>
+    <PackageTags>nucs config file nlib settings json configuration preferences autosave</PackageTags>
+    <NeutralLanguage />
+    <SignAssembly>false</SignAssembly>
+    <Copyright></Copyright>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>nucs.JsonSettings.Autosave</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">
+    <DefineConstants>TRACE;RELEASE;</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard1.6|AnyCPU'">
+    <DefineConstants>TRACE;DEBUG;</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-  <PackageReference Include="FluentAssertions" Version="4.19.4" />
-  <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.1" />
-  <PackageReference Include="NUnit" Version="3.9.0" />
-  <PackageReference Include="NUnit3TestAdapter" Version="3.13.0" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Castle.Core" Version="4.4.1" />
+    <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
@@ -28,47 +45,41 @@
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' OR '$(TargetFramework)' == 'netcoreapp2.0'  Or '$(TargetFramework)' == 'netstandard2.0'">
     <DefineConstants>$(DefineConstants);NETCORE;</DefineConstants>
   </PropertyGroup>
-
+  
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' OR '$(TargetFramework)' == 'netcoreapp2.0'  Or '$(TargetFramework)' == 'netstandard2.0'">
     <DefineConstants>$(DefineConstants);CROSSPLATFORM;</DefineConstants>
   </PropertyGroup>
-
+  
   <PropertyGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net45' Or '$(TargetFramework)' == 'net461' Or '$(TargetFramework)' == 'net4' Or '$(TargetFramework)' == 'net47'  Or '$(TargetFramework)' == 'net35'  Or '$(TargetFramework)' == 'net452'  Or '$(TargetFramework)' == 'net451'  Or '$(TargetFramework)' == 'net403'  Or '$(TargetFramework)' == 'net40'  Or '$(TargetFramework)' == 'net20' Or '$(TargetFramework)' == 'net11'">
     <DefineConstants>$(DefineConstants);WINDOWS;</DefineConstants>
   </PropertyGroup>
-
+  
   <PropertyGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net45' Or '$(TargetFramework)' == 'net461' Or '$(TargetFramework)' == 'net4' Or '$(TargetFramework)' == 'net47'  Or '$(TargetFramework)' == 'netstandard2.0'">
     <DefineConstants>$(DefineConstants);NET;</DefineConstants>
   </PropertyGroup>
 
-
+  
   <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net4'">
-  </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.6'">
     <PackageReference Include="System.AppDomain">
       <Version>2.0.11</Version>
     </PackageReference>
-    <PackageReference Include="System.Security.SecureString">
-      <Version>4.3.0</Version>
-    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net47'">
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Autosave\nucs.JsonSettings.Autosave.csproj" />
-    <ProjectReference Include="..\..\src\nucs.JsonSettings.csproj" />
+    <ProjectReference Include="..\JsonSettings.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
-  </ItemGroup>
 </Project>

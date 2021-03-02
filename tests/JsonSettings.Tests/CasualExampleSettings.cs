@@ -1,7 +1,7 @@
 using System.Security;
-using nucs.JsonSettings.Fluent;
+using JsonSettings.Fluent;
 
-namespace nucs.JsonSettings.xTests {
+namespace JsonSettings.xTests {
     public class CasualExampleSettings : JsonSettings {
         public override string FileName { get; set; } = "casual.json";
         public string SomeProperty { get; set; }

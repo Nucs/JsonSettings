@@ -3,11 +3,11 @@ using System.IO;
 using System.Reflection;
 using System.Security;
 using FluentAssertions;
-using nucs.JsonSettings.xTests.Utils;
+using JsonSettings.xTests.Utils;
 using NUnit.Framework;
 
 
-namespace nucs.JsonSettings.xTests {
+namespace JsonSettings.xTests {
     [TestFixture]
     public class UtilsTests {
         [Test]

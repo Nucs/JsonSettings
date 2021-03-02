@@ -2,13 +2,13 @@ using System;
 using System.IO;
 using System.Security;
 using FluentAssertions;
-using nucs.JsonSettings.Fluent;
-using nucs.JsonSettings.Modulation;
-using nucs.JsonSettings.xTests.Utils;
+using JsonSettings.xTests.Utils;
+using JsonSettings.Fluent;
+using JsonSettings.Modulation;
 using NUnit.Framework;
 
 
-namespace nucs.JsonSettings.xTests {
+namespace JsonSettings.xTests {
     [TestFixture]
     public class HowToUse {
         #region Settings Bag

@@ -1,8 +1,8 @@
 ﻿using FluentAssertions;
-using nucs.JsonSettings.xTests.Utils;
+using JsonSettings.xTests.Utils;
 using NUnit.Framework;
 
-namespace nucs.JsonSettings.xTests {
+namespace JsonSettings.xTests {
     [TestFixture]
     public class DynamicSettingsBagTests {
         [Test]

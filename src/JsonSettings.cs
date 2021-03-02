@@ -6,14 +6,14 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters;
 using System.Text;
-using nucs.JsonSettings.Fluent;
-using nucs.JsonSettings.Inline;
-using nucs.JsonSettings.Modulation;
+using JsonSettings.Fluent;
+using JsonSettings.Inline;
+using JsonSettings.Modulation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using Module = nucs.JsonSettings.Modulation.Module;
+using Module = JsonSettings.Modulation.Module;
 
-namespace nucs.JsonSettings {
+namespace JsonSettings {
     #region Delegates
 
     public delegate void BeforeLoadHandler(ref string destinition);

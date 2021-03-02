@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Dynamic;
 
-namespace nucs.JsonSettings {
+namespace JsonSettings {
     /// <summary>
     ///     A dynamic wrapper to a <see cref="SettingsBag"/>.
     /// </summary>

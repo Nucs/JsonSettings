@@ -1,9 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Security;
-using nucs.JsonSettings.Modulation;
+using JsonSettings.Modulation;
 
-namespace nucs.JsonSettings.Fluent {
+namespace JsonSettings.Fluent {
     public static class FluentJsonSettings {
         internal static T _withFileName<T>(this T _instance, string filename, bool throwless = false) where T : JsonSettings {
             _instance.FileName = JsonSettings.ResolvePath(_instance, filename, throwless);

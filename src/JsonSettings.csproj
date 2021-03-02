@@ -21,6 +21,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
     <SignAssembly>false</SignAssembly>
     <Copyright></Copyright>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>nucs.JsonSettings</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">

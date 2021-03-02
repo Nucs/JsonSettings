@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace nucs.JsonSettings {
+namespace JsonSettings {
     public class JsonSettingsException : Exception {
         public JsonSettingsException() { }
         public JsonSettingsException(string message) : base(message) { }
