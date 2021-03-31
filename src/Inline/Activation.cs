@@ -4,9 +4,9 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using Microsoft.Xna.Framework.Utilities;
-using Module = JsonSettings.Modulation.Module;
+using Module = Nucs.JsonSettings.Modulation.Module;
 
-namespace JsonSettings {
+namespace Nucs.JsonSettings {
     public static class Activation {
         public static IEnumerable<ConstructorInfo> GetAllConstructors(this Type t) => t.GetConstructors().Concat(t.GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance));
         /// <summary>

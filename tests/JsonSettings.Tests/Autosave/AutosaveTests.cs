@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using FluentAssertions;
-using JsonSettings.xTests.Utils;
-using JsonSettings.Autosave;
+using Nucs.JsonSettings.Autosave;
+using Nucs.JsonSettings.xTests.Utils;
 using NUnit.Framework;
 
-namespace JsonSettings.xTests.Autosave {
+namespace Nucs.JsonSettings.xTests.Autosave {
     [TestFixture]
     public class AutosaveTests {
         /// <summary>Initializes a new instance of the <see cref="T:System.Object" /> class.</summary>

@@ -2,12 +2,12 @@ using System;
 using System.IO;
 using System.Security;
 using FluentAssertions;
-using JsonSettings.Modulation;
-using JsonSettings.xTests.Utils;
-using JsonSettings.Fluent;
+using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings.Modulation;
+using Nucs.JsonSettings.xTests.Utils;
 using NUnit.Framework;
 
-namespace JsonSettings.xTests {
+namespace Nucs.JsonSettings.xTests {
     [TestFixture]
     public class Tests {
         [Test]

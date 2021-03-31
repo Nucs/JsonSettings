@@ -2,25 +2,31 @@
 
   <PropertyGroup>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>2.0.0.2</AssemblyVersion>
+    <FileVersion>2.0.0.2</FileVersion>
     <Version>1.0.0</Version>
     <Authors>Nucs / Eli Belash</Authors>
-    <Company>Ebby Technology</Company>
+    <Company>Eli Belash</Company>
 	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
 Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summary>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
-    <PackageIconUrl>http://i.imgur.com/GQ6RiXB.png</PackageIconUrl>
+    <PackageIconUrl>https://i.imgur.com/BOExs52.png</PackageIconUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy.</Description>
-    <PackageTags>nucs config file nlib settings json configuration preferences autosave</PackageTags>
+    <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
-    <Copyright></Copyright>
+    <Copyright>Eli Belash @ 2021</Copyright>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>nucs.JsonSettings.Autosave</RootNamespace>
+    <PackageId>nucs.JsonSettings.Autosave</PackageId>
+    <PackageVersion>2.0.0-alpha2</PackageVersion>
+    <Title>Nucs.JsonSettings.Autosave</Title>
+    <PackageReleaseNotes>- Upgraded to .NETCore project type
+- Target changed to .NET Standard 2.0
+- Root namespace renamed to Nucs.</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">

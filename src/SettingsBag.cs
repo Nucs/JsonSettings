@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using JsonSettings.Collections;
 using Newtonsoft.Json;
+using Nucs.JsonSettings.Collections;
 
-namespace JsonSettings {
+namespace Nucs.JsonSettings {
     /// <summary>
     ///     A dynamic settings class, adds settings as you go.
     /// </summary>

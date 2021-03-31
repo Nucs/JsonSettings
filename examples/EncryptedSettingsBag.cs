@@ -5,9 +5,9 @@ using System.Linq;
 using System.Security;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using JsonSettings.Fluent;
+using Nucs.JsonSettings.Fluent;
 
-namespace JsonSettings.Examples {
+namespace Nucs.JsonSettings.Examples {
     static class EncryptedSettingsBagProgram {
 
         /// <summary>

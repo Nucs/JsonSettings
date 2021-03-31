@@ -1,10 +1,10 @@
 ﻿using System.IO;
 using FluentAssertions;
-using JsonSettings.xTests.Utils;
+using Nucs.JsonSettings.xTests.Utils;
 using NUnit.Framework;
 
 
-namespace JsonSettings.xTests {
+namespace Nucs.JsonSettings.xTests {
     [TestFixture]
     public class CreatingAndOverridingTests {
         [Test]

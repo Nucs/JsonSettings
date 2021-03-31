@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace JsonSettings.Examples {
+namespace Nucs.JsonSettings.Examples {
     static class Program {
 
         /// <summary>

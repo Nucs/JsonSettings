@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Castle.DynamicProxy;
 
-namespace JsonSettings.Autosave {
+namespace Nucs.JsonSettings.Autosave {
     public static class JsonSettingsAutosaveExtensions {
         private static readonly string[] _jsonSettingsAbstractionVirtuals = {"FileName"};
 

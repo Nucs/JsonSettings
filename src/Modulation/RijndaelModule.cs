@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using Rijndael256;
 using Rijndael = Rijndael256.Rijndael;
 
-namespace JsonSettings.Modulation {
+namespace Nucs.JsonSettings.Modulation {
     /// <summary>
     ///     This module encrypts the configuration with Rijndael Algorithm, aka AES256.
     /// </summary>

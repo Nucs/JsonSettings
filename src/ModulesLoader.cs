@@ -1,4 +1,4 @@
-﻿namespace JsonSettings {
+﻿namespace Nucs.JsonSettings {
     /// <summary>
     ///     A class that uses modules.
     /// </summary>

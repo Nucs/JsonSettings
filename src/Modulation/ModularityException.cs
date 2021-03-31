@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace JsonSettings.Modulation {
+namespace Nucs.JsonSettings.Modulation {
     public class ModularityException : Exception {
         public ModularityException() { }
         public ModularityException(string message) : base(message) { }
