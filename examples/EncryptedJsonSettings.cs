@@ -15,8 +15,7 @@ namespace Nucs.JsonSettings.Examples {
         /// </summary>
         private static EncryptedSettings Settings { get; } = JsonSettings.Construct<EncryptedSettings>("mysupercomplex_password","memory.jsn").LoadNow();
 
-        [STAThread]
-        static void Main2(string[] args) {
+        public static void Run(string[] args) {
             //simple app to open a file by command and browse to a new file on demand.
             while (true) {
                 Console.WriteLine("Commands: \nopen - open a file\nbrowse - browse to a new file\nquit - closes");

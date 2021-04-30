@@ -2,8 +2,8 @@
 
   <PropertyGroup>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <AssemblyVersion>2.0.0.2</AssemblyVersion>
-    <FileVersion>2.0.0.2</FileVersion>
+    <AssemblyVersion>2.0.0.3</AssemblyVersion>
+    <FileVersion>2.0.0.3</FileVersion>
     <Version>1.0.0</Version>
     <Authors>Nucs / Eli Belash</Authors>
     <Company>Eli Belash</Company>
@@ -22,11 +22,12 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>nucs.JsonSettings.Autosave</RootNamespace>
     <PackageId>nucs.JsonSettings.Autosave</PackageId>
-    <PackageVersion>2.0.0-alpha2</PackageVersion>
+    <PackageVersion>2.0.0-alpha3</PackageVersion>
     <Title>Nucs.JsonSettings.Autosave</Title>
     <PackageReleaseNotes>- Upgraded to .NETCore project type
 - Target changed to .NET Standard 2.0
 - Root namespace renamed to Nucs.</PackageReleaseNotes>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">
@@ -40,6 +41,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="Castle.Core" Version="4.4.1" />
+    <PackageReference Include="SimpleWeakEventListener" Version="1.1.0" />
     <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 

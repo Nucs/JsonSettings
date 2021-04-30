@@ -2,8 +2,8 @@
 
   <PropertyGroup>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <AssemblyVersion>2.0.0.2</AssemblyVersion>
-    <FileVersion>2.0.0.2</FileVersion>
+    <AssemblyVersion>2.0.0.3</AssemblyVersion>
+    <FileVersion>2.0.0.3</FileVersion>
     <Version>1.0.7</Version>
     <Authors>Nucs / Eli Belash</Authors>
     <Company>Eli Belash</Company>
@@ -23,7 +23,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>nucs.JsonSettings</RootNamespace>
     <PackageId>nucs.JsonSettings</PackageId>
-    <PackageVersion>2.0.0-alpha2</PackageVersion>
+    <PackageVersion>2.0.0-alpha3</PackageVersion>
     <Title>Nucs.JsonSettings</Title>
     <PackageReleaseNotes>- Upgraded to .NETCore project type
 - Target changed to .NET Standard 2.0

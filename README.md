@@ -7,6 +7,10 @@ Easiest way you'll ever write settings for your app.
 * Modular
 * One Liner
 * Abstract
+Easiest way you'll ever write settings for your app. 
+The library is built to be Modular and One Liner exploiting the powerful
+serialization that [Json.NET](https://www.newtonsoft.com/json/help/html/SerializationGuide.htm) provides
+out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.
 ### Install
 ```
 PM> Install-Package nucs.JsonSettings
@@ -15,8 +19,13 @@ PM> Install-Package nucs.JsonSettings
 See https://github.com/Nucs/JsonSettings/wiki/<br>
 Test project: https://github.com/Nucs/JsonSettings/tree/master/tests/nucs.JsonSettings.xTests<br>
 Blog Posts: http://blog.elibelash.com/2017/10/settings-file-in-your-project.html
+See https://github.com/Nucs/JsonSettings/wiki/ <br>
+Test project: https://github.com/Nucs/JsonSettings/tree/master/tests/nucs.JsonSettings.xTests <br>
+Blog Posts: http://blog.elibelash.com/2017/10/settings-file-in-your-project.html </br>
+Serialization Guide: https://www.newtonsoft.com/json/help/html/SerializationGuide.htm </br>
 
 JsonSettings is the base abstract class that inherits ISavable.<br>
+JsonSettings is the base abstract class that inherits ISavable. <br>
 Here is a self explanatory quicky of to how and what:
 
 * **I want a hardcoded settings file**
@@ -31,6 +40,8 @@ class MySettings : JsonSettings {
     #region Settings
 
     public string SomeProperty { get; set; }
+    public Dictionary<string, object> Dictionary { get; set; } = new Dictionary<string, object>();
+    public ArrayOfMyObject[] Dictionary { get; set; } = new Dictionary<string, object>();
     public int SomeNumberWithDefaultValue { get; set; } = 1;
     [JsonIgnore] public char ImIgnoredAndIWontBeSaved { get; set; }
     

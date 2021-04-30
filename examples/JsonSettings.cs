@@ -6,15 +6,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Nucs.JsonSettings.Examples {
-    static class Program {
+    static class JsonProgram {
 
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
         private static Settings Settings { get; } = JsonSettings.Load<Settings>("memory.jsn");
 
-        [STAThread]
-        static void Main(string[] args) {
+        public static void Run(string[] args) {
             //simple app to open a file by command and browse to a new file on demand.
             while (true) {
                 Console.WriteLine("Commands: \nopen - open a file\nbrowse - browse to a new file\nquit - closes");
@@ -44,7 +43,7 @@ namespace Nucs.JsonSettings.Examples {
 
     public class Settings : JsonSettings {
         public override string FileName { get; set; } = "some.default.just.in.case.jsn";
-        public string LastPath { get; set; }
+        public virtual string LastPath { get; set; }
         public Settings() { }
         public Settings(string fileName) : base(fileName) { }
     }

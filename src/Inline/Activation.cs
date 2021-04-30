@@ -17,12 +17,12 @@ namespace Nucs.JsonSettings {
         public static bool HasDefaultConstructor(this Type t) {
             var ctrs = t.GetAllConstructors();
             ctrs=ctrs.Where(c=>c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional)).ToArray();
-            return ReflectionHelpers.IsValueType(t) || (ctrs.Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional)));
+            return t.IsValueType || (ctrs.Any(c => c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional)));
         }
 
         public static object CreateInstance(this Type t) {
             var ctrs = t.GetAllConstructors().Where(c=>c.GetParameters().Length == 0 || c.GetParameters().All(p => p.IsOptional)).ToArray();
-            if (ReflectionHelpers.IsValueType(t) || ctrs.Any(c => c.IsPublic)) //is valuetype or has public constractor.
+            if (t.IsValueType || ctrs.Any(c => c.IsPublic)) //is valuetype or has public constractor.
                 return Activator.CreateInstance(t);
             var prv = ctrs.FirstOrDefault(c => c.IsAssembly ||c.IsFamily || c.IsPrivate); //check protected/internal/private constructor
             if (prv == null)

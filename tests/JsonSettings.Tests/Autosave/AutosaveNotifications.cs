@@ -1,21 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Nucs.JsonSettings.Autosave;
+using Nucs.JsonSettings.Examples;
 using Nucs.JsonSettings.xTests.Utils;
 using NUnit.Framework;
 
 namespace Nucs.JsonSettings.xTests.Autosave {
     [TestFixture]
-    public class AutosaveTests {
+    public class AutosaveNotifications {
         /// <summary>Initializes a new instance of the <see cref="T:System.Object" /> class.</summary>
-        public AutosaveTests() { }
+        public AutosaveNotifications() { }
 
         [SetUp]
-        public void Setup() { Console.SetOut(TestContext.Out); }
+        public void Setup() {
+            Console.SetOut(TestContext.Out);
+        }
 
         [Test]
         public void ClassWithoutInterfacesOrVirtuals() {
@@ -40,9 +45,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
 
                 bool saved = false;
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += destinition => {
-                    saved = true;
-                };
+                o.AfterSave += destinition => { saved = true; };
                 o.property.ShouldBeEquivalentTo(null);
                 Console.WriteLine(File.ReadAllText(rpath));
 
@@ -57,13 +60,38 @@ namespace Nucs.JsonSettings.xTests.Autosave {
         }
 
         [Test]
+        public void Saving_Example() {
+            using (var f = new TempfileLife()) {
+                var rpath = JsonSettings.ResolvePath(f);
+
+                StrongBox<int> saved = new StrongBox<int>(0);
+                var o = JsonSettings.Load<ExampleNotifyingSettings>("observable.jsn").EnableAutosave();
+                saved.Value.Should().Be(0);
+                o.AfterSave += destinition => { saved.Value++; };
+                o.Residents.Add("Cookie Monster"); //Boom! saves.
+                saved.Value.Should().Be(1);
+                o.Residents = new ObservableCollection<string>(); //Boom! saves.
+                saved.Value.Should().Be(2);
+                o.Residents.Add("Cookie Monster"); //Boom! saves.
+                saved.Value.Should().Be(3);
+                o.NonAutosavingProperty = new ObservableCollection<object>(); //doesn't save
+                o.NonAutosavingProperty.Add("Jim"); //doesn't save
+                saved.Value.Should().Be(3);
+                o.Street += "-1"; //Boom! saves.
+                saved.Value.Should().Be(4);
+                o.AutoProperty = "Hello"; //Boom! saves.
+                saved.Value.Should().Be(5);
+                o.IgnoredFromAutosaving = "Hello"; //doesn't save
+                saved.Value.Should().Be(5);
+            }
+        }
+
+        [Test]
         public void IgnoreSavingWhenAbstractPropertyChanges() {
             using (var f = new TempfileLife()) {
                 bool saved = false;
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += destinition => {
-                    saved = true;
-                };
+                o.AfterSave += destinition => { saved = true; };
 
                 o.FileName = "test.jsn";
                 saved.ShouldBeEquivalentTo(false);
@@ -105,7 +133,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             void Method();
         }
 
-        public class InvalidSettings : JsonSettings {
+        public class InvalidSettings : NotifiyingJsonSettings {
             #region Overrides of JsonSettings
 
             /// <summary>
@@ -124,7 +152,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             #endregion
         }
 
-        public class Settings : JsonSettings {
+        public class Settings : NotifiyingJsonSettings {
             #region Overrides of JsonSettings
 
             /// <summary>
@@ -143,7 +171,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             #endregion
         }
 
-        public class InterfacedSettings : JsonSettings, ISettings {
+        public class InterfacedSettings : NotifiyingJsonSettings, ISettings {
             #region Overrides of JsonSettings
 
             /// <summary>
@@ -161,5 +189,52 @@ namespace Nucs.JsonSettings.xTests.Autosave {
 
             #endregion
         }
+    }
+
+    public class ExampleNotifyingSettings : NotifiyingJsonSettings {
+        public override string FileName { get; set; } = "some.default.just.in.case.jsn";
+        private string _street = "Sesamee Street 123";
+        private ObservableCollection<object> _nonAutosavingProperty;
+        private ObservableCollection<string> _residents = new ObservableCollection<string>();
+
+        /// will not autosave because property is not virtual
+        public ObservableCollection<object> NonAutosavingProperty {
+            get => _nonAutosavingProperty;
+            set {
+                if (Equals(value, _nonAutosavingProperty)) return;
+                _nonAutosavingProperty = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public virtual string Street {
+            get => _street;
+            set {
+                if (value == _street) return;
+                _street = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public virtual string AutoProperty { get; set; }
+
+
+        [IgnoreAutosave]
+        public virtual string IgnoredFromAutosaving {
+            get;
+            set;
+        }
+        
+        public virtual ObservableCollection<string> Residents {
+            get => _residents;
+            set {
+                if (Equals(value, _residents)) return;
+                _residents = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ExampleNotifyingSettings() { }
+        public ExampleNotifyingSettings(string fileName) : base(fileName) { }
     }
 }

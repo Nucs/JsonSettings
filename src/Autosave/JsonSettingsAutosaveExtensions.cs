@@ -1,12 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Linq;
-using System.Reflection;
 using Castle.DynamicProxy;
+using Nucs.JsonSettings.Examples;
 
 namespace Nucs.JsonSettings.Autosave {
     public static class JsonSettingsAutosaveExtensions {
-        private static readonly string[] _jsonSettingsAbstractionVirtuals = {"FileName"};
+        internal static readonly string[] _frameworkParameters = {"FileName"};
+        internal static readonly int _frameworkParametersLength = _frameworkParameters.Length;
 
         private static ProxyGenerator _generator;
 
@@ -16,57 +20,59 @@ namespace Nucs.JsonSettings.Autosave {
         /// <typeparam name="TSettings">A settings class implementing <see cref="JsonSettings"/></typeparam>
         /// <param name="settings">The settings class to wrap in a proxy.</param>
         /// <returns></returns>
+        /// <exception cref="JsonSettingsException">When <typeparamref name="TSettings"/> has no virtual properties.</exception>
         public static TSettings EnableAutosave<TSettings>(this TSettings settings) where TSettings : JsonSettings {
             if (settings == null)
                 throw new ArgumentNullException(nameof(settings));
 
-            //if it doesn't contain any virtual methods, notify developer about it.
-            if (!settings.GetType().GetProperties().Where(p => _jsonSettingsAbstractionVirtuals.All(av=>!p.Name.Equals(av))).Any(p => p.GetGetMethod().IsVirtual)) {
-                var msg = $"JsonSettings: During proxy creation of {settings.GetType().Name}, no virtual properties were found which will make Autosaving redundant.";
-                Debug.WriteLine(msg);
-                if (Debugger.IsAttached)
-                    Console.Error.WriteLine(msg);
-                return settings;
-            }
-
-            _generator = _generator ?? new ProxyGenerator();
-            return _generator.CreateClassProxyWithTarget<TSettings>(settings, new JsonSettingsInterceptor((JsonSettings) (object) settings));
+            _generator ??= new ProxyGenerator();
+            return _generator.CreateClassProxyWithTarget<TSettings>(settings, ApplicableInterceptors(settings).ToArray());
         }
 
+        /// <summary>
+        ///     Enables automatic saving when changing any <b>virtual properties</b> returning the interface of <typeparamref name="ISettings"/>.
+        /// </summary>
+        /// <typeparam name="ISettings">An interface, your <see cref="JsonSettings"/> is implementing</typeparam>
+        /// <param name="settings">The settings class to wrap in a proxy.</param>
+        /// <returns>The interface specified which will save on every set</returns>
+        /// <exception cref="JsonSettingsException">When <typeparamref name="TSettings"/> has no virtual properties.</exception>
         public static ISettings EnableIAutosave<ISettings>(this JsonSettings settings) where ISettings : class {
             if (settings == null)
                 throw new ArgumentNullException(nameof(settings));
-            _generator = _generator ?? new ProxyGenerator();
+            _generator ??= new ProxyGenerator();
 
             if (!(settings is ISettings))
                 throw new InvalidCastException($"Settings class '{settings.GetType().FullName}' does not implement interface '{typeof(ISettings).FullName}'");
 
-            return _generator.CreateInterfaceProxyWithTarget<ISettings>((ISettings) (object) settings, new JsonSettingsInterceptor(settings));
+            return _generator.CreateInterfaceProxyWithTarget<ISettings>((ISettings) (object) settings, ApplicableInterceptors(settings).ToArray());
         }
 
-        /// <summary>
-        ///     Intercepts 
-        /// </summary>
-        [Serializable]
-        public class JsonSettingsInterceptor : IInterceptor {
-            private readonly ISavable _settings;
+        public static IEnumerable<IInterceptor> ApplicableInterceptors<TSettings>(this TSettings settings) where TSettings : JsonSettings {
+            var settingsType = settings.GetType();
 
-            public JsonSettingsInterceptor(JsonSettings settings) {
-                _settings = settings;
-                //_filename = filename;
-            }
-
-            public void Intercept(IInvocation invocation) {
-                invocation.Proceed();
-                if (invocation.Method.Name.StartsWith("set_", StringComparison.Ordinal)) {
-                    var propname = invocation.Method.Name.Substring(4);
-                    if (_jsonSettingsAbstractionVirtuals.Any(av => av == propname))
-                        return;
-
-                    //save.
-                    _settings.Save();
+            //if it doesn't contain any virtual methods, throw for the developer to know about it.
+            if (!settingsType.GetProperties()
+                             .Where(p => _frameworkParameters.All(av => !p.Name.Equals(av)))
+                             .Any(p => p.GetGetMethod().IsVirtual)) {
+                var msg = $"JsonSettings: During proxy creation of {settingsType.Name}, no virtual properties were found which will make Autosaving redundant.";
+                try {
+                    Debug.WriteLine(msg);
+                    if (Debugger.IsAttached)
+                        Console.Error.WriteLine(msg);
+                } catch (Exception) {
+                    //swallow
                 }
+
+                throw new JsonSettingsException(msg);
             }
+
+            IInterceptor interceptor;
+            if (settings is NotifiyingJsonSettings notifiying)
+                interceptor = new JsonSettingsAutosaveNotificationInterceptor(settings, new NotificationBinder(notifiying));
+            else
+                interceptor = new JsonSettingsAutosaveInterceptor(settings);
+
+            yield return interceptor;
         }
     }
 }
