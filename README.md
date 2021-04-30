@@ -3,13 +3,9 @@
 [![NuGet](https://img.shields.io/nuget/dt/Nucs.JsonSettings.svg)](https://github.com/Nucs/JsonSettings)
 [![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
 
-Easiest way you'll ever write settings for your app.
-* Modular
-* One Liner
-* Abstract
 Easiest way you'll ever write settings for your app. 
 The library is built to be Modular and One Liner exploiting the powerful
-serialization that [Json.NET](https://www.newtonsoft.com/json/help/html/SerializationGuide.htm) provides
+serialization capabilities of [Json.NET](https://www.newtonsoft.com/json/help/html/SerializationGuide.htm)
 out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.
 ### Install
 ```
