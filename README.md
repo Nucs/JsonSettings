@@ -20,7 +20,6 @@ Test project: https://github.com/Nucs/JsonSettings/tree/master/tests/nucs.JsonSe
 Blog Posts: http://blog.elibelash.com/2017/10/settings-file-in-your-project.html </br>
 Serialization Guide: https://www.newtonsoft.com/json/help/html/SerializationGuide.htm </br>
 
-JsonSettings is the base abstract class that inherits ISavable.<br>
 JsonSettings is the base abstract class that inherits ISavable. <br>
 Here is a self explanatory quicky of to how and what:
 
@@ -37,7 +36,6 @@ class MySettings : JsonSettings {
 
     public string SomeProperty { get; set; }
     public Dictionary<string, object> Dictionary { get; set; } = new Dictionary<string, object>();
-    public ArrayOfMyObject[] Dictionary { get; set; } = new Dictionary<string, object>();
     public int SomeNumberWithDefaultValue { get; set; } = 1;
     [JsonIgnore] public char ImIgnoredAndIWontBeSaved { get; set; }
     
