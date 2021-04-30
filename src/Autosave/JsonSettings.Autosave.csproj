@@ -39,10 +39,18 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="Castle.Core" Version="4.4.1" />
-    <PackageReference Include="SimpleWeakEventListener" Version="1.1.0" />
-    <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3">
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+    <PackageReference Include="Castle.Core" Version="4.4.1">
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+    <PackageReference Include="SimpleWeakEventListener" Version="1.1.0">
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+    <PackageReference Include="System.Security.SecureString" Version="4.3.0">
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
   </ItemGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
