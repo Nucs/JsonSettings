@@ -40,7 +40,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
 
                 bool saved = false;
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += destinition => {
+                o.AfterSave += (s, destinition) => {
                     saved = true;
                 };
                 o.property.ShouldBeEquivalentTo(null);
@@ -61,7 +61,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             using (var f = new TempfileLife()) {
                 bool saved = false;
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += destinition => {
+                o.AfterSave += (s, destinition) => {
                     saved = true;
                 };
 

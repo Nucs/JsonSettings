@@ -16,31 +16,31 @@ using Module = Nucs.JsonSettings.Modulation.Module;
 namespace Nucs.JsonSettings {
     #region Delegates
 
-    public delegate void BeforeLoadHandler(ref string destinition);
+    public delegate void BeforeLoadHandler(JsonSettings sender, ref string destinition);
 
-    public delegate void DecryptHandler(ref byte[] data);
+    public delegate void DecryptHandler(JsonSettings sender, ref byte[] data);
 
-    public delegate void AfterDecryptHandler(ref byte[] data);
+    public delegate void AfterDecryptHandler(JsonSettings sender, ref byte[] data);
 
-    public delegate void BeforeDeserializeHandler(ref string data);
+    public delegate void BeforeDeserializeHandler(JsonSettings sender, ref string data);
 
-    public delegate void AfterDeserializeHandler();
+    public delegate void AfterDeserializeHandler(JsonSettings sender);
 
-    public delegate void AfterLoadHandler();
+    public delegate void AfterLoadHandler(JsonSettings settings);
 
-    public delegate void BeforeSaveHandler(ref string destinition);
+    public delegate void BeforeSaveHandler(JsonSettings sender, ref string destinition);
 
-    public delegate void BeforeSerializeHandler();
+    public delegate void BeforeSerializeHandler(JsonSettings sender);
 
-    public delegate void AfterSerializeHandler(ref string data);
+    public delegate void AfterSerializeHandler(JsonSettings sender, ref string data);
 
-    public delegate void EncryptHandler(ref byte[] data);
+    public delegate void EncryptHandler(JsonSettings sender, ref byte[] data);
 
-    public delegate void AfterEncryptHandler(ref byte[] data);
+    public delegate void AfterEncryptHandler(JsonSettings sender, ref byte[] data);
 
-    public delegate void AfterSaveHandler(string destinition);
+    public delegate void AfterSaveHandler(JsonSettings sender, string destinition);
 
-    public delegate void ConfigurateHandler();
+    public delegate void ConfigurateHandler(JsonSettings sender);
 
     #endregion
 
@@ -323,7 +323,7 @@ namespace Nucs.JsonSettings {
                 if (instream is MemoryStream stream)
                     return stream.ToArray();
 
-                using (var memoryStream = new MemoryStream()) {
+                using (var memoryStream = new MemoryStream((int) instream.Length)) {
                     instream.CopyTo(memoryStream);
                     return memoryStream.ToArray();
                 }
@@ -349,7 +349,7 @@ namespace Nucs.JsonSettings {
                     o.OnAfterDecrypt(ref bytes);
 
                     var fc = Encoding.GetString(bytes);
-                    if (string.IsNullOrEmpty((fc ?? "").Replace("\r", "").Replace("\n", "").Trim()))
+                    if (string.IsNullOrEmpty(fc) || string.IsNullOrEmpty(fc.Replace("\r", "").Replace("\n", "").Trim()))
                         if (o.ThrowOnEmptyFile)
                             throw new JsonSettingsException("The settings file is empty!");
                         else
@@ -463,13 +463,12 @@ namespace Nucs.JsonSettings {
         #region Events
 
         #region Inheritable Events
-
-        public event BeforeLoadHandler BeforeLoad;
-
         private event DecryptHandler _decrypt;
 
+        public virtual event BeforeLoadHandler BeforeLoad;
+
         //reverse insert
-        public event DecryptHandler Decrypt {
+        public virtual event DecryptHandler Decrypt {
             add => this._decrypt = value + _decrypt;
             remove => this._decrypt -= value;
         }
@@ -507,7 +506,7 @@ namespace Nucs.JsonSettings {
             if (_hasconfigured)
                 throw new InvalidOperationException("Can't run configure twice!");
             _hasconfigured = true;
-            Configurate?.Invoke();
+            Configurate?.Invoke(this);
         }
 
         protected internal void EnsureConfigured() {
@@ -516,29 +515,29 @@ namespace Nucs.JsonSettings {
             OnConfigure();
         }
 
-        internal virtual void OnBeforeLoad(ref string destinition) { BeforeLoad?.Invoke(ref destinition); }
+        internal virtual void OnBeforeLoad(ref string destinition) { BeforeLoad?.Invoke(this, ref destinition); }
 
-        public virtual void OnDecrypt(ref byte[] data) { _decrypt?.Invoke(ref data); }
+        public virtual void OnDecrypt(ref byte[] data) { _decrypt?.Invoke(this, ref data); }
 
-        internal virtual void OnAfterDecrypt(ref byte[] data) { AfterDecrypt?.Invoke(ref data); }
+        internal virtual void OnAfterDecrypt(ref byte[] data) { AfterDecrypt?.Invoke(this, ref data); }
 
-        internal virtual void OnBeforeDeserialize(ref string data) { BeforeDeserialize?.Invoke(ref data); }
+        internal virtual void OnBeforeDeserialize(ref string data) { BeforeDeserialize?.Invoke(this, ref data); }
 
-        internal virtual void OnAfterDeserialize() { AfterDeserialize?.Invoke(); }
+        internal virtual void OnAfterDeserialize() { AfterDeserialize?.Invoke(this); }
 
-        internal virtual void OnAfterLoad() { AfterLoad?.Invoke(); }
+        internal virtual void OnAfterLoad() { AfterLoad?.Invoke(this); }
 
-        internal virtual void OnBeforeSave(ref string destinition) { BeforeSave?.Invoke(ref destinition); }
+        internal virtual void OnBeforeSave(ref string destinition) { BeforeSave?.Invoke(this, ref destinition); }
 
-        internal virtual void OnBeforeSerialize() { BeforeSerialize?.Invoke(); }
+        internal virtual void OnBeforeSerialize() { BeforeSerialize?.Invoke(this); }
 
-        internal virtual void OnAfterSerialize(ref string data) { AfterSerialize?.Invoke(ref data); }
+        internal virtual void OnAfterSerialize(ref string data) { AfterSerialize?.Invoke(this, ref data); }
 
-        public virtual void OnEncrypt(ref byte[] data) { Encrypt?.Invoke(ref data); }
+        public virtual void OnEncrypt(ref byte[] data) { Encrypt?.Invoke(this, ref data); }
 
-        internal virtual void OnAfterEncrypt(ref byte[] data) { AfterEncrypt?.Invoke(ref data); }
+        internal virtual void OnAfterEncrypt(ref byte[] data) { AfterEncrypt?.Invoke(this, ref data); }
 
-        internal virtual void OnAfterSave(string destinition) { AfterSave?.Invoke(destinition); }
+        internal virtual void OnAfterSave(string destinition) { AfterSave?.Invoke(this, destinition); }
 
         #endregion
 
@@ -551,13 +550,19 @@ namespace Nucs.JsonSettings {
             }
         }
 
-        private bool _isdisposed = false;
+        #region IDisposable
+
+        protected virtual void Dispose(bool disposing) {
+            if (disposing) {
+                Modulation?.Dispose();
+            }
+        }
 
         public void Dispose() {
-            if (_isdisposed)
-                return;
-            _isdisposed = true;
-            Modulation.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
+
+        #endregion
     }
 }

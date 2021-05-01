@@ -9,6 +9,7 @@ namespace Nucs.JsonSettings.Modulation {
     public abstract class Module : IDisposable {
         internal bool _isattached = false;
         private JsonSettings _socket = null;
+
         public virtual void Attach(JsonSettings socket) {
             if (_isattached) throw new ModularityException("The module is already attached.");
             _isattached = true;
@@ -16,7 +17,7 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         public virtual void Deattach(JsonSettings socket) {
-            if (_socket==null) throw new ModularityException("The module is not attached.");
+            if (_socket == null) throw new ModularityException("The module is not attached.");
             _socket = null;
         }
 

@@ -45,7 +45,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
 
                 bool saved = false;
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += destinition => { saved = true; };
+                o.AfterSave += (s, destinition) => { saved = true; };
                 o.property.ShouldBeEquivalentTo(null);
                 Console.WriteLine(File.ReadAllText(rpath));
 
@@ -67,7 +67,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
                 StrongBox<int> saved = new StrongBox<int>(0);
                 var o = JsonSettings.Load<ExampleNotifyingSettings>("observable.jsn").EnableAutosave();
                 saved.Value.Should().Be(0);
-                o.AfterSave += destinition => { saved.Value++; };
+                o.AfterSave += (s, destinition) => { saved.Value++; };
                 o.Residents.Add("Cookie Monster"); //Boom! saves.
                 saved.Value.Should().Be(1);
                 o.Residents = new ObservableCollection<string>(); //Boom! saves.
@@ -91,7 +91,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             using (var f = new TempfileLife()) {
                 bool saved = false;
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += destinition => { saved = true; };
+                o.AfterSave += (s, destinition) => { saved = true; };
 
                 o.FileName = "test.jsn";
                 saved.ShouldBeEquivalentTo(false);

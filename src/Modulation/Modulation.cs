@@ -9,6 +9,8 @@ namespace Nucs.JsonSettings.Modulation {
     /// </summary>
     public class ModuleSocket : ISocket, IDisposable {
         private JsonSettings _settings { get; set; }
+        
+        protected readonly List<Module> _modules = new List<Module>();
 
         public ModuleSocket(JsonSettings settings) {
             _settings = settings;
@@ -33,7 +35,6 @@ namespace Nucs.JsonSettings.Modulation {
             return IsAttached(m => m.GetType() == t);
         }
 
-        protected readonly List<Module> _modules = new List<Module>();
 
         public void Attach(Module t) {
             if (_isdisposed)

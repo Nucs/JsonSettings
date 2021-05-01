@@ -51,9 +51,9 @@ namespace Nucs.JsonSettings.Modulation {
             socket.Decrypt -= _Decrypt;
         }
 
-        protected void _Encrypt(ref byte[] data) { data = Rijndael.Encrypt(data, Password.ToRawString(), Rng.GenerateRandomBytes(Rijndael.InitializationVectorSize), KeySize); }
+        protected void _Encrypt(JsonSettings sender, ref byte[] data) { data = Rijndael.Encrypt(data, Password.ToRawString(), Rng.GenerateRandomBytes(Rijndael.InitializationVectorSize), KeySize); }
 
-        protected void _Decrypt(ref byte[] data) {
+        protected void _Decrypt(JsonSettings sender, ref byte[] data) {
             try {
                 data = Rijndael.DecryptBytes(data, Password.ToRawString(), KeySize);
             } catch (CryptographicException inner) {
