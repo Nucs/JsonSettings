@@ -4,17 +4,16 @@
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <AssemblyVersion>2.0.0.3</AssemblyVersion>
     <FileVersion>2.0.0.3</FileVersion>
-    <Version>1.0.0</Version>
+    <Version>2.0.0.3</Version>
     <Authors>Nucs / Eli Belash</Authors>
-    <Company>Eli Belash</Company>
-	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
-Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summary>
+    <Company>Nucs / Eli Belash</Company>
+	  <Summary>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
     <PackageIconUrl>https://i.imgur.com/BOExs52.png</PackageIconUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy.</Description>
+    <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Description>
     <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>

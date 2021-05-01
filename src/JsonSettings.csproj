@@ -4,9 +4,9 @@
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <AssemblyVersion>2.0.0.3</AssemblyVersion>
     <FileVersion>2.0.0.3</FileVersion>
-    <Version>1.0.7</Version>
+    <Version>2.0.0.3</Version>
     <Authors>Nucs / Eli Belash</Authors>
-    <Company>Eli Belash</Company>
+    <Company>Nucs / Eli Belash</Company>
 	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
 Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summary>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -14,7 +14,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
     <PackageIconUrl>https://i.imgur.com/BOExs52.png</PackageIconUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Description>Easiest way you'll ever write settings for your app. The library is built to be Modular and One Liner exploiting the powerful serialization capabilities of Json.NET out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.</Description>
+    <Description>Easiest way you'll ever write settings for your app. This library is built to be modular and one-liner exploiting the powerful serialization capabilities of Json.NET out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.</Description>
     <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
