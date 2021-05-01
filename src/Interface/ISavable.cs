@@ -1,3 +1,6 @@
+using System;
+using Newtonsoft.Json;
+
 namespace Nucs.JsonSettings {
     public interface ISavable {
         /// <summary>
@@ -27,6 +30,30 @@ namespace Nucs.JsonSettings {
         /// <param name="filename">The path to the file inwhich to load, relative pathing allowed to current executing file.</param>
         void Load(string filename);
 
+        /// <summary>
+        ///     Populate the data in this object from a newly created copy of <see cref="object.GetType"/>.
+        /// </summary>
+        /// <remarks>Triggers <see cref="AfterLoad"/></remarks>
+        void LoadDefault(params object[] args);
+
+        /// <summary>
+        ///     Populate the data in this object from a newly created copy of type <typeparamref name="T"/>.
+        /// </summary>
+        /// <remarks>Triggers <see cref="AfterLoad"/></remarks>
+        void LoadDefault<T>(params object[] args) where T : ISavable;
+
+        /// <summary>
+        ///     Populate this object with given <paramref name="json"/>.<br/>
+        /// </summary>
+        /// <param name="json">The json, specifying only the properties to change. Unspecified will be left untouched.</param>
+        /// <param name="settings"></param>
+        public void LoadJson(string json, JsonSerializerSettings? settings = null);
+
+        /// <summary>
+        ///     Serializes this object to json.
+        /// </summary>
+        public string ToJson(Formatting formatting, JsonSerializerSettings? settings = null, Type? serializeAsType = null);
+        
         #region Loading
 
         /// <summary>
@@ -34,11 +61,13 @@ namespace Nucs.JsonSettings {
         ///     FileInfo can be modified now.
         /// </summary>
         event BeforeLoadHandler BeforeLoad;
+
         /// <summary>
         ///     Called during loading right after <see cref="BeforeLoad"/> to decrypt the readed bytes, if <see cref="Encrypt"/> is not implemented - no reason to perform decryption.
         /// </summary>
         /// <param name="data">The data that was read from the file.</param>
         event DecryptHandler Decrypt;
+
         /// <summary>
         ///     Called after <see cref="Decrypt"/>.
         /// </summary>
@@ -60,6 +89,7 @@ namespace Nucs.JsonSettings {
         ///     Invoked at the end of the loading progress.
         /// </summary>
         event AfterLoadHandler AfterLoad;
+
         #endregion
 
         #region Saving
@@ -72,7 +102,7 @@ namespace Nucs.JsonSettings {
         event BeforeSerializeHandler BeforeSerialize;
 
         event AfterSerializeHandler AfterSerialize;
-        
+
         /// <summary>
         ///     After serializing, encryption can be applied now.
         /// </summary>

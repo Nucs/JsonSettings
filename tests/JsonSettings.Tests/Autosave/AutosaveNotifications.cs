@@ -65,7 +65,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
                 var rpath = JsonSettings.ResolvePath(f);
 
                 StrongBox<int> saved = new StrongBox<int>(0);
-                var o = JsonSettings.Load<ExampleNotifyingSettings>("observable.jsn").EnableAutosave();
+                var o = JsonSettings.Load<ExampleNotifyingSettings>(f).EnableAutosave();
                 saved.Value.Should().Be(0);
                 o.AfterSave += (s, destinition) => { saved.Value++; };
                 o.Residents.Add("Cookie Monster"); //Boom! saves.

@@ -5,8 +5,9 @@
     <ApplicationIcon />
     <OutputType>Library</OutputType>
     <StartupObject />
-    <RootNamespace>nucs.JsonSettings.xTests</RootNamespace>
+    <RootNamespace>Nucs.JsonSettings.xTests</RootNamespace>
     <TargetFramework>net48</TargetFramework>
+    <LangVersion>8</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

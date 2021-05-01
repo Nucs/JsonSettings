@@ -14,31 +14,22 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
     <PackageIconUrl>https://i.imgur.com/BOExs52.png</PackageIconUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Description>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
-Encrypt, Encode and have full control over hardcoded / dynamic settings.</Description>
+    <Description>Easiest way you'll ever write settings for your app. The library is built to be Modular and One Liner exploiting the powerful serialization capabilities of Json.NET out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.</Description>
     <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
     <Copyright>Eli Belash @ 2021</Copyright>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <RootNamespace>nucs.JsonSettings</RootNamespace>
+    <RootNamespace>Nucs.JsonSettings</RootNamespace>
     <PackageId>nucs.JsonSettings</PackageId>
     <PackageVersion>2.0.0-alpha3</PackageVersion>
     <Title>Nucs.JsonSettings</Title>
-    <PackageReleaseNotes>- Upgraded to .NETCore project type
-- Target changed to .NET Standard 2.0
-- Root namespace renamed to Nucs.</PackageReleaseNotes>
-    <LangVersion>8</LangVersion>
+    <PackageReleaseNotes>- Added VersioningModule and .WithVersioning to enforce version change
+- JsonSettings/ISavable: added .LoadDefault, virtual LoadJson, virtual ToJson
+- All module events now additionally pass 'JsonSettings sender'</PackageReleaseNotes>
+    <LangVersion>9</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">
-    <DefineConstants>TRACE;RELEASE;</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard1.6|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <Compile Remove="Autosave\**" />
     <EmbeddedResource Remove="Autosave\**" />
@@ -48,50 +39,6 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Descri
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
-  </ItemGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
-    <DefineConstants>$(DefineConstants);NETSTANDARD2_0;</DefineConstants>
-  </PropertyGroup>
-
-
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' OR '$(TargetFramework)' == 'netcoreapp2.0'  Or '$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);NETCORE;</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' OR '$(TargetFramework)' == 'netcoreapp2.0'  Or '$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);CROSSPLATFORM;</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net45' Or '$(TargetFramework)' == 'net461' Or '$(TargetFramework)' == 'net4' Or '$(TargetFramework)' == 'net47'  Or '$(TargetFramework)' == 'net35'  Or '$(TargetFramework)' == 'net452'  Or '$(TargetFramework)' == 'net451'  Or '$(TargetFramework)' == 'net403'  Or '$(TargetFramework)' == 'net40'  Or '$(TargetFramework)' == 'net20' Or '$(TargetFramework)' == 'net11'">
-    <DefineConstants>$(DefineConstants);WINDOWS;</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net45' Or '$(TargetFramework)' == 'net461' Or '$(TargetFramework)' == 'net4' Or '$(TargetFramework)' == 'net47'  Or '$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);NET;</DefineConstants>
-  </PropertyGroup>
-
-  
-  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net4'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net47'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
-
   </ItemGroup>
 
 </Project>

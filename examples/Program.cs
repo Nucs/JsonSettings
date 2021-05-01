@@ -12,6 +12,7 @@ namespace Nucs.JsonSettings.Examples {
             //EncryptedSettingsBagProgram.Run(args);
             //ComplexObjectsProgram.Run(args);
             //INotifyPropertyChangedExample.Run(args);
+            //Versioning.Run(args);
         }
     }
 }

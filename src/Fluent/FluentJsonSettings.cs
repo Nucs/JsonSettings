@@ -142,5 +142,25 @@ namespace Nucs.JsonSettings.Fluent {
             _instance.Load();
             return _instance;
         }
+        
+        /// <summary>
+        ///     VersioningModule used to enforce a policy and take <see cref="VersioningResultAction"/> when the policy
+        ///     detects an invalid version. A policy is a <see cref="VersioningPolicyHandler"/> comparer between two <see cref="Version"/>.
+        /// </summary>
+        /// <typeparam name="T">The settings type inheriting <see cref="IVersionable"/></typeparam>
+        public static T WithVersioning<T>(this T _instance, Version expectedVersion, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null) 
+            where T : JsonSettings, IVersionable {
+            return _instance.WithModule<T, VersioningModule<T>>(invalidAction, expectedVersion, policy ?? VersioningModule<T>.DefaultPolicy);
+        }
+
+        /// <summary>
+        ///     VersioningModule used to enforce a policy and take <see cref="VersioningResultAction"/> when the policy
+        ///     detects an invalid version. A policy is a <see cref="VersioningPolicyHandler"/> comparer between two <see cref="Version"/>.
+        /// </summary>
+        /// <typeparam name="T">The settings type inheriting <see cref="IVersionable"/></typeparam>
+        public static T WithVersioning<T>(this T _instance, string expectedVersion, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null) 
+            where T : JsonSettings, IVersionable {
+            return _instance.WithModule<T, VersioningModule<T>>(invalidAction, Version.Parse(expectedVersion), policy ?? VersioningModule<T>.DefaultPolicy);
+        }
     }
 }

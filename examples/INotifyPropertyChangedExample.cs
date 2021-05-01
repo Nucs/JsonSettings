@@ -17,7 +17,6 @@ namespace Nucs.JsonSettings.Examples {
         private static NotifyingSettings Settings { get; set; }
 
         public static void Run(string[] args) {
-            //simple app to open a file by command and browse to a new file on demand.
             Settings = JsonSettings.Load<NotifyingSettings>("observable.jsn").EnableAutosave();
             Settings.Residents.Add("Cookie Monster"); //Boom! saves.
             Settings.Residents = new ObservableCollection<string>(); //Boom! saves.
