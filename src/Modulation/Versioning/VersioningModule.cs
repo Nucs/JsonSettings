@@ -24,10 +24,16 @@ namespace Nucs.JsonSettings.Modulation {
     /// </summary>
     /// <typeparam name="T">The settings type inheriting <see cref="IVersionable"/></typeparam>
     public class VersioningModule<T> : Module where T : JsonSettings, IVersionable {
+        // ReSharper disable once StaticMemberInGenericType
+        private static VersioningPolicyHandler? _defaultPolicy;
+
         /// <summary>
         ///     The default policy used when specifying null
         /// </summary>
-        public static VersioningPolicyHandler DefaultPolicy => VersioningModule.DefaultPolicy;
+        public static VersioningPolicyHandler DefaultPolicy {
+            get => _defaultPolicy ?? VersioningModule.DefaultPolicy;
+            set => _defaultPolicy = value;
+        }
 
         public VersioningResultAction InvalidAction { get; }
         public Version ExpectedVersion { get; set; }
