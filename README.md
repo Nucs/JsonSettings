@@ -1,5 +1,5 @@
 # JsonSettings
-[![Nuget downloads](https://img.shields.io/nuget/v/Nucs.JsonSettings.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
+[![Nuget downloads](https://img.shields.io/nuget/vpre/Nucs.JsonSettings.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![NuGet](https://img.shields.io/nuget/dt/Nucs.JsonSettings.svg)](https://github.com/Nucs/JsonSettings)
 [![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
 
