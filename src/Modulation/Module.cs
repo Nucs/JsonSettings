@@ -8,23 +8,27 @@ namespace Nucs.JsonSettings.Modulation {
     /// </summary>
     public abstract class Module : IDisposable {
         internal bool _isattached = false;
-        private JsonSettings _socket = null;
+        /// <summary>
+        ///     The socket this Module is attached to. This is set when calling <see cref="Attach"/>
+        /// </summary>
+        protected WeakReference<JsonSettings> Socket { get; private set; }
 
         public virtual void Attach(JsonSettings socket) {
+            if (socket == null) throw new ArgumentNullException(nameof(socket));
             if (_isattached) throw new ModularityException("The module is already attached.");
+            Socket = new WeakReference<JsonSettings>(socket);
             _isattached = true;
-            _socket = socket;
         }
 
         public virtual void Deattach(JsonSettings socket) {
-            if (_socket == null) throw new ModularityException("The module is not attached.");
-            _socket = null;
+            if (Socket == null) throw new ModularityException("The module is not attached.");
+            Socket = null;
         }
 
         public void Dispose() {
             try {
-                if (_socket != null)
-                    Deattach(_socket);
+                if (Socket != null && Socket.TryGetTarget(out var target))
+                    Deattach(target);
             } catch { }
         }
     }
