@@ -4,15 +4,25 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Castle.DynamicProxy;
 using Nucs.JsonSettings.Examples;
+using BindingFlags = System.Reflection.BindingFlags;
 
 namespace Nucs.JsonSettings.Autosave {
     public static class JsonSettingsAutosaveExtensions {
-        internal static readonly string[] _frameworkParameters = {"FileName"};
+        internal static readonly string[] _frameworkParameters = {nameof(JsonSettings.FileName), nameof(JsonSettings.Modulation)};
         internal static readonly int _frameworkParametersLength = _frameworkParameters.Length;
+        // ReSharper disable once FieldCanBeMadeReadOnly.Global
+        public static ProxyGenerationOptions Options;
 
         private static ProxyGenerator _generator;
+
+        static JsonSettingsAutosaveExtensions() {
+            Options = new ProxyGenerationOptions();
+            Options.AdditionalAttributes.Add(new CustomAttributeInfo(typeof(ProxyGeneratedAttribute).GetConstructor(Array.Empty<Type>()), Array.Empty<object>()));
+        }
 
         /// <summary>
         ///     Enables automatic saving when changing any <b>virtual properties</b>.
@@ -26,7 +36,7 @@ namespace Nucs.JsonSettings.Autosave {
                 throw new ArgumentNullException(nameof(settings));
 
             _generator ??= new ProxyGenerator();
-            return _generator.CreateClassProxyWithTarget<TSettings>(settings, ApplicableInterceptors(settings).ToArray());
+            return _generator.CreateClassProxyWithTarget<TSettings>(settings, Options ?? ProxyGenerationOptions.Default, ApplicableInterceptors(settings).ToArray());
         }
 
         /// <summary>
@@ -44,7 +54,7 @@ namespace Nucs.JsonSettings.Autosave {
             if (!(settings is ISettings))
                 throw new InvalidCastException($"Settings class '{settings.GetType().FullName}' does not implement interface '{typeof(ISettings).FullName}'");
 
-            return _generator.CreateInterfaceProxyWithTarget<ISettings>((ISettings) (object) settings, ApplicableInterceptors(settings).ToArray());
+            return _generator.CreateInterfaceProxyWithTarget<ISettings>((ISettings) (object) settings, Options ?? ProxyGenerationOptions.Default, ApplicableInterceptors(settings).ToArray());
         }
 
         public static IEnumerable<IInterceptor> ApplicableInterceptors<TSettings>(this TSettings settings) where TSettings : JsonSettings {
@@ -73,6 +83,15 @@ namespace Nucs.JsonSettings.Autosave {
                 interceptor = new JsonSettingsAutosaveInterceptor(settings);
 
             yield return interceptor;
+        }
+
+        /// <summary>
+        ///     Suspends auto-saving until SuspendAutosave.Dispose or SuspendAutosave.Resume are called.<br/>
+        ///     If changes are introduced while suspension then a save will be commited and resume or disposal.
+        /// </summary>
+        /// <returns>A suspend state tracker that can be Disposed for a using block</returns>
+        public static SuspendAutosave SuspendAutosave<TSettings>(this TSettings settings) where TSettings : JsonSettings {
+            return settings.Modulation.GetModule<AutosaveModule>().SuspendAutosave();
         }
     }
 }

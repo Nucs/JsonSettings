@@ -11,7 +11,7 @@ namespace Nucs.JsonSettings.Modulation {
         /// <summary>
         ///     The socket this Module is attached to. This is set when calling <see cref="Attach"/>
         /// </summary>
-        protected WeakReference<JsonSettings> Socket { get; private set; }
+        protected WeakReference<JsonSettings>? Socket { get; private set; }
 
         public virtual void Attach(JsonSettings socket) {
             if (socket == null) throw new ArgumentNullException(nameof(socket));
@@ -25,11 +25,24 @@ namespace Nucs.JsonSettings.Modulation {
             Socket = null;
         }
 
-        public void Dispose() {
-            try {
-                if (Socket != null && Socket.TryGetTarget(out var target))
-                    Deattach(target);
-            } catch { }
+        #region IDisposable
+
+        protected virtual void Dispose(bool disposing) {
+            if (disposing) {
+                try {
+                    if (Socket != null && Socket.TryGetTarget(out var target))
+                        Deattach(target);
+                } catch (Exception) {
+                    //swallow
+                }
+            }
         }
+
+        public void Dispose() {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        #endregion
     }
 }

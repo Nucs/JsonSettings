@@ -12,7 +12,7 @@ namespace Nucs.JsonSettings.Autosave {
     [Serializable]
     public class JsonSettingsAutosaveNotificationInterceptor : IInterceptor, IDisposable {
         private readonly JsonSettings _settings;
-        private readonly NotificationBinder _notificationsHandler;
+        private AutosaveModule _module;
 
         public JsonSettingsAutosaveNotificationInterceptor(JsonSettings settings) {
             _settings = settings;
@@ -20,7 +20,8 @@ namespace Nucs.JsonSettings.Autosave {
 
         public JsonSettingsAutosaveNotificationInterceptor(JsonSettings settings, NotificationBinder notificationsHandler) {
             _settings = settings;
-            _notificationsHandler = notificationsHandler;
+            _settings.Modulation.Attach(_module = new AutosaveModule());
+            _module.NotificationsHandler = notificationsHandler;
         }
 
         [MethodImpl(512)]
@@ -28,13 +29,13 @@ namespace Nucs.JsonSettings.Autosave {
             invocation.Proceed();
 
             //handle saving if it was a setter, not INotifyPropertyChanged/INotifyCollectionChanged and has CompilerGeneratedAttribute
-            if (invocation.Method.ReturnType == typeof(void) && invocation.Arguments.Length > 0 && invocation.Method.Name.StartsWith("set_", StringComparison.Ordinal)) {
+            if (_module.AutosavingState != AutosavingState.SuspendedChanged && invocation.Method.ReturnType == typeof(void) && invocation.Arguments.Length > 0 && invocation.Method.Name.StartsWith("set_", StringComparison.Ordinal)) {
                 var valueType = invocation.Arguments[0].GetType();
                 if (typeof(INotifyPropertyChanged).IsAssignableFrom(valueType) != true
                     && typeof(INotifyCollectionChanged).IsAssignableFrom(valueType) != true
                     && invocation.MethodInvocationTarget.IsDefined(typeof(CompilerGeneratedAttribute), false)) {
                     var propName = invocation.Method.Name.Substring(4);
-                    if (!_notificationsHandler.CanHandleProperty(propName))
+                    if (!_module.NotificationsHandler.CanHandleProperty(propName))
                         return;
                     
                     for (var i = 0; i < JsonSettingsAutosaveExtensions._frameworkParametersLength; i++) {
@@ -42,7 +43,10 @@ namespace Nucs.JsonSettings.Autosave {
                     }
 
                     //save.
-                    _settings.Save();
+                    if (_module.UpdatesSuspended) {
+                        _module.AutosavingState = AutosavingState.SuspendedChanged;
+                    } else
+                        _settings.Save();
                 }
             }
         }
@@ -50,7 +54,7 @@ namespace Nucs.JsonSettings.Autosave {
         #region IDisposable
 
         public void Dispose() {
-            _notificationsHandler.Dispose();
+            _module.Dispose();
         }
 
         #endregion

@@ -63,35 +63,35 @@ namespace Nucs.JsonSettings {
         ///     Invoked after path has been resolved and before reading. <br></br>
         ///     FileInfo can be modified now.
         /// </summary>
-        event BeforeLoadHandler BeforeLoad;
+        event BeforeLoadHandler? BeforeLoad;
 
         /// <summary>
         ///     Called during loading right after <see cref="BeforeLoad"/> to decrypt the readed bytes, if <see cref="Encrypt"/> is not implemented - no reason to perform decryption.
         /// </summary>
         /// <param name="data">The data that was read from the file.</param>
-        event DecryptHandler Decrypt;
+        event DecryptHandler? Decrypt;
 
         /// <summary>
         ///     Called after <see cref="Decrypt"/>.
         /// </summary>
         /// <param name="data"></param>
-        event AfterDecryptHandler AfterDecrypt;
+        event AfterDecryptHandler? AfterDecrypt;
 
         /// <summary>
         ///     Invoked after file was read and decrypted successfully right before deserializing into an object.
         /// </summary>
-        event BeforeDeserializeHandler BeforeDeserialize;
+        event BeforeDeserializeHandler? BeforeDeserialize;
 
         /// <summary>
         ///     Invoked after deserialization of <see cref="this"/> was successful.
         /// </summary>
-        event AfterDeserializeHandler AfterDeserialize;
+        event AfterDeserializeHandler? AfterDeserialize;
 
 
         /// <summary>
         ///     Invoked at the end of the loading progress.
         /// </summary>
-        event AfterLoadHandler AfterLoad;
+        event AfterLoadHandler? AfterLoad;
 
         #endregion
 
@@ -100,26 +100,26 @@ namespace Nucs.JsonSettings {
         /// <summary>
         ///     Invoked before saving this object.
         /// </summary>
-        event BeforeSaveHandler BeforeSave;
+        event BeforeSaveHandler? BeforeSave;
 
-        event BeforeSerializeHandler BeforeSerialize;
+        event BeforeSerializeHandler? BeforeSerialize;
 
-        event AfterSerializeHandler AfterSerialize;
+        event AfterSerializeHandler? AfterSerialize;
 
         /// <summary>
         ///     After serializing, encryption can be applied now.
         /// </summary>
-        event EncryptHandler Encrypt;
+        event EncryptHandler? Encrypt;
 
         /// <summary>
         ///     After encryption successful.
         /// </summary>
-        event AfterEncryptHandler AfterEncrypt;
+        event AfterEncryptHandler? AfterEncrypt;
 
         /// <summary>
         ///     Invoked after saving this object.
         /// </summary>
-        event AfterSaveHandler AfterSave;
+        event AfterSaveHandler? AfterSave;
 
         #endregion
     }

@@ -8,6 +8,7 @@ using System.Runtime.Serialization.Formatters;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Inline;
 using Nucs.JsonSettings.Modulation;
@@ -71,7 +72,7 @@ namespace Nucs.JsonSettings {
         ///     Modulation Manager, handles everything related to modules in this instance.
         /// </summary>
         [JsonIgnore]
-        public ModuleSocket Modulation { get; }
+        public virtual ModuleSocket Modulation { get; }
 
         #endregion
 
@@ -79,24 +80,32 @@ namespace Nucs.JsonSettings {
         ///     If this property is set, this will be used instead of the static <see cref="SerializationSettings"/>.<br></br>
         ///     Note: this property must be set during construction or as property's default value.
         /// </summary>
+        [JsonIgnore]
         protected virtual JsonSerializerSettings? OverrideSerializerSettings { get; set; }
 
         /// <summary>
         ///     Defines how should <see cref="Load()"/> handle empty .json files, by default - false - do not throw.
         ///     Note: this property must be set during construction or as property's default value.
         /// </summary>
+        [JsonIgnore]
         protected virtual bool ThrowOnEmptyFile { get; set; } = false;
 
-        protected JsonSettings() {
-            Modulation = new ModuleSocket(this);
-            _childtype = GetType();
-            if (!_childtype.HasDefaultConstructor())
-                throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
-        }
+        #pragma warning disable 8618
+        protected JsonSettings() : this(null!) { }
 
-        protected JsonSettings(string fileName) : this() {
-            // ReSharper disable once VirtualMemberCallInConstructor
-            FileName = fileName;
+        protected JsonSettings(string fileName) {
+            #pragma warning restore 8618
+            _childtype = GetType();
+            if (_childtype.GetCustomAttribute<ProxyGeneratedAttribute>() == null) {
+                Modulation = new ModuleSocket(this);
+                // ReSharper disable once VirtualMemberCallInConstructor
+                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+                if (fileName != null)
+                    FileName = fileName;
+
+                if (!_childtype.HasDefaultConstructor())
+                    throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
+            }
         }
 
         /// <summary>
@@ -157,7 +166,7 @@ namespace Nucs.JsonSettings {
 
             filename = ResolvePath(o, filename);
             o.EnsureConfigured();
-            FileStream stream = null;
+            FileStream stream = null!;
 
             try {
                 lock (o) {
@@ -192,13 +201,13 @@ namespace Nucs.JsonSettings {
         #region Regular Load
 
         public void Load() {
-            Load(this, (Action) null, FileName);
+            Load(this, (Action) null!, FileName);
         }
 
         public void Load(string filename) {
             if (filename == null)
                 throw new ArgumentNullException(nameof(filename));
-            Load(this, (Action) null, filename);
+            Load(this, (Action) null!, filename);
         }
 
         public void LoadDefault(params object[] args) {
@@ -265,7 +274,7 @@ namespace Nucs.JsonSettings {
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public static object Load(Type intype, string filename = "<DEFAULT>") {
-            return Load(intype.CreateInstance(), (Action) null, filename);
+            return Load(intype.CreateInstance(), (Action) null!, filename);
         }
 
         /// <summary>
@@ -555,37 +564,37 @@ namespace Nucs.JsonSettings {
 
         #region Inheritable Events
 
-        private event DecryptHandler _decrypt;
+        private event DecryptHandler? _decrypt;
 
-        public virtual event BeforeLoadHandler BeforeLoad;
+        public virtual event BeforeLoadHandler? BeforeLoad;
 
         //reverse insert
-        public virtual event DecryptHandler Decrypt {
+        public virtual event DecryptHandler? Decrypt {
             add => this._decrypt = value + _decrypt;
             remove => this._decrypt -= value;
         }
 
-        public virtual event AfterDecryptHandler AfterDecrypt;
+        public virtual event AfterDecryptHandler? AfterDecrypt;
 
-        public virtual event BeforeDeserializeHandler BeforeDeserialize;
+        public virtual event BeforeDeserializeHandler? BeforeDeserialize;
 
-        public virtual event AfterDeserializeHandler AfterDeserialize;
+        public virtual event AfterDeserializeHandler? AfterDeserialize;
 
-        public virtual event AfterLoadHandler AfterLoad;
+        public virtual event AfterLoadHandler? AfterLoad;
 
-        public virtual event BeforeSaveHandler BeforeSave;
+        public virtual event BeforeSaveHandler? BeforeSave;
 
-        public virtual event BeforeSerializeHandler BeforeSerialize;
+        public virtual event BeforeSerializeHandler? BeforeSerialize;
 
-        public virtual event AfterSerializeHandler AfterSerialize;
+        public virtual event AfterSerializeHandler? AfterSerialize;
 
-        public virtual event EncryptHandler Encrypt;
+        public virtual event EncryptHandler? Encrypt;
 
-        public virtual event AfterEncryptHandler AfterEncrypt;
+        public virtual event AfterEncryptHandler? AfterEncrypt;
 
-        public virtual event AfterSaveHandler AfterSave;
+        public virtual event AfterSaveHandler? AfterSave;
 
-        public virtual event ConfigurateHandler Configurate;
+        public virtual event ConfigurateHandler? Configurate;
 
         #endregion
 

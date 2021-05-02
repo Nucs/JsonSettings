@@ -73,6 +73,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
         [Test]
         public void AccessingAfterLoadingAndMarkingAutosave() {
             using (var f = new TempfileLife()) {
+                Console.WriteLine(Path.GetFullPath(f.FileName));
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
                 o.property.ShouldBeEquivalentTo(null);
                 o.property = "test";
