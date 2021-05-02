@@ -9,7 +9,7 @@ namespace Nucs.JsonSettings.Modulation {
     /// </summary>
     public class ModuleSocket : ISocket, IDisposable {
         private JsonSettings _settings { get; set; }
-        
+
         protected readonly List<Module> _modules = new List<Module>();
 
         public ModuleSocket(JsonSettings settings) {
@@ -24,17 +24,62 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         public bool IsAttached(Func<Module, bool> checker) {
-            return Modules.Any(checker);
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            var len = Modules.Count;
+            for (int i = 0; i < len; i++) {
+                if (checker(Modules[i]))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public T GetModule<T>() where T : Module {
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            var len = Modules.Count;
+            for (int i = 0; i < len; i++) {
+                if (Modules[i] is T t)
+                    return t;
+            }
+
+            throw new ModularityException($"Module of type {typeof(T).Name} was not found.");
+        }
+        
+        public IEnumerable<T> GetModules<T>() where T : Module {
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            var len = Modules.Count;
+            for (int i = 0; i < len; i++) {
+                if (Modules[i] is T t)
+                    yield return t;
+            }
         }
 
         public bool IsAttachedOfType<T>() where T : Module {
-            return IsAttachedOfType(typeof(T));
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            var len = Modules.Count;
+            for (int i = 0; i < len; i++) {
+                if (Modules[i] is T)
+                    return true;
+            }
+
+            return false;
         }
 
         public bool IsAttachedOfType(Type t) {
-            return IsAttached(m => m.GetType() == t);
-        }
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            var len = Modules.Count;
+            for (int i = 0; i < len; i++) {
+                if (Modules[i].GetType() == t)
+                    return true;
+            }
 
+            return false;
+        }
 
         public void Attach(Module t) {
             if (_isdisposed)
@@ -70,6 +115,7 @@ namespace Nucs.JsonSettings.Modulation {
             foreach (var module in _modules.ToArray()) {
                 module.Dispose();
             }
+
             _settings = null;
         }
     }
