@@ -6,8 +6,8 @@ namespace Nucs.JsonSettings.xTests.Utils {
     public class TempfileLife : IDisposable {
         public string FileName { get; set; }
 
-        public TempfileLife(bool create=false) {
-            FileName = create?Path.GetTempFileName():Path.GetRandomFileName();
+        public TempfileLife(bool create = false) {
+            FileName = create ? Path.ChangeExtension(Path.GetTempFileName(), "json") : Path.ChangeExtension(Path.GetRandomFileName(), "json");
         }
 
         public TempfileLife(string fileName) {
@@ -29,6 +29,7 @@ namespace Nucs.JsonSettings.xTests.Utils {
         public static implicit operator string(TempfileLife value) {
             return value.FileName;
         }
+
         public static implicit operator FileInfo(TempfileLife value) {
             return new FileInfo(value.FileName);
         }
