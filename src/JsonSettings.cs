@@ -101,12 +101,17 @@ namespace Nucs.JsonSettings {
 
         /// <summary>
         ///     Returns configuration based on the following fallback: <br/>
-        ///     settings ?? this.OverrideSerializerSettings ?? JsonSettings.SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke() ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
+        ///     settings ?? this.OverrideSerializerSettings ?? JsonSettings.SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke()
+        ///              ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
         /// </summary>
         /// <param name="settings">If passed a non-null, This is the settings intended to use, not any of the fallbacks.</param>
         /// <exception cref="JsonSerializationException">When no configuration valid was found.</exception>
         protected virtual JsonSerializerSettings ResolveConfiguration(JsonSerializerSettings? settings = null) {
-            return settings ?? OverrideSerializerSettings ?? SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke() ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
+            return settings
+                   ?? this.OverrideSerializerSettings
+                   ?? JsonSettings.SerializationSettings
+                   ?? JsonConvert.DefaultSettings?.Invoke()
+                   ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
         }
 
         #region Loading & Saving
@@ -198,23 +203,23 @@ namespace Nucs.JsonSettings {
 
         public void LoadDefault(params object[] args) {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(GetType(), args);
-            var config = ResolveConfiguration();  //pass configuration that we use here, not default one.
+            var config = ResolveConfiguration(); //pass configuration that we use here, not default one.
             LoadJson(defaultedValue.ToJson(config), config);
-            
+
             OnAfterLoad(true);
         }
 
         public void LoadDefault<T>(params object[] args) where T : ISavable {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(typeof(T), args);
-            var config = ResolveConfiguration();  //pass configuration that we use here, not default one.
+            var config = ResolveConfiguration(); //pass configuration that we use here, not default one.
             LoadJson(defaultedValue.ToJson(config), config);
-            
+
             OnAfterLoad(true);
         }
 
         internal void LoadDefault(Version version, params object[]? args) {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(GetType(), args);
-            var config = ResolveConfiguration();  //pass configuration that we use here, not default one.
+            var config = ResolveConfiguration(); //pass configuration that we use here, not default one.
             LoadJson(defaultedValue.ToJson(config), config);
             if (this is IVersionable versionable)
                 versionable.Version = version;
@@ -224,7 +229,7 @@ namespace Nucs.JsonSettings {
 
         internal void LoadDefault<T>(Version version, params object[]? args) where T : ISavable {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(typeof(T), args);
-            var config = ResolveConfiguration();  //pass configuration that we use here, not default one.
+            var config = ResolveConfiguration(); //pass configuration that we use here, not default one.
             LoadJson(defaultedValue.ToJson(config), config);
             if (this is IVersionable versionable)
                 versionable.Version = version;
