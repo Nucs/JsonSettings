@@ -79,13 +79,13 @@ namespace Nucs.JsonSettings {
         ///     If this property is set, this will be used instead of the static <see cref="SerializationSettings"/>.<br></br>
         ///     Note: this property must be set during construction or as property's default value.
         /// </summary>
-        protected virtual JsonSerializerSettings OverrideSerializerSettings { get; set; }
+        protected virtual JsonSerializerSettings? OverrideSerializerSettings { get; set; }
 
         /// <summary>
         ///     Defines how should <see cref="Load()"/> handle empty .json files, by default - false - do not throw.
         ///     Note: this property must be set during construction or as property's default value.
         /// </summary>
-        protected bool ThrowOnEmptyFile { get; set; } = false;
+        protected virtual bool ThrowOnEmptyFile { get; set; } = false;
 
         protected JsonSettings() {
             Modulation = new ModuleSocket(this);
@@ -98,11 +98,17 @@ namespace Nucs.JsonSettings {
             // ReSharper disable once VirtualMemberCallInConstructor
             FileName = fileName;
         }
-        
-        private JsonSerializerSettings ResolveConfiguration(JsonSerializerSettings? settings = null) {
-            return settings ?? OverrideSerializerSettings ?? SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke();
+
+        /// <summary>
+        ///     Returns configuration based on the following fallback: <br/>
+        ///     settings ?? this.OverrideSerializerSettings ?? JsonSettings.SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke() ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
+        /// </summary>
+        /// <param name="settings">If passed a non-null, This is the settings intended to use, not any of the fallbacks.</param>
+        /// <exception cref="JsonSerializationException">When no configuration valid was found.</exception>
+        protected virtual JsonSerializerSettings ResolveConfiguration(JsonSerializerSettings? settings = null) {
+            return settings ?? OverrideSerializerSettings ?? SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke() ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
         }
-        
+
         #region Loading & Saving
 
         #region Save
@@ -110,7 +116,7 @@ namespace Nucs.JsonSettings {
         /// <summary>
         ///     The filename that was originally loaded from. saving to other file does not change this field!
         /// </summary>
-        /// <param name="filename">the name of the file, <DEFAULT> is the default.</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name. <br></br>Without path the file will be located at the executing directory</param>
         public virtual void Save(string filename) {
             Save(_childtype, this, filename);
         }
@@ -122,6 +128,15 @@ namespace Nucs.JsonSettings {
             Save("<DEFAULT>");
         }
 
+
+        /// <summary>
+        ///     Saves settings to a given path using custom password.
+        /// </summary>
+        /// <param name="pSettings">The settings file to save</param>
+        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name. <br></br>Without path the file will be located at the executing directory</param>
+        public static void Save<T>(T pSettings, string filename = "<DEFAULT>") where T : ISavable {
+            Save(typeof(T), pSettings, filename);
+        }
 
         /// <summary>
         ///     Saves settings to a given path using custom password.
@@ -145,7 +160,7 @@ namespace Nucs.JsonSettings {
                     stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
                     o.FileName = filename;
                     o.OnBeforeSerialize();
-                    var json = o.ToJson(Formatting.None, serializeAsType: inType);
+                    var json = o.ToJson(serializeAsType: inType);
                     o.OnAfterSerialize(ref json);
                     var bytes = Encoding.GetBytes(json);
                     o.OnEncrypt(ref bytes);
@@ -163,15 +178,6 @@ namespace Nucs.JsonSettings {
             } finally {
                 stream?.Dispose();
             }
-        }
-
-        /// <summary>
-        ///     Saves settings to a given path using custom password.
-        /// </summary>
-        /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name. <br></br>Without path the file will be located at the executing directory</param>
-        /// <param name="pSettings">The settings file to save</param>
-        public static void Save<T>(T pSettings, string filename = "<DEFAULT>") where T : ISavable {
-            Save(typeof(T), pSettings, filename);
         }
 
         #endregion
@@ -192,31 +198,37 @@ namespace Nucs.JsonSettings {
 
         public void LoadDefault(params object[] args) {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(GetType(), args);
-            LoadJson(defaultedValue.ToJson(Formatting.None, ResolveConfiguration()));
+            var config = ResolveConfiguration();  //pass configuration that we use here, not default one.
+            LoadJson(defaultedValue.ToJson(config), config);
+            
             OnAfterLoad(true);
         }
 
         public void LoadDefault<T>(params object[] args) where T : ISavable {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(typeof(T), args);
-            LoadJson(defaultedValue.ToJson(Formatting.None, ResolveConfiguration()));
+            var config = ResolveConfiguration();  //pass configuration that we use here, not default one.
+            LoadJson(defaultedValue.ToJson(config), config);
+            
             OnAfterLoad(true);
         }
-        
+
         internal void LoadDefault(Version version, params object[]? args) {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(GetType(), args);
-            LoadJson(defaultedValue.ToJson(Formatting.None, ResolveConfiguration()));
+            var config = ResolveConfiguration();  //pass configuration that we use here, not default one.
+            LoadJson(defaultedValue.ToJson(config), config);
             if (this is IVersionable versionable)
                 versionable.Version = version;
-            
+
             OnAfterLoad(true);
         }
 
         internal void LoadDefault<T>(Version version, params object[]? args) where T : ISavable {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(typeof(T), args);
-            LoadJson(defaultedValue.ToJson(Formatting.None, ResolveConfiguration()));
+            var config = ResolveConfiguration();  //pass configuration that we use here, not default one.
+            LoadJson(defaultedValue.ToJson(config), config);
             if (this is IVersionable versionable)
                 versionable.Version = version;
-            
+
             OnAfterLoad(true);
         }
 
@@ -224,8 +236,9 @@ namespace Nucs.JsonSettings {
             JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
         }
 
-        public virtual string ToJson(Formatting formatting, JsonSerializerSettings? settings = null, Type? serializeAsType = null) {
-            return JsonConvert.SerializeObject(this, serializeAsType ?? GetType(), formatting, ResolveConfiguration(settings));
+        public virtual string ToJson(JsonSerializerSettings? settings = null, Type? serializeAsType = null, Formatting? formatting = null) {
+            var config = ResolveConfiguration(settings);
+            return JsonConvert.SerializeObject(this, serializeAsType ?? GetType(), formatting ?? config.Formatting, config);
         }
 
         /// <summary>

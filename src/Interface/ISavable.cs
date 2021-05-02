@@ -52,7 +52,10 @@ namespace Nucs.JsonSettings {
         /// <summary>
         ///     Serializes this object to json.
         /// </summary>
-        public string ToJson(Formatting formatting, JsonSerializerSettings? settings = null, Type? serializeAsType = null);
+        /// <param name="serializeAsType"></param>
+        /// <param name="formatting">The formatting to serialize JSON as. By default it'll take <paramref name="settings"/></param>
+        /// <param name="settings"></param>
+        public string ToJson(JsonSerializerSettings? settings = null, Type? serializeAsType = null, Formatting? formatting = null);
         
         #region Loading
 
