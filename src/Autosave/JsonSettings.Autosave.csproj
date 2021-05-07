@@ -29,59 +29,10 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard1.6|AnyCPU'">
-    <DefineConstants>TRACE;RELEASE;</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard1.6|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="Castle.Core" Version="4.4.1" />
     <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
-  </ItemGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
-    <DefineConstants>$(DefineConstants);NETSTANDARD2_0;</DefineConstants>
-  </PropertyGroup>
-
-
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' OR '$(TargetFramework)' == 'netcoreapp2.0'  Or '$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);NETCORE;</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' OR '$(TargetFramework)' == 'netcoreapp2.0'  Or '$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);CROSSPLATFORM;</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net45' Or '$(TargetFramework)' == 'net461' Or '$(TargetFramework)' == 'net4' Or '$(TargetFramework)' == 'net47'  Or '$(TargetFramework)' == 'net35'  Or '$(TargetFramework)' == 'net452'  Or '$(TargetFramework)' == 'net451'  Or '$(TargetFramework)' == 'net403'  Or '$(TargetFramework)' == 'net40'  Or '$(TargetFramework)' == 'net20' Or '$(TargetFramework)' == 'net11'">
-    <DefineConstants>$(DefineConstants);WINDOWS;</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net462' Or '$(TargetFramework)' == 'net45' Or '$(TargetFramework)' == 'net461' Or '$(TargetFramework)' == 'net4' Or '$(TargetFramework)' == 'net47'  Or '$(TargetFramework)' == 'netstandard2.0'">
-    <DefineConstants>$(DefineConstants);NET;</DefineConstants>
-  </PropertyGroup>
-
-  
-  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
-  </ItemGroup>
-
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.6'">
-    <PackageReference Include="System.AppDomain">
-      <Version>2.0.11</Version>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net47'">
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
   </ItemGroup>
 
   <ItemGroup>

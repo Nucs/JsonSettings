@@ -47,13 +47,5 @@ namespace Nucs.JsonSettings {
                 return null;
             }
         }
-
-#if NETSTANDARD1_6
-
-        public static void Close(this Stream str) {
-            str.Dispose();
-        }
-
-#endif
     }
 }
