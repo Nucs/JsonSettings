@@ -52,8 +52,13 @@ namespace Nucs.JsonSettings {
                     return;
                 
                 _autosave = value;
+                
                 if (value && _autosaveModule == null)
                     Modulation.Attach(_autosaveModule = new AutosaveModule());
+                else if (!value && _autosaveModule != null) {
+                    Modulation.Deattach(_autosaveModule);
+                    _autosaveModule = null;
+                }
             }
         }
 
