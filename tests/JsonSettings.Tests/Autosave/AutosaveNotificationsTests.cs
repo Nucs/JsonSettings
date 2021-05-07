@@ -13,9 +13,9 @@ using NUnit.Framework;
 
 namespace Nucs.JsonSettings.xTests.Autosave {
     [TestFixture]
-    public class AutosaveNotifications {
+    public class AutosaveNotificationsTests {
         /// <summary>Initializes a new instance of the <see cref="T:System.Object" /> class.</summary>
-        public AutosaveNotifications() { }
+        public AutosaveNotificationsTests() { }
 
         [SetUp]
         public void Setup() {

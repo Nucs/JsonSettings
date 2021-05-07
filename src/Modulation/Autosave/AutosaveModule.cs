@@ -2,6 +2,9 @@
 
 namespace Nucs.JsonSettings.Autosave {
     public class AutosaveModule : Module {
+        internal static readonly string[] _frameworkParameters = {nameof(JsonSettings.FileName), nameof(JsonSettings.Modulation)};
+        internal static readonly int _frameworkParametersLength = _frameworkParameters.Length;
+        
         /// <summary>
         ///     When true, changes will not cause updates.
         /// </summary>
@@ -15,7 +18,7 @@ namespace Nucs.JsonSettings.Autosave {
         /// <summary>
         ///     The notification handler taking care of binding and unbinding to property and collection changes.
         /// </summary>
-        public NotificationBinder NotificationsHandler { get; set; }
+        public NotificationBinder? NotificationsHandler { get; set; }
 
         /// <summary>
         ///     Suspends auto-saving until SuspendAutosave.Dispose or SuspendAutosave.Resume are called.<br/>

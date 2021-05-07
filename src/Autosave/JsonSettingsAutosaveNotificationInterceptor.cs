@@ -38,8 +38,8 @@ namespace Nucs.JsonSettings.Autosave {
                     if (!_module.NotificationsHandler.CanHandleProperty(propName))
                         return;
                     
-                    for (var i = 0; i < JsonSettingsAutosaveExtensions._frameworkParametersLength; i++) {
-                        if (JsonSettingsAutosaveExtensions._frameworkParameters[i] == propName) return;
+                    for (var i = 0; i < AutosaveModule._frameworkParametersLength; i++) {
+                        if (AutosaveModule._frameworkParameters[i] == propName) return;
                     }
 
                     //save.

@@ -16,12 +16,8 @@ namespace Nucs.JsonSettings.Modulation {
             _settings = settings;
         }
 
-        public IReadOnlyList<Module> Modules {
-            get {
-                lock (_modules)
-                    return _modules.ToList().AsReadOnly();
-            }
-        }
+        // ReSharper disable once InconsistentlySynchronizedField
+        public IReadOnlyList<Module> Modules => _modules;
 
         public bool IsAttached(Func<Module, bool> checker) {
             // ReSharper disable once ForCanBeConvertedToForeach
@@ -46,7 +42,7 @@ namespace Nucs.JsonSettings.Modulation {
 
             throw new ModularityException($"Module of type {typeof(T).Name} was not found.");
         }
-        
+
         public IEnumerable<T> GetModules<T>() where T : Module {
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery

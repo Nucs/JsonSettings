@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
+using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Collections;
 
 namespace Nucs.JsonSettings {
@@ -13,7 +14,7 @@ namespace Nucs.JsonSettings {
     public sealed class SettingsBag : JsonSettings {
         private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
         private readonly SafeDictionary<string, PropertyInfo> PropertyData = new SafeDictionary<string, PropertyInfo>();
-
+        private AutosaveModule? _autosaveModule;
         /// <summary>
         ///     All the settings in this bag.
         /// </summary>
@@ -38,11 +39,23 @@ namespace Nucs.JsonSettings {
         /// <returns></returns>
         public dynamic AsDynamic() { return new DynamicSettingsBag(this); }
 
+        private bool _autosave;
+
         /// <summary>
         ///     Will perform a safe after a change in any non-hardcoded public property.
         /// </summary>
         [JsonIgnore]
-        public bool Autosave { get; set; } = false;
+        public bool Autosave {
+            get => _autosave;
+            set {
+                if (value == _autosave)
+                    return;
+                
+                _autosave = value;
+                if (value && _autosaveModule == null)
+                    Modulation.Attach(_autosaveModule = new AutosaveModule());
+            }
+        }
 
         public SettingsBag() { }
 
@@ -79,7 +92,7 @@ namespace Nucs.JsonSettings {
                     return (T) PropertyData[key].GetValue(this, null);
 
                 var ret = _data[key];
-                if (ret == null || ret.Equals(default(T)))
+                if (object.Equals(ret, default(T)))
                     return @default;
 
                 return (T) ret;
@@ -96,8 +109,7 @@ namespace Nucs.JsonSettings {
                 else
                     _data[key] = value;
 
-                if (Autosave)
-                    Save();
+                TrySave();
             }
         }
 
@@ -105,14 +117,20 @@ namespace Nucs.JsonSettings {
             bool ret = false;
             lock (this)
                 ret = _data.Remove(key);
-            if (Autosave)
-                Save();
+            
+            TrySave();
 
             return ret;
         }
 
-        [Obsolete("Use RemoveWhere instead")]
-        public int Remove(Func<KeyValuePair<string, object>, bool> comprarer) { return RemoveWhere(comprarer); }
+        private void TrySave() {
+            if (Autosave && _autosaveModule!.AutosavingState != AutosavingState.SuspendedChanged) {
+                if (_autosaveModule.UpdatesSuspended) {
+                    _autosaveModule.AutosavingState = AutosavingState.SuspendedChanged;
+                } else
+                    Save();
+            }
+        }
 
         /// <summary>
         ///     Removes all items that <paramref name="comprarer"/> returns true to. <Br></Br>

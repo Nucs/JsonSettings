@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using FluentAssertions;
 using Nucs.JsonSettings.Autosave;
+using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.xTests.Utils;
 using NUnit.Framework;
 
@@ -15,7 +17,9 @@ namespace Nucs.JsonSettings.xTests.Autosave {
         public AutosaveTests() { }
 
         [SetUp]
-        public void Setup() { Console.SetOut(TestContext.Out); }
+        public void Setup() {
+            Console.SetOut(TestContext.Out);
+        }
 
         [Test]
         public void ClassWithoutInterfacesOrVirtuals() {
@@ -40,9 +44,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
 
                 bool saved = false;
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += (s, destinition) => {
-                    saved = true;
-                };
+                o.AfterSave += (s, destinition) => { saved = true; };
                 o.property.ShouldBeEquivalentTo(null);
                 Console.WriteLine(File.ReadAllText(rpath));
 
@@ -61,9 +63,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             using (var f = new TempfileLife()) {
                 bool saved = false;
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += (s, destinition) => {
-                    saved = true;
-                };
+                o.AfterSave += (s, destinition) => { saved = true; };
 
                 o.FileName = "test.jsn";
                 saved.ShouldBeEquivalentTo(false);
@@ -97,6 +97,50 @@ namespace Nucs.JsonSettings.xTests.Autosave {
                 var jsn = File.ReadAllText(rpath);
                 jsn.Contains("\"test\"").Should().BeTrue();
                 Console.WriteLine(jsn);
+            }
+        }
+
+        [Test]
+        public void SuspendAutosaving_Case1() {
+            using (var f = new TempfileLife()) {
+                var o = JsonSettings.Load<SettingsBag>(f);
+
+                dynamic d = o.AsDynamic();
+                
+                
+                d.SomeProp = "Works";
+                d.Num = 1;
+                Assert.True(d["SomeProp"] == "Works");
+                Assert.True(d.Num == 1);
+                
+                o.Save();
+                o = JsonSettings.Configure<SettingsBag>(f)
+                                .LoadNow()
+                                .EnableAutosave();
+                
+                o["SomeProp"].Should().Be("Works");
+                o["Num"].Should().Be(1L); //newtonsoft deserializes numbers as long.
+                StrongBox<int> a = new StrongBox<int>();
+                o.AfterSave += (sender, destinition) => {
+                    a.Value++;
+                };
+                
+                using (o.SuspendAutosave()) {
+                    o["SomeProp"] = "Works2";
+                    o["Num"] = 2;
+                    a.Value.Should().Be(0);  
+                    var k = JsonSettings.Load<SettingsBag>(f);
+                    k["SomeProp"].Should().Be("Works");
+                    k["Num"].Should().Be(1L); //newtonsoft deserializes numbers as long.
+                    a.Value.Should().Be(0);
+                }
+                
+                a.Value.Should().Be(1);
+
+                var kk = JsonSettings.Load<SettingsBag>(f);
+                kk["SomeProp"].Should().Be("Works2");
+                kk["Num"].Should().Be(2L); //newtonsoft deserializes numbers as long.
+
             }
         }
 

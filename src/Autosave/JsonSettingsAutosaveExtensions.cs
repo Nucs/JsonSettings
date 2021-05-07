@@ -12,8 +12,7 @@ using BindingFlags = System.Reflection.BindingFlags;
 
 namespace Nucs.JsonSettings.Autosave {
     public static class JsonSettingsAutosaveExtensions {
-        internal static readonly string[] _frameworkParameters = {nameof(JsonSettings.FileName), nameof(JsonSettings.Modulation)};
-        internal static readonly int _frameworkParametersLength = _frameworkParameters.Length;
+
         // ReSharper disable once FieldCanBeMadeReadOnly.Global
         public static ProxyGenerationOptions Options;
 
@@ -62,7 +61,7 @@ namespace Nucs.JsonSettings.Autosave {
 
             //if it doesn't contain any virtual methods, throw for the developer to know about it.
             if (!settingsType.GetProperties()
-                             .Where(p => _frameworkParameters.All(av => !p.Name.Equals(av)))
+                             .Where(p => AutosaveModule._frameworkParameters.All(av => !p.Name.Equals(av)))
                              .Any(p => p.GetGetMethod().IsVirtual)) {
                 var msg = $"JsonSettings: During proxy creation of {settingsType.Name}, no virtual properties were found which will make Autosaving redundant.";
                 try {

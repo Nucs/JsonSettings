@@ -74,16 +74,16 @@ namespace Nucs.JsonSettings.Autosave {
         }
 
         private void SaveOnChange(object sender, PropertyChangedEventArgs e) {
-            for (var i = 0; i < JsonSettingsAutosaveExtensions._frameworkParametersLength; i++)
-                if (JsonSettingsAutosaveExtensions._frameworkParameters[i] == e.PropertyName)
+            for (var i = 0; i < AutosaveModule._frameworkParametersLength; i++)
+                if (AutosaveModule._frameworkParameters[i] == e.PropertyName)
                     return;
 
             _settings.Save();
         }
 
         private void SaveOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) {
-            for (var i = 0; i < JsonSettingsAutosaveExtensions._frameworkParametersLength; i++)
-                if (JsonSettingsAutosaveExtensions._frameworkParameters[i] == e.ToString())
+            for (var i = 0; i < AutosaveModule._frameworkParametersLength; i++)
+                if (AutosaveModule._frameworkParameters[i] == e.ToString())
                     return;
 
             _settings.Save();
