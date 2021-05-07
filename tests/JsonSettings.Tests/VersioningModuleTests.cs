@@ -21,11 +21,11 @@ namespace Nucs.JsonSettings.xTests {
         }
 
         [TestCase]
-        public void RenameAndReload_Case1() {
+        public void RenameAndLoadDefault_Case1() {
             using (var f = new TempfileLife(false)) {
                 //load
                 var cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.RenameAndReload)
+                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.RenameAndLoadDefault)
                                       .LoadNow();
 
                 //assert
@@ -33,7 +33,7 @@ namespace Nucs.JsonSettings.xTests {
 
                 //load
                 cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.RenameAndReload)
+                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.RenameAndLoadDefault)
                                   .LoadNow();
 
                 using var _1_0_0_0 = FindFile(f, new Version(1, 0, 0, 0));
@@ -45,13 +45,13 @@ namespace Nucs.JsonSettings.xTests {
                 //assert 
                 cfg.Version.Should().Be(new Version(1, 0, 0, 1));
                 cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 0, 0, 1), VersioningResultAction.RenameAndReload)
+                                  .WithVersioning(new Version(1, 0, 0, 1), VersioningResultAction.RenameAndLoadDefault)
                                   .LoadNow();
                 cfg.Version.Should().Be(new Version(1, 0, 0, 1));
 
                 //assert 
                 cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 0, 0, 2), VersioningResultAction.RenameAndReload)
+                                  .WithVersioning(new Version(1, 0, 0, 2), VersioningResultAction.RenameAndLoadDefault)
                                   .LoadNow();
                 using var _1_0_0_1 = FindFile(f, new Version(1, 0, 0, 1));
 
@@ -80,7 +80,7 @@ namespace Nucs.JsonSettings.xTests {
         }
 
         [TestCase]
-        public void OverrideDefault_Case1() {
+        public void LoadDefaultAndSave_Case1() {
             using (var f = new TempfileLife(false)) {
                 //load
                 var cfg = JsonSettings.Configure<VersionedSettings>(f)
@@ -92,7 +92,7 @@ namespace Nucs.JsonSettings.xTests {
 
                 //load
                 cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.OverrideDefault)
+                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.LoadDefaultAndSave)
                                   .LoadNow();
                 cfg.Version.Should().Be(new Version(1, 2, 0, 0));
 
@@ -105,7 +105,7 @@ namespace Nucs.JsonSettings.xTests {
         }
 
         [TestCase]
-        public void LoadDefaultSilently_Case1() {
+        public void LoadDefault_Case1() {
             using (var f = new TempfileLife(false)) {
                 //load
                 var cfg = JsonSettings.Configure<VersionedSettings>(f)
@@ -117,14 +117,14 @@ namespace Nucs.JsonSettings.xTests {
 
                 //load
                 cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.LoadDefaultSilently)
+                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.LoadDefault)
                                   .LoadNow();
 
                 cfg.Version.Should().Be(new Version(1, 2, 0, 0));
 
                 new Action(() => {
                     cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.Throw)
+                                      .WithVersioning(new Version(1, 1, 0, 0), VersioningResultAction.Throw)
                                       .LoadNow();
                 }).ShouldThrow<InvalidVersionException>();
             }
@@ -139,5 +139,19 @@ namespace Nucs.JsonSettings.xTests {
         #endregion
 
         public Version Version { get; set; } = new Version(1, 0, 0, 0);
+
+        public virtual int Value { get; set; }
+    }
+    
+    public class ChangedVersionedSettings : JsonSettings, IVersionable {
+        #region Overrides of JsonSettings
+
+        public override string FileName { get; set; }
+
+        #endregion
+
+        public Version Version { get; set; } = new Version(1, 0, 0, 0);
+
+        public virtual string Value { get; set; }
     }
 }

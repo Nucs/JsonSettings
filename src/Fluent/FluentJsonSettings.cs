@@ -2,6 +2,7 @@
 using System.IO;
 using System.Security;
 using Nucs.JsonSettings.Modulation;
+using Nucs.JsonSettings.Modulation.Recovery;
 
 namespace Nucs.JsonSettings.Fluent {
     public static class FluentJsonSettings {
@@ -36,8 +37,7 @@ namespace Nucs.JsonSettings.Fluent {
         /// <param name="args">The arguments to fit into a constructor.</param>
         /// <returns>Self</returns>
         public static T WithModule<T, TMod>(this T _instance, params object[] args) where TMod : Module where T : JsonSettings {
-            var t = (Module)typeof(TMod).CreateInstance(args);
-
+            var t = (Module) typeof(TMod).CreateInstance(args);
             return _instance.WithModule(t);
         }
 
@@ -70,7 +70,7 @@ namespace Nucs.JsonSettings.Fluent {
         /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
         /// <returns>Self</returns>
         public static T WithEncryption<T>(this T _instance, SecureString password) where T : JsonSettings {
-            return _instance.WithModule<T, RijndaelModule>(password);
+            return _instance.WithModule<T>(new RijndaelModule(password));
         }
 
         /// <summary>
@@ -92,18 +92,7 @@ namespace Nucs.JsonSettings.Fluent {
         /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
         /// <returns>Self</returns>
         public static T WithEncryption<T>(this T _instance, Func<SecureString> password) where T : JsonSettings {
-            return _instance.WithModule<T, RijndaelModule>(password);
-        }
-        
-        /// <summary>
-        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="_instance"></param>
-        /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
-        /// <returns>Self</returns>
-        public static T WithEncryption<T>(this T _instance, Func<T,string> password) where T : JsonSettings {
-            return _instance.WithEncryption(()=>password?.Invoke(_instance));
+            return _instance.WithModule<T>(new RijndaelModule(password));
         }
 
         /// <summary>
@@ -113,12 +102,23 @@ namespace Nucs.JsonSettings.Fluent {
         /// <param name="_instance"></param>
         /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
         /// <returns>Self</returns>
-        public static T WithEncryption<T>(this T _instance, Func<T,SecureString> password) where T : JsonSettings {
-            return _instance.WithModule<T, RijndaelModule>((Func<SecureString>)(()=>password?.Invoke(_instance)));
+        public static T WithEncryption<T>(this T _instance, Func<T, string> password) where T : JsonSettings {
+            return _instance.WithEncryption(() => password?.Invoke(_instance));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="_instance"></param>
+        /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, Func<T, SecureString> password) where T : JsonSettings {
+            return _instance.WithModule<T>(new RijndaelModule((Func<SecureString>) (() => password?.Invoke(_instance)!)));
         }
 
         public static T WithBase64<T>(this T _instance) where T : JsonSettings {
-            return _instance.WithModule<T, Base64Module>();
+            return _instance.WithModule<T>(new Base64Module());
         }
 
         /// <summary>
@@ -142,15 +142,15 @@ namespace Nucs.JsonSettings.Fluent {
             _instance.Load();
             return _instance;
         }
-        
+
         /// <summary>
         ///     VersioningModule used to enforce a policy and take <see cref="VersioningResultAction"/> when the policy
         ///     detects an invalid version. A policy is a <see cref="VersioningPolicyHandler"/> comparer between two <see cref="Version"/>.
         /// </summary>
         /// <typeparam name="T">The settings type inheriting <see cref="IVersionable"/></typeparam>
-        public static T WithVersioning<T>(this T _instance, Version expectedVersion, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null) 
+        public static T WithVersioning<T>(this T _instance, Version expectedVersion, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null)
             where T : JsonSettings, IVersionable {
-            return _instance.WithModule<T, VersioningModule<T>>(invalidAction, expectedVersion, policy ?? VersioningModule<T>.DefaultPolicy);
+            return _instance.WithModule<T>(new VersioningModule<T>(invalidAction, expectedVersion, policy ?? VersioningModule<T>.DefaultPolicy));
         }
 
         /// <summary>
@@ -158,9 +158,17 @@ namespace Nucs.JsonSettings.Fluent {
         ///     detects an invalid version. A policy is a <see cref="VersioningPolicyHandler"/> comparer between two <see cref="Version"/>.
         /// </summary>
         /// <typeparam name="T">The settings type inheriting <see cref="IVersionable"/></typeparam>
-        public static T WithVersioning<T>(this T _instance, string expectedVersion, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null) 
+        public static T WithVersioning<T>(this T _instance, string expectedVersion, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null)
             where T : JsonSettings, IVersionable {
-            return _instance.WithModule<T, VersioningModule<T>>(invalidAction, Version.Parse(expectedVersion), policy ?? VersioningModule<T>.DefaultPolicy);
+            return WithVersioning(_instance, Version.Parse(expectedVersion), invalidAction, policy);
+        }
+
+        /// <summary>
+        ///     <see cref="RecoveryModule"/> used to enforce a fail-safe recovery and take <see cref="RecoveryAction"/> when the
+        ///     json parsing fails.
+        /// </summary>
+        public static T WithRecovery<T>(this T _instance, RecoveryAction action) where T : JsonSettings {
+            return _instance.WithModule<T>(new RecoveryModule(action));
         }
     }
 }

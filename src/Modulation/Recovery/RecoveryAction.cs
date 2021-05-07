@@ -1,15 +1,10 @@
-﻿namespace Nucs.JsonSettings.Modulation {
+﻿namespace Nucs.JsonSettings.Modulation.Recovery {
     /// <summary>
     ///     In a case of an invalid action, what should be the course.
     /// </summary>
-    public enum VersioningResultAction {
+    public enum RecoveryAction {
         /// <summary>
-        ///     Ignore it.
-        /// </summary>
-        DoNothing,
-        
-        /// <summary>
-        ///     Throw an <see cref="InvalidVersionException"/> on loading.
+        ///     Throw an <see cref="JsonSettingsRecoveryException"/> on loading.
         /// </summary>
         Throw,
 

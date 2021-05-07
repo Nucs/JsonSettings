@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 
 namespace Nucs.JsonSettings.Modulation {
     public class VersioningModule {
@@ -26,6 +27,8 @@ namespace Nucs.JsonSettings.Modulation {
     public class VersioningModule<T> : Module where T : JsonSettings, IVersionable {
         // ReSharper disable once StaticMemberInGenericType
         private static VersioningPolicyHandler? _defaultPolicy;
+        protected volatile int internalCalls; //guard for event handling
+        protected string? loadedPath; //the path that was passed during loading
 
         /// <summary>
         ///     The default policy used when specifying null
@@ -35,41 +38,51 @@ namespace Nucs.JsonSettings.Modulation {
             set => _defaultPolicy = value;
         }
 
-        public VersioningResultAction InvalidAction { get; }
+        public VersioningResultAction VersionMismatchAction { get; set; }
         public Version ExpectedVersion { get; set; }
-        public VersioningPolicyHandler Policy { get; }
-
+        public VersioningPolicyHandler Policy { get; set; }
 
         /// <summary>
         ///     The parameters that'll be passed to the constructor of <typeparamref name="T"/>.
         /// </summary>
-        public object[]? ConstructingParameters { get; set; }
+        public object[]? ConstructingParameters { get; set; } = Array.Empty<object>();
 
-
-        public VersioningModule(VersioningResultAction invalidAction, Version expectedVersion, VersioningPolicyHandler policy) {
-            InvalidAction = invalidAction;
+        public VersioningModule(VersioningResultAction versionMismatchAction, Version expectedVersion, VersioningPolicyHandler policy) {
+            VersionMismatchAction = versionMismatchAction;
             ExpectedVersion = expectedVersion;
             Policy = policy;
         }
 
-        public VersioningModule(VersioningResultAction invalidAction, Version expectedVersion, VersioningPolicyHandler policy, object[] constructingParameters) {
-            InvalidAction = invalidAction;
+        public VersioningModule(VersioningResultAction versionMismatchAction, Version expectedVersion, VersioningPolicyHandler policy, object[] constructingParameters) {
+            VersionMismatchAction = versionMismatchAction;
             ExpectedVersion = expectedVersion;
             Policy = policy;
             ConstructingParameters = constructingParameters;
         }
 
         public override void Attach(JsonSettings socket) {
+            if (!(socket is IVersionable))
+                throw new InvalidOperationException($"{socket._childtype.Name} does not implement IVersionable.");
+            
             base.Attach(socket);
             socket.AfterLoad += SocketOnAfterLoad;
             socket.BeforeLoad += SocketOnBeforeLoad;
+            socket.Recovered += SocketOnRecovered;
         }
 
-        private int _internalCalls;
-        private string? _loadedPath;
+        public override void Deattach(JsonSettings socket) {
+            base.Deattach(socket);
+            socket.AfterLoad -= SocketOnAfterLoad;
+            socket.BeforeLoad -= SocketOnBeforeLoad;
+            socket.Recovered -= SocketOnRecovered;
+        }
 
-        private void SocketOnAfterLoad(JsonSettings sender, bool successfulLoad) {
-            if (_internalCalls >= 1)
+        protected virtual void SocketOnBeforeLoad(JsonSettings sender, ref string destinition) {
+            loadedPath = destinition;
+        }
+
+        protected virtual void SocketOnAfterLoad(JsonSettings sender, bool successfulLoad) {
+            if (internalCalls >= 1)
                 return;
 
             T tsender = (T) sender;
@@ -79,75 +92,74 @@ namespace Nucs.JsonSettings.Modulation {
             }
 
             if (!Policy(tsender.Version, ExpectedVersion)) {
-                //versions mismatch, handle
-                switch (InvalidAction) {
-                    case VersioningResultAction.Throw: throw new InvalidVersionException($"Loaded version '{tsender.Version}' mismatches expected version '{ExpectedVersion}'");
-                    case VersioningResultAction.RenameAndReload: {
-                        if (_loadedPath == null)
-                            throw new ArgumentNullException(nameof(_loadedPath));
-
-                        //parse current name
-                        var versionMatch = VersioningModule.VersionMatcher.Match(_loadedPath);
-                        int fileVersion = versionMatch.Success ? int.Parse(versionMatch.Groups[2].Value) + 1 : 0;
-                        var cleanName = _loadedPath;
-                        if (!string.IsNullOrEmpty(versionMatch.Groups[0].Value))
-                            cleanName = cleanName.Replace(versionMatch.Groups[0].Value, "");
-                        var lastIdx = cleanName.LastIndexOf('.');
-                        if (lastIdx == -1)
-                            lastIdx = _loadedPath.Length;
-
-                        //figure naming of existing and rename
-                        string newFileName = cleanName;
-                        if (File.Exists(newFileName)) {
-                            do {
-                                newFileName = cleanName.Insert(lastIdx, $".{tsender.Version}{(fileVersion++ == 0 ? "" : $"-{fileVersion}")}");
-                            } while (File.Exists(newFileName));
-
-                            try {
-                                File.Move(cleanName, newFileName);
-                            } catch (Exception) {
-                                // swallow
-                                try {
-                                    File.Delete(_loadedPath);
-                                } catch (Exception) {
-                                    // swallow
-                                }
-                            }
-                        }
-
-                        //save
-                        _internalCalls++;
-                        try {
-                            tsender.FileName = _loadedPath = cleanName;
-                            tsender.LoadDefault(ExpectedVersion, ConstructingParameters);
-                            tsender.Save();
-                        } finally {
-                            _internalCalls--;
-                        }
-
-                        return;
-                    }
-                    case VersioningResultAction.LoadDefaultSilently:
-                        tsender.LoadDefault(ExpectedVersion, ConstructingParameters);
-                        return;
-                    case VersioningResultAction.OverrideDefault:
-                        tsender.LoadDefault(ExpectedVersion, ConstructingParameters);
-                        sender.Save();
-                        return;
-
-                    default: throw new ArgumentOutOfRangeException();
-                }
+                HandleInvalidVersion(tsender, VersionMismatchAction);
             }
         }
 
-        private void SocketOnBeforeLoad(JsonSettings sender, ref string destinition) {
-            _loadedPath = destinition;
+        protected virtual void SocketOnRecovered(JsonSettings sender) {
+            ((IVersionable) sender).Version = ExpectedVersion;
         }
 
-        public override void Deattach(JsonSettings socket) {
-            base.Deattach(socket);
-            socket.AfterLoad -= SocketOnAfterLoad;
-            socket.BeforeLoad -= SocketOnBeforeLoad;
+        protected virtual void HandleInvalidVersion(T sender, VersioningResultAction action) {
+            //versions mismatch, handle
+            switch (action) {
+                case VersioningResultAction.DoNothing: return;
+                case VersioningResultAction.Throw:     throw new InvalidVersionException($"Loaded version '{sender.Version}' mismatches expected version '{ExpectedVersion}'");
+                case VersioningResultAction.RenameAndLoadDefault: {
+                    if (loadedPath == null)
+                        throw new ArgumentNullException(nameof(loadedPath));
+
+                    //parse current name
+                    var versionMatch = VersioningModule.VersionMatcher.Match(loadedPath);
+                    int fileVersion = versionMatch.Success ? int.Parse(versionMatch.Groups[2].Value) + 1 : 0;
+                    var cleanName = loadedPath;
+                    if (!string.IsNullOrEmpty(versionMatch.Groups[0].Value))
+                        cleanName = cleanName.Replace(versionMatch.Groups[0].Value, "");
+                    var lastIdx = cleanName.LastIndexOf('.');
+                    if (lastIdx == -1)
+                        lastIdx = loadedPath.Length;
+
+                    //figure naming of existing and rename
+                    string newFileName = cleanName;
+                    if (File.Exists(newFileName)) {
+                        do {
+                            newFileName = cleanName.Insert(lastIdx, $".{sender.Version}{(fileVersion++ == 0 ? "" : $"-{fileVersion}")}");
+                        } while (File.Exists(newFileName));
+
+                        try {
+                            File.Move(cleanName, newFileName);
+                        } catch (Exception) {
+                            // swallow
+                            try {
+                                File.Delete(loadedPath);
+                            } catch (Exception) {
+                                // swallow
+                            }
+                        }
+                    }
+
+                    //save
+                    internalCalls++;
+                    try {
+                        sender.FileName = loadedPath = cleanName;
+                        sender.LoadDefault(ConstructingParameters);
+                        sender.Save();
+                    } finally {
+                        internalCalls--;
+                    }
+
+                    return;
+                }
+                case VersioningResultAction.LoadDefault:
+                    sender.LoadDefault(ConstructingParameters);
+                    return;
+                case VersioningResultAction.LoadDefaultAndSave:
+                    sender.LoadDefault(ConstructingParameters);
+                    sender.Save();
+                    return;
+
+                default: throw new ArgumentOutOfRangeException();
+            }
         }
     }
 }

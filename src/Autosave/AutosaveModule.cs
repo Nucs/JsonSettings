@@ -29,7 +29,7 @@ namespace Nucs.JsonSettings.Autosave {
         ///     Will try to trigger save if this module did not lose reference to <see cref="JsonSettings"/> socket.
         /// </summary>
         public void TryTriggerSave() {
-            if (Socket.TryGetTarget(out var settings))
+            if (Socket != null && Socket.TryGetTarget(out var settings))
                 settings.Save();
         }
 

@@ -92,14 +92,16 @@ namespace Nucs.JsonSettings.xTests {
         public void Fluent_SavingWithBase64_LoadingWithout() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
-                var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).WithBase64().LoadNow();
+                var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName)
+                                    .WithBase64()
+                                    .LoadNow();
                 o.SomeNumeralProperty = 1;
                 o.SomeProperty = "with some value";
                 o.SomeClassProperty = new SmallClass() {Name = "Small", Value = "Class"};
                 o.Save();
 
                 //validate
-                Assert.Throws<JsonReaderException>(() => { o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).LoadNow(); });
+                Assert.Throws<JsonSettingsException>(() => { o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).LoadNow(); });
             }
         }
 

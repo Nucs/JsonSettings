@@ -41,6 +41,10 @@ namespace Nucs.JsonSettings {
 
     public delegate void AfterSaveHandler(JsonSettings sender, string destinition);
 
+    public delegate void TryingRecoverHandler(JsonSettings sender, string fileName, JsonException? exception, ref bool recovered, ref bool handled);
+
+    public delegate void RecoveredHandler(JsonSettings sender);
+
     public delegate void ConfigurateHandler(JsonSettings sender);
 
     #endregion
@@ -57,7 +61,7 @@ namespace Nucs.JsonSettings {
 
         #endregion
 
-        private readonly Type _childtype;
+        internal readonly Type _childtype;
 
         /// <summary>
         ///     Serves as a reminder where to save or from where to load (if it is loaded on construction and doesnt change between constructions).<br></br>
@@ -82,13 +86,6 @@ namespace Nucs.JsonSettings {
         /// </summary>
         [JsonIgnore]
         protected virtual JsonSerializerSettings? OverrideSerializerSettings { get; set; }
-
-        /// <summary>
-        ///     Defines how should <see cref="Load()"/> handle empty .json files, by default - false - do not throw.
-        ///     Note: this property must be set during construction or as property's default value.
-        /// </summary>
-        [JsonIgnore]
-        protected virtual bool ThrowOnEmptyFile { get; set; } = false;
 
         #pragma warning disable 8618
         protected JsonSettings() : this(null!) { }
@@ -210,19 +207,21 @@ namespace Nucs.JsonSettings {
             Load(this, (Action) null!, filename);
         }
 
-        public void LoadDefault(params object[] args) {
+        public void LoadDefault(params object[]? args) {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(GetType(), args);
             var config = ResolveConfiguration(); //pass configuration that we use here, not default one.
             LoadJson(defaultedValue.ToJson(config), config);
 
+            OnRecovered();
             OnAfterLoad(true);
         }
 
-        public void LoadDefault<T>(params object[] args) where T : ISavable {
+        public void LoadDefault<T>(params object[]? args) where T : ISavable {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(typeof(T), args);
             var config = ResolveConfiguration(); //pass configuration that we use here, not default one.
             LoadJson(defaultedValue.ToJson(config), config);
 
+            OnRecovered();
             OnAfterLoad(true);
         }
 
@@ -230,9 +229,9 @@ namespace Nucs.JsonSettings {
             var defaultedValue = (JsonSettings) Activator.CreateInstance(GetType(), args);
             var config = ResolveConfiguration(); //pass configuration that we use here, not default one.
             LoadJson(defaultedValue.ToJson(config), config);
+            OnRecovered();
             if (this is IVersionable versionable)
                 versionable.Version = version;
-
             OnAfterLoad(true);
         }
 
@@ -406,6 +405,7 @@ namespace Nucs.JsonSettings {
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <param name="filename">File name, for example "settings.jsn". no path required, just a file name.<br></br>Without path the file will be located at the executing directory</param>
         /// <returns>The loaded or freshly new saved object</returns>
+        /// <exception cref="JsonSettings"></exception>
         public static object Load(object instance, Action? configure, string filename = "<DEFAULT>") {
             byte[] ReadAllBytes(FileStream instream) {
                 using (var memoryStream = new MemoryStream((int) instream.Length)) {
@@ -424,7 +424,7 @@ namespace Nucs.JsonSettings {
 
             o.OnBeforeLoad(ref filename);
 
-            if (File.Exists(filename))
+            if (File.Exists(filename)) {
                 try {
                     byte[] bytes;
                     using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
@@ -434,14 +434,44 @@ namespace Nucs.JsonSettings {
                     o.OnAfterDecrypt(ref bytes);
 
                     var fc = Encoding.GetString(bytes);
-                    if (string.IsNullOrEmpty(fc) || string.IsNullOrEmpty(fc.Replace("\r", "").Replace("\n", "").Trim()))
-                        if (o.ThrowOnEmptyFile)
+                    if (string.IsNullOrEmpty(fc) || string.IsNullOrEmpty(fc.Replace("\r", "").Replace("\n", "").Trim())) {
+                        bool recovered = false; //by default we ignore
+                        bool handled = false; //by default we ignore
+                        o.OnTryingRecover(filename, null, ref recovered, ref handled);
+                        if (!recovered)
                             throw new JsonSettingsException("The settings file is empty!");
-                        else
-                            goto _emptyfile;
+
+                        o.OnRecovered();
+                        o.OnAfterLoad(false);
+                        o.FileName = filename;
+                        return o;
+                    }
 
                     o.OnBeforeDeserialize(ref fc);
-                    o.LoadJson(fc);
+
+                    try {
+                        o.LoadJson(fc);
+                    } catch (JsonSerializationException e) {
+                        _handleException(e);
+                        return o;
+                    } catch (JsonReaderException e) {
+                        _handleException(e);
+                        return o;
+                    }
+
+                    void _handleException(JsonException e) {
+                        bool recovered = false; //by default we ignore
+                        bool handled = false; //by default we ignore
+                        o.OnTryingRecover(filename, e, ref recovered, ref handled);
+
+                        if (!recovered)
+                            throw new JsonSettingsException($"Unable to parse file '{filename}', see inner exception...", e);
+
+                        o.OnRecovered();
+                        o.OnAfterLoad(false);
+                        o.FileName = filename;
+                    }
+
                     o.OnAfterDeserialize();
                     o.FileName = filename;
                     o.OnAfterLoad(true);
@@ -451,12 +481,12 @@ namespace Nucs.JsonSettings {
                 } catch (ArgumentException e) when (e.Message.StartsWith("Invalid")) {
                     throw new JsonSettingsException("Settings file is corrupt.");
                 }
-
-            //doesn't exist.
-            _emptyfile:
-            o.OnAfterLoad(false);
-            o.FileName = filename;
-            o.Save(filename);
+            } else {
+                //empty file
+                o.OnAfterLoad(false);
+                o.FileName = filename;
+                o.Save(filename);
+            }
 
             return o;
         }
@@ -594,7 +624,19 @@ namespace Nucs.JsonSettings {
 
         public virtual event AfterSaveHandler? AfterSave;
 
-        public virtual event ConfigurateHandler? Configurate;
+        /// <summary>
+        ///     When parsing JSON fails, this event is called.
+        /// </summary>
+        /// <remarks>handled=true will prevent other recovery mechanisms from trying to recover. recovered=false will throw the error.</remarks>
+        public virtual event TryingRecoverHandler? TryingRecover;
+
+        /// <summary>
+        ///     Triggers when an object has recovered/defaulted successfully.
+        /// </summary>
+        /// <remarks>For example, used by <see cref="VersioningModule"/> to fill the right version on default load.</remarks>
+        public virtual event RecoveredHandler? Recovered;
+
+        internal virtual event ConfigurateHandler? Configurate;
 
         #endregion
 
@@ -616,11 +658,11 @@ namespace Nucs.JsonSettings {
             OnConfigure();
         }
 
-        internal virtual void OnBeforeLoad(ref string destinition) {
+        protected internal virtual void OnBeforeLoad(ref string destinition) {
             BeforeLoad?.Invoke(this, ref destinition);
         }
 
-        public virtual void OnDecrypt(ref byte[] data) {
+        protected internal virtual void OnDecrypt(ref byte[] data) {
             _decrypt?.Invoke(this, ref data);
         }
 
@@ -628,40 +670,48 @@ namespace Nucs.JsonSettings {
             AfterDecrypt?.Invoke(this, ref data);
         }
 
-        internal virtual void OnBeforeDeserialize(ref string data) {
+        protected internal virtual void OnBeforeDeserialize(ref string data) {
             BeforeDeserialize?.Invoke(this, ref data);
         }
 
-        internal virtual void OnAfterDeserialize() {
+        protected internal virtual void OnAfterDeserialize() {
             AfterDeserialize?.Invoke(this);
         }
 
-        internal virtual void OnAfterLoad(bool successfulLoad) {
+        protected internal virtual void OnAfterLoad(bool successfulLoad) {
             AfterLoad?.Invoke(this, successfulLoad);
         }
 
-        internal virtual void OnBeforeSave(ref string destinition) {
+        protected internal virtual void OnBeforeSave(ref string destinition) {
             BeforeSave?.Invoke(this, ref destinition);
         }
 
-        internal virtual void OnBeforeSerialize() {
+        protected internal virtual void OnBeforeSerialize() {
             BeforeSerialize?.Invoke(this);
         }
 
-        internal virtual void OnAfterSerialize(ref string data) {
+        protected internal virtual void OnAfterSerialize(ref string data) {
             AfterSerialize?.Invoke(this, ref data);
         }
 
-        public virtual void OnEncrypt(ref byte[] data) {
+        protected internal virtual void OnEncrypt(ref byte[] data) {
             Encrypt?.Invoke(this, ref data);
         }
 
-        internal virtual void OnAfterEncrypt(ref byte[] data) {
+        protected internal virtual void OnAfterEncrypt(ref byte[] data) {
             AfterEncrypt?.Invoke(this, ref data);
         }
 
-        internal virtual void OnAfterSave(string destinition) {
+        protected internal virtual void OnAfterSave(string destinition) {
             AfterSave?.Invoke(this, destinition);
+        }
+
+        protected internal virtual void OnTryingRecover(string fileName, JsonException? exception, ref bool recovered, ref bool handled) {
+            TryingRecover?.Invoke(this, fileName, exception, ref recovered, ref handled);
+        }
+
+        protected internal virtual void OnRecovered() {
+            Recovered?.Invoke(this);
         }
 
         #endregion
