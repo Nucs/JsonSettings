@@ -32,6 +32,7 @@ namespace Nucs.JsonSettings.xTests {
                 cfg.Value = 5;
                 cfg.Save();
 
+
                 //load
                 var cfgg = JsonSettings.Configure<ThrowingRecoverySettings>(f)
                                        .WithRecovery(RecoveryAction.LoadDefault)

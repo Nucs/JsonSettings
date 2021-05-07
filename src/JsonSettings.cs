@@ -451,15 +451,7 @@ namespace Nucs.JsonSettings {
 
                     try {
                         o.LoadJson(fc);
-                    } catch (JsonSerializationException e) {
-                        _handleException(e);
-                        return o;
-                    } catch (JsonReaderException e) {
-                        _handleException(e);
-                        return o;
-                    }
-
-                    void _handleException(JsonException e) {
+                    } catch (JsonException e) {
                         bool recovered = false; //by default we ignore
                         bool handled = false; //by default we ignore
                         o.OnTryingRecover(filename, e, ref recovered, ref handled);
@@ -470,7 +462,8 @@ namespace Nucs.JsonSettings {
                         o.OnRecovered();
                         o.OnAfterLoad(false);
                         o.FileName = filename;
-                    }
+                        return o;
+                    } 
 
                     o.OnAfterDeserialize();
                     o.FileName = filename;
