@@ -86,7 +86,24 @@ namespace Nucs.JsonSettings.xTests.Autosave {
         public void SavingInterface() {
             using (var f = new TempfileLife()) {
                 var rpath = JsonSettings.ResolvePath(f);
-                var o = JsonSettings.Load<InterfacedSettings>(f.FileName).EnableIAutosave<ISettings>();
+                ISettings o = JsonSettings.Load<InterfacedSettings>(f.FileName).EnableIAutosave<InterfacedSettings, ISettings>();
+
+                Console.WriteLine(File.ReadAllText(rpath));
+                o.property.ShouldBeEquivalentTo(null);
+                o.property = "test";
+                var o2 = JsonSettings.Load<InterfacedSettings>(f.FileName);
+                o2.property.ShouldBeEquivalentTo("test");
+
+                var jsn = File.ReadAllText(rpath);
+                jsn.Contains("\"test\"").Should().BeTrue();
+                Console.WriteLine(jsn);
+            }
+        }
+        [Test]
+        public void SavingInterface_NonVirtual() {
+            using (var f = new TempfileLife()) {
+                var rpath = JsonSettings.ResolvePath(f);
+                ISettings o = JsonSettings.Load<NonVirtualSettings>(f.FileName).EnableIAutosave<NonVirtualSettings, ISettings>();
 
                 Console.WriteLine(File.ReadAllText(rpath));
                 o.property.ShouldBeEquivalentTo(null);
@@ -106,41 +123,37 @@ namespace Nucs.JsonSettings.xTests.Autosave {
                 var o = JsonSettings.Load<SettingsBag>(f);
 
                 dynamic d = o.AsDynamic();
-                
-                
+
                 d.SomeProp = "Works";
                 d.Num = 1;
                 Assert.True(d["SomeProp"] == "Works");
                 Assert.True(d.Num == 1);
-                
+
                 o.Save();
                 o = JsonSettings.Configure<SettingsBag>(f)
                                 .LoadNow()
                                 .EnableAutosave();
-                
+
                 o["SomeProp"].Should().Be("Works");
                 o["Num"].Should().Be(1L); //newtonsoft deserializes numbers as long.
                 StrongBox<int> a = new StrongBox<int>();
-                o.AfterSave += (sender, destinition) => {
-                    a.Value++;
-                };
-                
+                o.AfterSave += (sender, destinition) => { a.Value++; };
+
                 using (o.SuspendAutosave()) {
                     o["SomeProp"] = "Works2";
                     o["Num"] = 2;
-                    a.Value.Should().Be(0);  
+                    a.Value.Should().Be(0);
                     var k = JsonSettings.Load<SettingsBag>(f);
                     k["SomeProp"].Should().Be("Works");
                     k["Num"].Should().Be(1L); //newtonsoft deserializes numbers as long.
                     a.Value.Should().Be(0);
                 }
-                
+
                 a.Value.Should().Be(1);
 
                 var kk = JsonSettings.Load<SettingsBag>(f);
                 kk["SomeProp"].Should().Be("Works2");
                 kk["Num"].Should().Be(2L); //newtonsoft deserializes numbers as long.
-
             }
         }
 
@@ -184,6 +197,24 @@ namespace Nucs.JsonSettings.xTests.Autosave {
 
             public Settings() { }
             public Settings(string fileName) : base(fileName) { }
+
+            #endregion
+        }
+
+        public class NonVirtualSettings : JsonSettings, ISettings {
+            #region Overrides of JsonSettings
+
+            /// <summary>
+            ///     Serves as a reminder where to save or from where to load (if it is loaded on construction and doesnt change between constructions).<br></br>
+            ///     Can be relative to executing file's directory.
+            /// </summary>
+            public override string FileName { get; set; } = "somename.jsn";
+
+            public string property { get; set; }
+            public void Method() { }
+
+            public NonVirtualSettings() { }
+            public NonVirtualSettings(string fileName) : base(fileName) { }
 
             #endregion
         }

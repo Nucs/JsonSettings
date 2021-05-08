@@ -113,7 +113,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
         public void SavingInterface() {
             using (var f = new TempfileLife()) {
                 var rpath = JsonSettings.ResolvePath(f);
-                var o = JsonSettings.Load<InterfacedSettings>(f.FileName).EnableIAutosave<ISettings>();
+                var o = JsonSettings.Load<InterfacedSettings>(f.FileName).EnableIAutosave<InterfacedSettings, ISettings>();
 
                 Console.WriteLine(File.ReadAllText(rpath));
                 o.property.ShouldBeEquivalentTo(null);
@@ -197,8 +197,8 @@ namespace Nucs.JsonSettings.xTests.Autosave {
         private ObservableCollection<object> _nonAutosavingProperty;
         private ObservableCollection<string> _residents = new ObservableCollection<string>();
 
-        /// will not autosave because property is not virtual
-        public ObservableCollection<object> NonAutosavingProperty {
+        [IgnoreAutosave]
+        public virtual ObservableCollection<object> NonAutosavingProperty {
             get => _nonAutosavingProperty;
             set {
                 if (Equals(value, _nonAutosavingProperty)) return;
