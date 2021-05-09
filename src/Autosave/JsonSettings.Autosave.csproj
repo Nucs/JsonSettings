@@ -2,8 +2,8 @@
 
   <PropertyGroup>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <AssemblyVersion>2.0.0.4</AssemblyVersion>
-    <FileVersion>2.0.0.4</FileVersion>
+    <AssemblyVersion>2.0.0.5</AssemblyVersion>
+    <FileVersion>2.0.0.5</FileVersion>
     <Authors>Nucs / Eli Belash</Authors>
     <Company>Nucs / Eli Belash</Company>
 	  <Summary>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
@@ -20,7 +20,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>
     <PackageId>Nucs.JsonSettings.Autosave</PackageId>
-    <PackageVersion>2.0.0-alpha4</PackageVersion>
+    <PackageVersion>2.0.0-alpha5</PackageVersion>
     <Title>Nucs.JsonSettings.Autosave</Title>
     <PackageReleaseNotes>- Added RecoveryModule  and .WithRecovery to capture parsing errors
 - Added JsonSettings.SuspendAutosave() extension
@@ -37,7 +37,10 @@
 - Made all module functions and variables protected or virtual.
 - FluentJsonSettings: replaced dynamic creation with hardcoded creation (faster).
 - Added proper Versioning example
-- JsonSettings: add OnXXXX methods that trigger event changed to protected internal.</PackageReleaseNotes>
+- JsonSettings: add OnXXXX methods that trigger event changed to protected internal.
+- Made all modules extensible
+- SettingsBag: removed locking, optimized and replaced with ConcurrentDictionary for threadsafety
+- Added documentation </PackageReleaseNotes>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 

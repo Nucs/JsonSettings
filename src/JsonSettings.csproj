@@ -2,8 +2,8 @@
 
   <PropertyGroup>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <AssemblyVersion>2.0.0.4</AssemblyVersion>
-    <FileVersion>2.0.0.4</FileVersion>
+    <AssemblyVersion>2.0.0.5</AssemblyVersion>
+    <FileVersion>2.0.0.5</FileVersion>
     <Authors>Nucs / Eli Belash</Authors>
     <Company>Nucs / Eli Belash</Company>
 	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
@@ -38,7 +38,10 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
 - Made all module functions and variables protected or virtual.
 - FluentJsonSettings: replaced dynamic creation with hardcoded creation (faster).
 - Added proper Versioning example
-- JsonSettings: add OnXXXX methods that trigger event changed to protected internal.</PackageReleaseNotes>
+- JsonSettings: add OnXXXX methods that trigger event changed to protected internal.
+- Made all modules extensible
+- SettingsBag: removed locking, optimized and replaced with ConcurrentDictionary for threadsafety
+- Added documentation </PackageReleaseNotes>
     <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
