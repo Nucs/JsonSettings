@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Collections;
@@ -10,16 +12,17 @@ namespace Nucs.JsonSettings {
     /// <summary>
     ///     A dynamic settings class, adds settings as you go.
     /// </summary>
-    /// <remarks>SettingsBag is threadsafe via accessing lock.</remarks>
+    /// <remarks>SettingsBag is threadsafe by using <see cref="ConcurrentDictionary{TKey,TValue}"/>.</remarks>
     public sealed class SettingsBag : JsonSettings {
         private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
         private readonly SafeDictionary<string, PropertyInfo> PropertyData = new SafeDictionary<string, PropertyInfo>();
-        private AutosaveModule? _autosaveModule;
+        private AutosaveModule? _autosaveModule; //TODO: this potentially can support WPF binding
+
         /// <summary>
         ///     All the settings in this bag.
         /// </summary>
         public IReadOnlyDictionary<string, object> Data => _data;
-        
+
         [JsonIgnore]
         public override string FileName { get; set; }
 
@@ -37,7 +40,9 @@ namespace Nucs.JsonSettings {
         ///     Index access ([]) or Property/Field is working.
         /// </summary>
         /// <returns></returns>
-        public dynamic AsDynamic() { return new DynamicSettingsBag(this); }
+        public dynamic AsDynamic() {
+            return new DynamicSettingsBag(this);
+        }
 
         private bool _autosave;
 
@@ -50,9 +55,9 @@ namespace Nucs.JsonSettings {
             set {
                 if (value == _autosave)
                     return;
-                
+
                 _autosave = value;
-                
+
                 if (value && _autosaveModule == null)
                     Modulation.Attach(_autosaveModule = new AutosaveModule());
                 else if (!value && _autosaveModule != null) {
@@ -66,22 +71,17 @@ namespace Nucs.JsonSettings {
 
         public SettingsBag(string fileName) {
             FileName = fileName;
-            foreach (var pi in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
-                if ((pi.CanRead && pi.CanWrite) == false)
-                    continue;
-                PropertyData.Add(pi.Name, pi);
-            }
+            if (this.GetType() != typeof(SettingsBag))
+                foreach (var pi in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
+                    if ((pi.CanRead && pi.CanWrite) == false)
+                        continue;
+                    PropertyData.Add(pi.Name, pi);
+                }
         }
 
         public object this[string key] {
-            get {
-                lock (this)
-                    return Get<object>(key);
-            }
-            set {
-                lock (this)
-                    Set(key, value);
-            }
+            get => Get<object>(key);
+            set => Set(key, value);
         }
 
         /// <summary>
@@ -92,42 +92,38 @@ namespace Nucs.JsonSettings {
         /// <param name="default"></param>
         /// <returns></returns>
         public T Get<T>(string key, T @default = default(T)) {
-            lock (this) {
-                if (PropertyData.ContainsKey(key))
-                    return (T) PropertyData[key].GetValue(this, null);
+            if (PropertyData.TryGetValue(key, out var prop))
+                return (T) prop.GetValue(this, null);
 
-                var ret = _data[key];
-                if (object.Equals(ret, default(T)))
-                    return @default;
+            if (_data.TryGetValue(key, out var value))
+                return (T) value;
 
-                return (T) ret;
-            }
+            return default;
         }
 
         /// <summary>
         ///     Sets or adds a value.
         /// </summary>
         public void Set(string key, object value) {
-            lock (this) {
-                if (PropertyData.ContainsKey(key))
-                    PropertyData[key].SetValue(this, value, null);
-                else
-                    _data[key] = value;
-
+            if (PropertyData.TryGetValue(key, out var prop)) {
+                prop.SetValue(this, value);
                 TrySave();
+                return;
             }
+            
+            _data[key] = value;
+            TrySave();
         }
 
         public bool Remove(string key) {
-            bool ret = false;
-            lock (this)
-                ret = _data.Remove(key);
-            
-            TrySave();
-
+            var ret = _data.TryRemove(key, out _);
+            if (ret)
+                TrySave();
             return ret;
         }
 
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TrySave() {
             if (Autosave && _autosaveModule!.AutosavingState != AutosavingState.SuspendedChanged) {
                 if (_autosaveModule.UpdatesSuspended) {
@@ -142,17 +138,17 @@ namespace Nucs.JsonSettings {
         ///     Remove where is similar to <see cref="List{T}.RemoveAll"/>.
         /// </summary>
         public int RemoveWhere(Func<KeyValuePair<string, object>, bool> comprarer) {
-            lock (this) {
-                int ret = 0;
-                foreach (var kv in _data.ToArray()) {
-                    if (comprarer(kv))
-                        if (Remove(kv.Key)) {
-                            ret += 1;
-                        }
-                }
-
-                return ret;
+            int ret = 0;
+            foreach (var kv in _data) {
+                if (comprarer(kv))
+                    if (_data.TryRemove(kv.Key, out _))
+                        ret++;
             }
+
+            if (ret > 0)
+                TrySave();
+            
+            return ret;
         }
     }
 }
