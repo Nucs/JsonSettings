@@ -27,7 +27,6 @@ namespace Nucs.JsonSettings.Autosave {
                       $" non-virtual properties will do nothing therefore all properties must be virtual in order for the proxied object to function normally " +
                       $"or proxify with an interface which forces the property to be virtual behind the scenes (only the interface properties will be validated).";
             try {
-                Debug.WriteLine(msg);
                 if (Debugger.IsAttached)
                     Console.Error.WriteLine(msg);
             } catch (Exception) {
@@ -53,7 +52,6 @@ namespace Nucs.JsonSettings.Autosave {
                           $" non-virtual properties will do nothing therefore all properties must be virtual in order for the proxied object to function normally " +
                           $"or proxify with an interface which forces the property to be virtual behind the scenes (only the interface properties will be validated).";
                 try {
-                    Debug.WriteLine(msg);
                     if (Debugger.IsAttached)
                         Console.Error.WriteLine(msg);
                 } catch (Exception) {
