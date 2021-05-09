@@ -53,4 +53,10 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\README.md">
+      <Link>README.md</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>
