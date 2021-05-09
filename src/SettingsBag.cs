@@ -17,6 +17,7 @@ namespace Nucs.JsonSettings {
         private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
         private readonly SafeDictionary<string, PropertyInfo> PropertyData = new SafeDictionary<string, PropertyInfo>();
         private AutosaveModule? _autosaveModule; //TODO: this potentially can support WPF binding
+        private bool _autosave;
 
         /// <summary>
         ///     All the settings in this bag.
@@ -43,8 +44,6 @@ namespace Nucs.JsonSettings {
         public dynamic AsDynamic() {
             return new DynamicSettingsBag(this);
         }
-
-        private bool _autosave;
 
         /// <summary>
         ///     Will perform a safe after a change in any non-hardcoded public property.
@@ -79,7 +78,7 @@ namespace Nucs.JsonSettings {
                 }
         }
 
-        public object this[string key] {
+        public object? this[string key] {
             get => Get<object>(key);
             set => Set(key, value);
         }
@@ -91,7 +90,7 @@ namespace Nucs.JsonSettings {
         /// <param name="key"></param>
         /// <param name="default"></param>
         /// <returns></returns>
-        public T Get<T>(string key, T @default = default(T)) {
+        public T? Get<T>(string key, T @default = default(T)) {
             if (PropertyData.TryGetValue(key, out var prop))
                 return (T) prop.GetValue(this, null);
 
@@ -110,7 +109,7 @@ namespace Nucs.JsonSettings {
                 TrySave();
                 return;
             }
-            
+
             _data[key] = value;
             TrySave();
         }
@@ -122,7 +121,6 @@ namespace Nucs.JsonSettings {
             return ret;
         }
 
-        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TrySave() {
             if (Autosave && _autosaveModule!.AutosavingState != AutosavingState.SuspendedChanged) {
@@ -147,7 +145,7 @@ namespace Nucs.JsonSettings {
 
             if (ret > 0)
                 TrySave();
-            
+
             return ret;
         }
     }
