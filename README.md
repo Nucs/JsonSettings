@@ -21,7 +21,7 @@ PM> Install-Package nucs.JsonSettings
     - [Versioning](#versioning)
     - [Encryption](#encryption)
     - [Autosave](#autosave)
-      - [INotificationChanged/INotificationCollectionChanged and WPF Support](#inotificationchangedinotificationcollectionchanged-and-wpf-support)
+      - [WPF Support with INotificationChanged/INotificationCollectionChanged](#wpf-support-with-inotificationchangedinotificationcollectionchanged)
       - [Throttled Save](#throttled-save)
 - [Dynamic Settings](#dynamic-settings)
 - [Modulation Api](#modulation-api)
@@ -42,8 +42,8 @@ Features Overview
  - Customizable control over recovering from parsing exceptions  <span style='font-size:11px; padding-left: 3px' >[read more](#recovery)</span>
  - AES256 Encryption via a key  <span style='font-size:11px; padding-left: 3px' >[read more](#encryption)</span>
  - Fully extensible with [Json.NET](https://www.newtonsoft.com/json/) 's capabilities, attributes and settings
-   - It'll be accurate to say that this library is build around [Json.NET](https://www.newtonsoft.com/json/)
- - `SettingsBag`, a `dynamic` option that uses a Dictionary<string,object> eliminating the need for hardcoding writing a POCO  <span style='font-size:11px; padding-left: 3px' >[read more](#dynamic-settings)</span> 
+   - It'll be accurate to say that this library is built around [Json.NET](https://www.newtonsoft.com/json/)
+ - `SettingsBag`, a `dynamic` option that uses a ConcurrentDictionary<string,object> eliminating the need for hardcoding POCO class <span style='font-size:11px; padding-left: 3px' >[read more](#dynamic-settings)</span> 
 
 The Basics
 ---
@@ -225,7 +225,7 @@ If there were no changes between the allocation of `SuspendAutosave` object and 
 
 //TODO: example
 
-INotificationChanged/INotificationCollectionChanged and WPF Support
+WPF Support with INotificationChanged/INotificationCollectionChanged
 ---
 Any settings class can turn into a ViewModel with full autosave support making window settings and state persistence much simpler.
 
