@@ -29,18 +29,18 @@ namespace Nucs.JsonSettings.Autosave {
             invocation.Proceed();
 
             //handle saving if it was a setter, not INotifyPropertyChanged/INotifyCollectionChanged and has CompilerGeneratedAttribute
-            if (_module.AutosavingState != AutosavingState.SuspendedChanged && invocation.Method.ReturnType == typeof(void) && invocation.Arguments.Length > 0 && invocation.Method.Name.StartsWith("set_", StringComparison.Ordinal)) {
-                var valueType = invocation.Arguments[0].GetType();
-                if (typeof(INotifyPropertyChanged).IsAssignableFrom(valueType) != true
-                    && typeof(INotifyCollectionChanged).IsAssignableFrom(valueType) != true
+            if (_module.AutosavingState != AutosavingState.SuspendedChanged
+                && invocation.Method.ReturnType == typeof(void)
+                && invocation.Arguments.Length > 0
+                && invocation.Method.Name.StartsWith("set_", StringComparison.Ordinal)) {
+                var type = invocation.Arguments[0]?.GetType();
+                if (type != null
+                    && typeof(INotifyPropertyChanged).IsAssignableFrom(type) != true
+                    && typeof(INotifyCollectionChanged).IsAssignableFrom(type) != true
                     && invocation.MethodInvocationTarget.IsDefined(typeof(CompilerGeneratedAttribute), false)) {
                     var propName = invocation.Method.Name.Substring(4);
-                    if (!_module.NotificationsHandler.CanHandleProperty(propName))
+                    if (!_module.NotificationsHandler!.CanHandleProperty(propName))
                         return;
-                    
-                    for (var i = 0; i < AutosaveModule._frameworkParametersLength; i++) {
-                        if (AutosaveModule._frameworkParameters[i] == propName) return;
-                    }
 
                     //save.
                     if (_module.UpdatesSuspended) {

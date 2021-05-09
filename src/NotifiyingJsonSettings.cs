@@ -10,9 +10,9 @@ namespace Nucs.JsonSettings.Examples {
         protected NotifiyingJsonSettings() { }
         protected NotifiyingJsonSettings(string fileName) : base(fileName) { }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        public virtual void OnPropertyChanged([CallerMemberName] string propertyName = null) {
+        public virtual void OnPropertyChanged([CallerMemberName] string propertyName = null!) {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }

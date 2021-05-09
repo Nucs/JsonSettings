@@ -11,7 +11,7 @@ namespace Rijndael256
     /// <summary>
     /// AES approved cipher key sizes.
     /// </summary>
-    internal enum KeySize
+    public enum KeySize
     {
         /// <summary>
         /// 128-bit

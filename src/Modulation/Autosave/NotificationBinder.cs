@@ -23,16 +23,18 @@ namespace Nucs.JsonSettings.Autosave {
 
             //populate information
             var monitoredProperties = _settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                            .Where(p => p.GetSetMethod()?.IsVirtual == true && p.GetCustomAttribute<JsonIgnoreAttribute>(true) == null
-                                                                                            && p.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null)
-                                            .ToArray();
-            
+                                               .Where(p => p.GetSetMethod()?.IsVirtual == true
+                                                           && p.GetCustomAttribute<JsonIgnoreAttribute>(true) == null
+                                                           && p.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null
+                                                           && AutosaveModule._frameworkParameters.All(f => f != p.Name))
+                                               .ToArray();
+
             Dictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)> dictionary = new Dictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)>();
             foreach (var property in monitoredProperties)
                 dictionary.Add(property.Name, (t: property, property.GetGetMethod(), property.GetSetMethod(), property.GetGetMethod().Invoke(_settings, null)));
             _monitoredPropertiesTable = new ConcurrentDictionary<string, (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue)>(dictionary, StringComparer.Ordinal);
             _properties = new HashSet<string>(_monitoredPropertiesTable.Keys);
-            
+
             //bind main event pipe
             _settings.PropertyChanged += OnPropertyChanged;
 
@@ -74,18 +76,10 @@ namespace Nucs.JsonSettings.Autosave {
         }
 
         private void SaveOnChange(object sender, PropertyChangedEventArgs e) {
-            for (var i = 0; i < AutosaveModule._frameworkParametersLength; i++)
-                if (AutosaveModule._frameworkParameters[i] == e.PropertyName)
-                    return;
-
             _settings.Save();
         }
 
         private void SaveOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) {
-            for (var i = 0; i < AutosaveModule._frameworkParametersLength; i++)
-                if (AutosaveModule._frameworkParameters[i] == e.ToString())
-                    return;
-
             _settings.Save();
         }
 

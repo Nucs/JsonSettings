@@ -9,7 +9,11 @@ namespace Nucs.JsonSettings.Modulation {
         ///     The default policy used for <see cref="VersioningModule{T}"/>.<br/>
         ///     By default: returns true if expectedVersion is null or expectedVersion.Equals(version)
         /// </summary>
-        public static readonly VersioningPolicyHandler DefaultPolicy = (version, expectedVersion) => expectedVersion?.Equals(version) != false;
+        public static readonly VersioningPolicyHandler DefaultPolicy = DefaultEqualPolicy;
+
+        public static bool DefaultEqualPolicy(Version version, Version expectedVersion) {
+            return expectedVersion?.Equals(version) != false;
+        }
 
         private const string _versionMatchRegex = @"(\.\d+\.\d+\.\d+\.\d+(?:\.\d+)?)(?:(?=\.)|-(\d+)|$)";
 
@@ -38,14 +42,14 @@ namespace Nucs.JsonSettings.Modulation {
             set => _defaultPolicy = value;
         }
 
-        public VersioningResultAction VersionMismatchAction { get; set; }
-        public Version ExpectedVersion { get; set; }
-        public VersioningPolicyHandler Policy { get; set; }
+        public virtual VersioningResultAction VersionMismatchAction { get; set; }
+        public virtual Version ExpectedVersion { get; set; }
+        public virtual VersioningPolicyHandler Policy { get; set; }
 
         /// <summary>
         ///     The parameters that'll be passed to the constructor of <typeparamref name="T"/>.
         /// </summary>
-        public object[]? ConstructingParameters { get; set; } = Array.Empty<object>();
+        public virtual object[]? ConstructingParameters { get; set; } = Array.Empty<object>();
 
         public VersioningModule(VersioningResultAction versionMismatchAction, Version expectedVersion, VersioningPolicyHandler policy) {
             VersionMismatchAction = versionMismatchAction;

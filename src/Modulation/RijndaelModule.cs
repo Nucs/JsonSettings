@@ -12,15 +12,18 @@ namespace Nucs.JsonSettings.Modulation {
     public class RijndaelModule : Module {
         public static readonly SecureString EmptyString = "".ToSecureString();
 
-        private Func<SecureString> _fetcher;
+        private Func<SecureString>? _fetcher;
 
-        internal KeySize KeySize { get; set; } = KeySize.Aes256;
+        /// <summary>
+        ///     The key-size for the AES encryption, by default <see cref="KeySize.Aes256"/>
+        /// </summary>
+        public virtual KeySize KeySize { get; set; } = KeySize.Aes256;
 
         /// <summary>
         ///     The password passed during constructor stored as a <see cref="SecureString"/> in memory.
         /// </summary>
-        public SecureString Password {
-            get => _fetcher?.Invoke();
+        public virtual SecureString Password {
+            get => _fetcher?.Invoke() ?? EmptyString;
             set { _fetcher = () => value; }
         }
 
@@ -41,19 +44,21 @@ namespace Nucs.JsonSettings.Modulation {
 
         public override void Attach(JsonSettings socket) {
             base.Attach(socket);
-            socket.Encrypt += _Encrypt;
-            socket.Decrypt += _Decrypt;
+            socket.Encrypt += EncryptInternal;
+            socket.Decrypt += DecryptInternal;
         }
 
         public override void Deattach(JsonSettings socket) {
             base.Deattach(socket);
-            socket.Encrypt -= _Encrypt;
-            socket.Decrypt -= _Decrypt;
+            socket.Encrypt -= EncryptInternal;
+            socket.Decrypt -= DecryptInternal;
         }
 
-        protected void _Encrypt(JsonSettings sender, ref byte[] data) { data = Rijndael.Encrypt(data, Password.ToRawString(), Rng.GenerateRandomBytes(Rijndael.InitializationVectorSize), KeySize); }
+        protected virtual void EncryptInternal(JsonSettings sender, ref byte[] data) {
+            data = Rijndael.Encrypt(data, Password.ToRawString(), Rng.GenerateRandomBytes(Rijndael.InitializationVectorSize), KeySize);
+        }
 
-        protected void _Decrypt(JsonSettings sender, ref byte[] data) {
+        protected virtual void DecryptInternal(JsonSettings sender, ref byte[] data) {
             try {
                 data = Rijndael.DecryptBytes(data, Password.ToRawString(), KeySize);
             } catch (CryptographicException inner) {

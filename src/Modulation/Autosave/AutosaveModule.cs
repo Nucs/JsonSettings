@@ -8,12 +8,12 @@ namespace Nucs.JsonSettings.Autosave {
         /// <summary>
         ///     When true, changes will not cause updates.
         /// </summary>
-        public bool UpdatesSuspended => AutosavingState != AutosavingState.Running;
+        public virtual bool UpdatesSuspended => AutosavingState != AutosavingState.Running;
 
         /// <summary>
         ///     The state of the autosave module
         /// </summary>
-        public AutosavingState AutosavingState { get; set; }
+        public virtual AutosavingState AutosavingState { get; set; }
 
         /// <summary>
         ///     The notification handler taking care of binding and unbinding to property and collection changes.

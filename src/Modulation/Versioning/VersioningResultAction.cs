@@ -14,7 +14,7 @@
         Throw,
 
         /// <summary>
-        ///     Will append the version to the end of the file's name and load the default settings.<br/>
+        ///     Will append the version to the end of the faulty file's name and load the default settings and save to disk.<br/>
         ///     i.e. 'myfile.json' versioned 1.0.0.5 will be renamed to myfile.1.0.0.5.json if it fails on version parsing.
         /// </summary>
         RenameAndLoadDefault,

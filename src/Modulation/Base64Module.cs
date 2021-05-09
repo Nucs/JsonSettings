@@ -26,14 +26,12 @@ namespace Nucs.JsonSettings.Modulation {
             socket.Decrypt -= _Decrypt;
         }
 
-        protected void _Encrypt(JsonSettings sender, ref byte[] data) {
+        protected virtual void _Encrypt(JsonSettings sender, ref byte[] data) {
             data = JsonSettings.Encoding.GetBytes(Convert.ToBase64String(data));
         }
 
-        protected void _Decrypt(JsonSettings sender, ref byte[] data) {
+        protected virtual void _Decrypt(JsonSettings sender, ref byte[] data) {
             data = Convert.FromBase64String(JsonSettings.Encoding.GetString(data));
         }
-
-
     }
 }

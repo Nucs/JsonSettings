@@ -24,7 +24,8 @@ namespace Nucs.JsonSettings.Autosave {
             //populate information
             _monitoredProperties = new HashSet<string>(_settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
                                                                 .Where(p => p.GetSetMethod()?.IsVirtual == true
-                                                                            && p.GetCustomAttribute<JsonIgnoreAttribute>(true) == null && p.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null)
+                                                                            && p.GetCustomAttribute<JsonIgnoreAttribute>(true) == null && p.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null
+                                                                            && AutosaveModule._frameworkParameters.All(f => f != p.Name))
                                                                 .Select(prop => prop.Name));
         }
 
@@ -34,13 +35,8 @@ namespace Nucs.JsonSettings.Autosave {
 
             //handle saving if it was a setter
             if (_module.AutosavingState != AutosavingState.SuspendedChanged && invocation.Method.Name.StartsWith("set_", StringComparison.Ordinal)) {
-                var propName = invocation.Method.Name.Substring(4);
-                if (!_monitoredProperties.Contains(propName))
+                if (!_monitoredProperties.Contains(invocation.Method.Name.Substring(4)))
                     return;
-
-                for (var i = 0; i < AutosaveModule._frameworkParametersLength; i++) {
-                    if (AutosaveModule._frameworkParameters[i] == propName) return;
-                }
 
                 //save.
                 if (_module.UpdatesSuspended) {
