@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Nucs.JsonSettings.Inline {
@@ -16,14 +17,6 @@ namespace Nucs.JsonSettings.Inline {
 
 
         /// <summary>
-        ///     Gives the path to windows dir, most likely to be 'C:/Windows/'
-        /// </summary>
-        /// <summary>
-        ///     The path to the entry exe.
-        /// </summary>
-        public static FileInfo ExecutingExe => new FileInfo((Assembly.GetEntryAssembly()
-                                                             ?? Assembly.GetExecutingAssembly())?.Location);
-        /// <summary>
         ///     The config dir inside user profile.
         /// </summary>
         public static DirectoryInfo ConfigDirectory => new DirectoryInfo(Path.Combine(Environment.ExpandEnvironmentVariables("%USERPROFILE%"), "autoload/"));
@@ -34,18 +27,83 @@ namespace Nucs.JsonSettings.Inline {
         public static FileInfo ConfigFile(string configname) => new FileInfo(Path.Combine(ConfigDirectory.FullName, Environment.MachineName + $".{configname}.json"));
 
 
+        #region GetModuleFileNameLongPath
+
+        private const int MAX_PATH = 260;
+        private const int MAX_UNICODESTRING_LEN = short.MaxValue;
+        private const int INSUFFICIENT_BUFFER_ERROR = 0x007A;
+
+        private static string? _moduleFileNameLongPath = null;
+
+        /// <summary>
+        /// Retrieves the fully qualified path for the file that contains the specified module.
+        /// The module must have been loaded by the current process.
+        /// </summary>
+        /// <param name="hModule">A handle to the loaded module whose path is being requested.</param>
+        /// <param name="buffer">A pointer to a buffer that receives the fully qualified path of the module.</param>
+        /// <param name="length">The size of the buffer.</param>
+        /// <returns>
+        /// If the function succeeds, returns the length of the string that is copied to the buffer, else returns 0 (zero).
+        /// </returns>
+        /// <remarks>https://docs.microsoft.com/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamea</remarks>
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern int GetModuleFileName(IntPtr hModule, StringBuilder buffer, int length);
+
+        /// <summary>
+        /// Retrieves the fully qualified path for the file that contains the specified module.
+        /// The module must have been loaded by the current process.
+        /// </summary>
+        /// <returns></returns>
+        private static string GetModuleFileNameLongPath()
+        {
+            if (_moduleFileNameLongPath == null)
+            {
+                StringBuilder buffer = new StringBuilder(MAX_PATH);
+                int noOfTimes = 1;
+                int length = 0;
+                // Iterating by allocating chunk of memory each time we find the length is not sufficient.
+                // Performance should not be an issue for current MAX_PATH length due to this change.
+                while (((length = GetModuleFileName(IntPtr.Zero, buffer, buffer.Capacity)) == buffer.Capacity)
+                    && Marshal.GetLastWin32Error() == INSUFFICIENT_BUFFER_ERROR
+                    && buffer.Capacity < MAX_UNICODESTRING_LEN)
+                {
+                    noOfTimes += 2; // Increasing buffer size by 520 in each iteration.
+                    int capacity = noOfTimes * MAX_PATH < MAX_UNICODESTRING_LEN ? noOfTimes * MAX_PATH : MAX_UNICODESTRING_LEN;
+                    buffer.EnsureCapacity(capacity);
+                }
+
+                buffer.Length = length;
+                _moduleFileNameLongPath = Path.GetFullPath(buffer.ToString());
+            }
+            return _moduleFileNameLongPath;
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Gets the path for the executable file that started the application.
+        /// </summary>
+        private static string GetExecutablePath()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return GetModuleFileNameLongPath();
+            }
+            else
+            {
+                return Path.GetFullPath(Process.GetCurrentProcess().MainModule.FileName);
+            }
+        }
+
+        /// <summary>
+        ///     The path to the entry exe.
+        /// </summary>
+        public static FileInfo ExecutingExe => new FileInfo(GetExecutablePath());
+
         /// <summary>
         ///     The path to the entry exe's directory.
         /// </summary>
-        public static DirectoryInfo ExecutingDirectory {
-            get {
-                try {
-                    return ExecutingExe.Directory;
-                } catch {
-                    return new DirectoryInfo(Path.GetDirectoryName(Uri.UnescapeDataString(new UriBuilder(Assembly.GetEntryAssembly().CodeBase).Path)));
-                }
-            }
-        }
+        public static DirectoryInfo ExecutingDirectory => ExecutingExe.Directory;
 
         /// <summary>
         ///     Checks the ability to create and write to a file in the supplied directory.
@@ -80,11 +138,7 @@ namespace Nucs.JsonSettings.Inline {
         /// </summary>
         /// <param name="filename"></param>
         /// <returns></returns>
-        public static FileInfo CombineToExecutingBase(string filename) {
-            if (ExecutingExe.DirectoryName != null)
-                return new FileInfo(Path.Combine(ExecutingDirectory.FullName, filename));
-            return null;
-        }
+        public static FileInfo CombineToExecutingBase(string filename) => new FileInfo(Path.Combine(ExecutingDirectory.FullName, filename));
 
         /// <summary>
         ///     Combines the file name with the dir of <see cref="Paths.ExecutingExe" />, resulting in path of a file inside the
@@ -92,11 +146,7 @@ namespace Nucs.JsonSettings.Inline {
         /// </summary>
         /// <param name="filename"></param>
         /// <returns></returns>
-        public static DirectoryInfo CombineToExecutingBaseDir(string filename) {
-            if (ExecutingExe.DirectoryName != null)
-                return new DirectoryInfo(Path.Combine(ExecutingDirectory.FullName, filename));
-            return null;
-        }
+        public static DirectoryInfo CombineToExecutingBaseDir(string filename) => new DirectoryInfo(Path.Combine(ExecutingDirectory.FullName, filename));
 
         /// <summary>
         ///     Compares two FileSystemInfos the right way.
