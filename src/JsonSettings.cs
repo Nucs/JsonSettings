@@ -57,7 +57,13 @@ namespace Nucs.JsonSettings {
         /// </summary>
         public static Encoding Encoding { get; set; } = Encoding.UTF8;
 
-        public static JsonSerializerSettings SerializationSettings { get; set; } = new JsonSerializerSettings {Formatting = Formatting.Indented, ReferenceLoopHandling = ReferenceLoopHandling.Ignore, NullValueHandling = NullValueHandling.Include, ContractResolver = new FileNameIgnoreResolver(), TypeNameHandling = TypeNameHandling.Auto};
+        public static JsonSerializerSettings SerializationSettings { get; set; } = new JsonSerializerSettings {
+            Formatting = Formatting.Indented, 
+            ReferenceLoopHandling = ReferenceLoopHandling.Ignore, 
+            NullValueHandling = NullValueHandling.Include, 
+            ContractResolver = new FileNameIgnoreResolver(), 
+            TypeNameHandling = TypeNameHandling.Auto
+        };
 
         #endregion
 
@@ -105,20 +111,20 @@ namespace Nucs.JsonSettings {
             }
         }
 
-        /// <summary>
-        ///     Returns configuration based on the following fallback: <br/>
-        ///     settings ?? this.OverrideSerializerSettings ?? JsonSettings.SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke()
-        ///              ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
-        /// </summary>
-        /// <param name="settings">If passed a non-null, This is the settings intended to use, not any of the fallbacks.</param>
-        /// <exception cref="JsonSerializationException">When no configuration valid was found.</exception>
-        protected virtual JsonSerializerSettings ResolveConfiguration(JsonSerializerSettings? settings = null) {
-            return settings
-                   ?? this.OverrideSerializerSettings
-                   ?? JsonSettings.SerializationSettings
-                   ?? JsonConvert.DefaultSettings?.Invoke()
-                   ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
-        }
+/// <summary>
+///     Returns configuration based on the following fallback: <br/>
+///     settings ?? this.OverrideSerializerSettings ?? JsonSettings.SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke()
+///              ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
+/// </summary>
+/// <param name="settings">If passed a non-null, This is the settings intended to use, not any of the fallbacks.</param>
+/// <exception cref="JsonSerializationException">When no configuration valid was found.</exception>
+protected virtual JsonSerializerSettings ResolveConfiguration(JsonSerializerSettings? settings = null) {
+    return settings
+           ?? this.OverrideSerializerSettings
+           ?? JsonSettings.SerializationSettings
+           ?? JsonConvert.DefaultSettings?.Invoke()
+           ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
+}
 
         #region Loading & Saving
 
