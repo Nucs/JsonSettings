@@ -129,6 +129,58 @@ namespace Nucs.JsonSettings.xTests {
                 }).ShouldThrow<InvalidVersionException>();
             }
         }
+
+        [TestCase]
+        public void LoadDefault_Case2() {
+            using (var f = new TempfileLife(false)) {
+                //load
+                var cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
+                                      .WithVersioning(VersioningResultAction.Throw)
+                                      .LoadNow();
+
+                //assert
+                cfg.Version.Should().Be(new Version(1, 2, 0, 0));
+
+                //load
+                cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
+                                  .WithVersioning(VersioningResultAction.LoadDefault)
+                                  .LoadNow();
+
+                cfg.Version.Should().Be(new Version(1, 2, 0, 0));
+
+                new Action(() => {
+                    cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
+                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
+                                      .LoadNow();
+                }).ShouldThrow<InvalidVersionException>();
+            }
+        }
+
+        [TestCase]
+        public void LoadDefault_Case3() {
+            using (var f = new TempfileLife(false)) {
+                //load
+                var cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
+                                      .WithVersioning(VersioningResultAction.Throw)
+                                      .LoadNow();
+
+                //assert
+                cfg.Version.Should().Be(new Version(1, 3, 0, 0));
+
+                //load
+                cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
+                                  .WithVersioning(VersioningResultAction.LoadDefault)
+                                  .LoadNow();
+
+                cfg.Version.Should().Be(new Version(1, 3, 0, 0));
+
+                new Action(() => {
+                    cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
+                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
+                                      .LoadNow();
+                }).ShouldThrow<InvalidVersionException>();
+            }
+        }
     }
 
     public class VersionedSettings : JsonSettings, IVersionable {
@@ -142,7 +194,34 @@ namespace Nucs.JsonSettings.xTests {
 
         public virtual int Value { get; set; }
     }
-    
+
+    public class VersionedWithAttrSettings : JsonSettings, IVersionable {
+        #region Overrides of JsonSettings
+
+        public override string FileName { get; set; }
+
+        #endregion
+
+        [EnforcedVersion("1.2.0.0")]
+        public virtual Version Version { get; set; } = new Version(1, 0, 0, 0);
+
+        public virtual int Value { get; set; }
+    }
+
+    public class VersionedWithAttrInheritedSettings : VersionedWithAttrSettings {
+        #region Overrides of JsonSettings
+
+        public override string FileName { get; set; }
+
+        #endregion
+
+        #region Overrides of VersionedWithAttrSettings
+        [EnforcedVersion("1.3.0.0")]
+        public override Version Version { get; set; }
+
+        #endregion
+    }
+
     public class ChangedVersionedSettings : JsonSettings, IVersionable {
         #region Overrides of JsonSettings
 

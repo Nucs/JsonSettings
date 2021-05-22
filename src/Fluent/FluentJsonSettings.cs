@@ -148,6 +148,10 @@ namespace Nucs.JsonSettings.Fluent {
         ///     detects an invalid version. A policy is a <see cref="VersioningPolicyHandler"/> comparer between two <see cref="Version"/>.
         /// </summary>
         /// <typeparam name="T">The settings type inheriting <see cref="IVersionable"/></typeparam>
+        /// <param name="_instance">the instance being configured</param>
+        /// <param name="expectedVersion">The expected version based on given <paramref name="policy"/></param>
+        /// <param name="invalidAction">The action to take when the <paramref name="policy"/> returns false</param>
+        /// <param name="policy">The version comparison policy, return true when version is OK.</param>
         public static T WithVersioning<T>(this T _instance, Version expectedVersion, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null)
             where T : JsonSettings, IVersionable {
             return _instance.WithModule<T>(new VersioningModule<T>(invalidAction, expectedVersion, policy ?? VersioningModule<T>.DefaultPolicy));
@@ -158,11 +162,29 @@ namespace Nucs.JsonSettings.Fluent {
         ///     detects an invalid version. A policy is a <see cref="VersioningPolicyHandler"/> comparer between two <see cref="Version"/>.
         /// </summary>
         /// <typeparam name="T">The settings type inheriting <see cref="IVersionable"/></typeparam>
+        /// <param name="_instance">the instance being configured</param>
+        /// <param name="expectedVersion">The expected version based on given <paramref name="policy"/></param>
+        /// <param name="invalidAction">The action to take when the <paramref name="policy"/> returns false</param>
+        /// <param name="policy">The version comparison policy, return true when version is OK.</param>
         public static T WithVersioning<T>(this T _instance, string expectedVersion, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null)
             where T : JsonSettings, IVersionable {
             return WithVersioning(_instance, Version.Parse(expectedVersion), invalidAction, policy);
         }
 
+        /// <summary>
+        ///     VersioningModule used to enforce a policy and take <see cref="VersioningResultAction"/> when the policy
+        ///     detects an invalid version. A policy is a <see cref="VersioningPolicyHandler"/> comparer between two <see cref="Version"/>.<br/>
+        ///     This overload uses <see cref="EnforcedVersionAttribute"/> to resolve the default attribute.
+        /// </summary>
+        /// <typeparam name="T">The settings type inheriting <see cref="IVersionable"/></typeparam>
+        /// <param name="_instance">the instance being configured</param>
+        /// <param name="invalidAction">The action to take when the <paramref name="policy"/> returns false</param>
+        /// <param name="policy">The version comparison policy, return true when version is OK.</param>
+        public static T WithVersioning<T>(this T _instance, VersioningResultAction invalidAction, VersioningPolicyHandler? policy = null)
+            where T : JsonSettings, IVersionable {
+            return _instance.WithModule<T>(new VersioningModule<T>(invalidAction, policy ?? VersioningModule<T>.DefaultPolicy));
+        }
+        
         /// <summary>
         ///     <see cref="RecoveryModule"/> used to enforce a fail-safe recovery and take <see cref="RecoveryAction"/> when the
         ///     json parsing fails.

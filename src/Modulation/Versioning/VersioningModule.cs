@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
@@ -15,12 +17,10 @@ namespace Nucs.JsonSettings.Modulation {
             return expectedVersion?.Equals(version) != false;
         }
 
-        private const string _versionMatchRegex = @"(\.\d+\.\d+\.\d+\.\d+(?:\.\d+)?)(?:(?=\.)|-(\d+)|$)";
-
         /// <summary>
         ///     See https://regex101.com/r/5ITewE/1
         /// </summary>
-        public static readonly Regex VersionMatcher = new Regex(_versionMatchRegex, RegexOptions.Compiled | RegexOptions.Multiline);
+        public static readonly Regex VersionMatcher = new Regex(@"(\.\d+\.\d+\.\d+\.\d+(?:\.\d+)?)(?:(?=\.)|-(\d+)|$)", RegexOptions.Compiled | RegexOptions.Multiline);
     }
 
     /// <summary>
@@ -51,23 +51,51 @@ namespace Nucs.JsonSettings.Modulation {
         /// </summary>
         public virtual object[]? ConstructingParameters { get; set; } = Array.Empty<object>();
 
-        public VersioningModule(VersioningResultAction versionMismatchAction, Version expectedVersion, VersioningPolicyHandler policy) {
-            VersionMismatchAction = versionMismatchAction;
+        public VersioningModule(VersioningResultAction versionMismatchAction, Version expectedVersion, VersioningPolicyHandler policy)
+            : this(versionMismatchAction, policy, null) {
             ExpectedVersion = expectedVersion;
-            Policy = policy;
         }
 
-        public VersioningModule(VersioningResultAction versionMismatchAction, Version expectedVersion, VersioningPolicyHandler policy, object[] constructingParameters) {
-            VersionMismatchAction = versionMismatchAction;
+        public VersioningModule(VersioningResultAction versionMismatchAction, Version expectedVersion, VersioningPolicyHandler policy, object[]? constructingParameters)
+            : this(versionMismatchAction, policy, constructingParameters) {
             ExpectedVersion = expectedVersion;
+        }
+
+        public VersioningModule(VersioningResultAction versionMismatchAction, VersioningPolicyHandler policy)
+            : this(versionMismatchAction, policy, null) { }
+
+        public VersioningModule(VersioningResultAction versionMismatchAction, VersioningPolicyHandler policy, object[]? constructingParameters) {
+            VersionMismatchAction = versionMismatchAction;
             Policy = policy;
-            ConstructingParameters = constructingParameters;
+            if (constructingParameters != null)
+                ConstructingParameters = constructingParameters;
+        }
+
+        #pragma warning disable 693
+        private class DefaultVersionCache<T> where T : JsonSettings, IVersionable {
+            #pragma warning restore 693
+            static DefaultVersionCache() {
+                var attr = typeof(T).GetProperty(nameof(IVersionable.Version), BindingFlags.Instance | BindingFlags.Public)
+                                   ?.GetCustomAttributes<EnforcedVersionAttribute>()
+                                    .FirstOrDefault(); //get latest attribute
+                if (attr == null)
+                    return;
+
+                if (attr.Version != null)
+                    EnforcedVersion = attr.Version;
+            }
+
+            // ReSharper disable once StaticMemberInGenericType
+            public static readonly Version? EnforcedVersion;
         }
 
         public override void Attach(JsonSettings socket) {
             if (!(socket is IVersionable))
                 throw new InvalidOperationException($"{socket._childtype.Name} does not implement IVersionable.");
-            
+
+            // ReSharper disable once ConstantNullCoalescingCondition
+            ExpectedVersion ??= DefaultVersionCache<T>.EnforcedVersion ?? throw new InvalidVersionException($"Unable to resolve 'ExpectedVersion' for '{socket._childtype.Name}'");
+
             base.Attach(socket);
             socket.AfterLoad += SocketOnAfterLoad;
             socket.BeforeLoad += SocketOnBeforeLoad;
