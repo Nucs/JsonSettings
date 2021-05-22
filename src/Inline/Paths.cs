@@ -87,19 +87,23 @@ namespace Nucs.JsonSettings.Inline {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 return GetModuleFileNameLongPath();
             } else {
-                return Path.GetFullPath(Process.GetCurrentProcess().MainModule.FileName);
+                try {
+                    return Path.GetFullPath(Process.GetCurrentProcess().MainModule.FileName);
+                } catch (Exception) {
+                    return Uri.UnescapeDataString(new UriBuilder(Assembly.GetEntryAssembly().CodeBase).Path);
+                }
             }
         }
 
         /// <summary>
         ///     The path to the entry exe.
         /// </summary>
-        public static FileInfo ExecutingExe => new FileInfo(GetExecutablePath());
+        public static readonly FileInfo ExecutingExe = new FileInfo(GetExecutablePath())!;
 
         /// <summary>
         ///     The path to the entry exe's directory.
         /// </summary>
-        public static DirectoryInfo ExecutingDirectory => ExecutingExe.Directory;
+        public static DirectoryInfo ExecutingDirectory => ExecutingExe.Directory!;
 
         /// <summary>
         ///     Checks the ability to create and write to a file in the supplied directory.
