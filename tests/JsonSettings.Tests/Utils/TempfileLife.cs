@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using Nucs.JsonSettings.Inline;
 
 namespace Nucs.JsonSettings.xTests.Utils {
     public class TempfileLife : IDisposable {
         public string FileName { get; set; }
 
         public TempfileLife(bool create = false) {
-            FileName = create ? Path.ChangeExtension(Path.GetTempFileName(), "json") : Path.ChangeExtension(Path.GetRandomFileName(), "json");
+            FileName = Path.GetFullPath(create ? Path.ChangeExtension(Path.GetTempFileName(), "json") : Path.ChangeExtension(Path.GetRandomFileName(), "json"));
         }
 
         public TempfileLife(string fileName) {
