@@ -180,6 +180,12 @@ a user-defined action can take place. Any of the following actions can be taken:
   Will append the version to the end of the faulty file's name and load the default settings and save to disk.<br/>
   i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5.json` if it fails on parsing and the new default settings will be saved as the original filename.
 
+There are two ways to specify which version enforce.
+1. Pass the version when calling `WithVersioning`.
+2. Add `[EnforcedVersion("1.0.0.0")]` attribute to your `IVersionable.Version` property definition.<br/>
+    When dealing with inheritance/virtual override, the attribute of the lowest inherited class will be used.
+
+
 //TODO: example
 
 #### Policy
