@@ -191,7 +191,9 @@ protected virtual JsonSerializerSettings ResolveConfiguration(JsonSerializerSett
                     o.OnAfterSave(filename);
                 }
             } catch (IOException e) {
-                throw new JsonSettingsException("Failed writing into the file", e);
+                throw new JsonSettingsException($"Failed writing the file to path: '{filename}'", e);
+            } catch (UnauthorizedAccessException e) {
+                throw new JsonSettingsException($"Failed writing the file to path: '{filename}'", e);
             } finally {
                 stream?.Dispose();
             }

@@ -41,10 +41,6 @@ namespace Nucs.JsonSettings {
                 if (@throw)
                     throw;
                 return null;
-            } catch (UnauthorizedAccessException) {
-                if (@throw)
-                    throw;
-                return null;
             }
         }
     }

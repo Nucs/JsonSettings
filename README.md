@@ -25,6 +25,7 @@ PM> Install-Package nucs.JsonSettings
       - [Throttled Save](#throttled-save)
 - [Dynamic Settings](#dynamic-settings)
 - [Modulation Api](#modulation-api)
+- [Custom JsonSerializerSettings and Converters](#) //TODO:
 - [License](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
 
 
@@ -180,7 +181,7 @@ a user-defined action can take place. Any of the following actions can be taken:
   Will append the version to the end of the faulty file's name and load the default settings and save to disk.<br/>
   i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5.json` if it fails on parsing and the new default settings will be saved as the original filename.
 
-There are two ways to specify which version enforce.
+There are two ways to specify which version to enforce.
 1. Pass the version when calling `WithVersioning`.
 2. Add `[EnforcedVersion("1.0.0.0")]` attribute to your `IVersionable.Version` property definition.<br/>
     When dealing with inheritance/virtual override, the attribute of the lowest inherited class will be used.
@@ -242,8 +243,8 @@ a different interceptor with `NotificationBinder` will be attached to the genera
 - All properties that implement `INotificationCollectionChanged` such as `ObservableCollection<T>`  will bind to their `event CollectionChanged`
 - All virtual properties that do not answer to the criteria above.
 
-So evidently, objects inside ObservableCollection or other nested properties that are not in the settings class are not monitored for changes.<br/>
-Any properties that are not marked virtual will not work properly (not just won't autosave), therefore an `JsonSettingsException` is thrown if during proxification a non-virtual property is detected.
+So evidently, objects inside ObservableCollection or other nested properties that are not in the settings class are not monitored for changes.<br/><br/>
+Any properties that are not marked virtual will not work properly (not just won't autosave), therefore a `JsonSettingsException` is thrown if during proxification a non-virtual property is detected.
 
 #### Requirements
 - Settings class inherit `INotifyPropertyChanged`

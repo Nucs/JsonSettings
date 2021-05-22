@@ -38,7 +38,7 @@ namespace Nucs.JsonSettings.Autosave {
 
         protected override void Dispose(bool disposing) {
             base.Dispose(disposing);
-            NotificationsHandler.Dispose();
+            NotificationsHandler?.Dispose();
         }
     }
 
