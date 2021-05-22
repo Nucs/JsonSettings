@@ -21,11 +21,13 @@ PM> Install-Package nucs.JsonSettings
     - [Versioning](#versioning)
     - [Encryption](#encryption)
     - [Autosave](#autosave)
+      - [Suspend Saving](#suspend-autosave)
       - [WPF Support with INotificationChanged/INotificationCollectionChanged](#wpf-support-with-inotificationchangedinotificationcollectionchanged)
       - [Throttled Save](#throttled-save)
 - [Dynamic Settings](#dynamic-settings)
 - [Modulation Api](#modulation-api)
-- [Custom JsonSerializerSettings and Converters](#) //TODO:
+- [Changing JsonSerializerSettings](#changing-jsonserializersettings)
+- [Converters](#converters)
 - [License](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
 
 
@@ -224,7 +226,7 @@ All proxy wrapper classes generated with `ProxyGeneratedAttribute`.
 
 //TODO: example
 
-#### SuspendAutosave
+#### Suspend Autosave
 In some scenarios, there might be multiple close changes to the configuration object. Normally that would trigger multiple save calls.
 
 To prevent that, the developer can create a `SuspendAutosave` object which will postpone the save to when `SuspendAutosave` will be disposed or `Resume` called.
@@ -308,3 +310,70 @@ event AfterSaveHandler AfterSave(JsonSettings sender, string destinition);
 When attaching to `OnEncrypt` event, it'll push to the end of the event queue - meaning it will receive the data after all the events/modules that were attached to it before.<br>
 When attaching to `OnDecrypt`, it is pushed to the beginning of the event queue.<br>
 Hence encryption/encoding and decryption/decoding is automatically in the right order.<br>
+
+
+
+As you can see, `ResolveConfiguration` is also virtual and can be overriden but the logic of `settings` parameter has to be kept.
+
+Changing JsonSerializerSettings
+---
+The default settings are defined on `static JsonSettings.SerializationSettings`.
+```C#
+public static JsonSerializerSettings SerializationSettings { get; set; } = new JsonSerializerSettings {
+    Formatting = Formatting.Indented, 
+    ReferenceLoopHandling = ReferenceLoopHandling.Ignore, 
+    NullValueHandling = NullValueHandling.Include, 
+    ContractResolver = new FileNameIgnoreResolver(), 
+    TypeNameHandling = TypeNameHandling.Auto
+};
+```
+
+To alter the `JsonSerializerSettings`, it's best to understand how the library is resolving which settings to use during serialization/deserialization as follows:
+```C#
+/// <summary>
+///     Returns configuration based on the following fallback: <br/>
+///     settings ?? this.OverrideSerializerSettings ?? JsonSettings.SerializationSettings ?? JsonConvert.DefaultSettings?.Invoke()
+///              ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
+/// </summary>
+/// <param name="settings">If passed a non-null, This is the settings intended to use, not any of the fallbacks.</param>
+/// <exception cref="JsonSerializationException">When no configuration valid was found.</exception>
+protected virtual JsonSerializerSettings ResolveConfiguration(JsonSerializerSettings? settings = null) {
+    return settings
+           ?? this.OverrideSerializerSettings
+           ?? JsonSettings.SerializationSettings
+           ?? JsonConvert.DefaultSettings?.Invoke()
+           ?? throw new JsonSerializationException("Unable to resolve JsonSerializerSettings to serialize this JsonSettings");
+}
+```
+1. `settings` parameter is an internal mechanism when handling defaults. If passed a non-null, This is the settings intended to use, not any of the following fallbacks.
+2. `this.OverrideSerializerSettings` is a property in every class inheriting `JsonSettings` allowing personalized settings per object.
+   The `OverrideSerializerSettings` property and `ResolveConfiguration` method are both `virtual` and can be overriden to redirect the resolving to where ever you see fit or with what-ever predefined value.
+3. `static JsonSettings.SerializationSettings` is the default for all `JsonSettings` objects.
+4. `static JsonConvert.DefaultSettings` is the default settings defined on a Json.NET level.
+
+
+Converters
+---
+Defining converters or changing the serialization settings globally can be done by adding a converter to `static JsonSettings.SerializationSettings` as follows:<br/>
+```C#
+//call during app startup
+JsonSettings.SerializationSettings.Converters.Add(new Newtonsoft.Json.Converters.VersionConverter());
+```
+Alternatively per object setting can be done by setting or inheriting `JsonSettings.OverrideSerializerSettings` property but
+it is important to also specify the default configuration so `JsonSettings` behavior will remain persistent ([see more](#changing-jsonserializersettings)) .
+
+### JsonConverterAttribute
+By far the easiest way to specify a converter is by specifying a `JsonConverterAttribute` the property and Json.NET will do the rest.
+```C#
+[JsonConverter(typeof(ExchangeConverter))]
+public ExchangeType Exchange { get; set; }
+```
+
+`JsonConverterAttribute` can also be specified on an interface property as it is used in `IVersionable` and will apply to any class inheriting it.
+<br/>This is the best approach for other libraries because by specifying an attribute, no matter what `JsonSerializerSettings` will be specified by the developer, Json.NET will always serialize this property with the specified converter.  
+```C#
+public interface IVersionable {
+    [JsonConverter(typeof(Newtonsoft.Json.Converters.VersionConverter))]
+    public Version Version { get; set; }
+}
+```
