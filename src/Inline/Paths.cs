@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,9 +12,9 @@ namespace Nucs.JsonSettings.Inline {
     ///     Class that determines paths.
     /// </summary>
     internal static class Paths {
-#pragma warning disable CS0169 // The field 'Paths._cacheprogress' is never used
+        #pragma warning disable CS0169 // The field 'Paths._cacheprogress' is never used
         private static Task _cacheprogress;
-#pragma warning restore CS0169 // The field 'Paths._cacheprogress' is never used
+        #pragma warning restore CS0169 // The field 'Paths._cacheprogress' is never used
 
 
         /// <summary>
@@ -24,7 +25,8 @@ namespace Nucs.JsonSettings.Inline {
         /// <summary>
         ///     The config file inside user profile.
         /// </summary>
-        public static FileInfo ConfigFile(string configname) => new FileInfo(Path.Combine(ConfigDirectory.FullName, Environment.MachineName + $".{configname}.json"));
+        public static FileInfo ConfigFile(string configname) =>
+            new FileInfo(Path.Combine(ConfigDirectory.FullName, Environment.MachineName + $".{configname}.json"));
 
 
         #region GetModuleFileNameLongPath
@@ -54,19 +56,16 @@ namespace Nucs.JsonSettings.Inline {
         /// The module must have been loaded by the current process.
         /// </summary>
         /// <returns></returns>
-        private static string GetModuleFileNameLongPath()
-        {
-            if (_moduleFileNameLongPath == null)
-            {
+        private static string GetModuleFileNameLongPath() {
+            if (_moduleFileNameLongPath == null) {
                 StringBuilder buffer = new StringBuilder(MAX_PATH);
                 int noOfTimes = 1;
                 int length = 0;
                 // Iterating by allocating chunk of memory each time we find the length is not sufficient.
                 // Performance should not be an issue for current MAX_PATH length due to this change.
                 while (((length = GetModuleFileName(IntPtr.Zero, buffer, buffer.Capacity)) == buffer.Capacity)
-                    && Marshal.GetLastWin32Error() == INSUFFICIENT_BUFFER_ERROR
-                    && buffer.Capacity < MAX_UNICODESTRING_LEN)
-                {
+                       && Marshal.GetLastWin32Error() == INSUFFICIENT_BUFFER_ERROR
+                       && buffer.Capacity < MAX_UNICODESTRING_LEN) {
                     noOfTimes += 2; // Increasing buffer size by 520 in each iteration.
                     int capacity = noOfTimes * MAX_PATH < MAX_UNICODESTRING_LEN ? noOfTimes * MAX_PATH : MAX_UNICODESTRING_LEN;
                     buffer.EnsureCapacity(capacity);
@@ -75,6 +74,7 @@ namespace Nucs.JsonSettings.Inline {
                 buffer.Length = length;
                 _moduleFileNameLongPath = Path.GetFullPath(buffer.ToString());
             }
+
             return _moduleFileNameLongPath;
         }
 
@@ -83,14 +83,10 @@ namespace Nucs.JsonSettings.Inline {
         /// <summary>
         /// Gets the path for the executable file that started the application.
         /// </summary>
-        private static string GetExecutablePath()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
+        private static string GetExecutablePath() {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 return GetModuleFileNameLongPath();
-            }
-            else
-            {
+            } else {
                 return Path.GetFullPath(Process.GetCurrentProcess().MainModule.FileName);
             }
         }
@@ -117,7 +113,7 @@ namespace Nucs.JsonSettings.Inline {
             if (directory.Exists)
                 try {
                     using (var fs = new FileStream(fullPath, FileMode.CreateNew,
-                        FileAccess.Write)) {
+                                                   FileAccess.Write)) {
                         fs.WriteByte(0xff);
                     }
 
@@ -138,7 +134,8 @@ namespace Nucs.JsonSettings.Inline {
         /// </summary>
         /// <param name="filename"></param>
         /// <returns></returns>
-        public static FileInfo CombineToExecutingBase(string filename) => new FileInfo(Path.Combine(ExecutingDirectory.FullName, filename));
+        public static FileInfo CombineToExecutingBase(string filename) =>
+            new FileInfo(Path.Combine(ExecutingDirectory.FullName, filename));
 
         /// <summary>
         ///     Combines the file name with the dir of <see cref="Paths.ExecutingExe" />, resulting in path of a file inside the
@@ -146,19 +143,24 @@ namespace Nucs.JsonSettings.Inline {
         /// </summary>
         /// <param name="filename"></param>
         /// <returns></returns>
-        public static DirectoryInfo CombineToExecutingBaseDir(string filename) => new DirectoryInfo(Path.Combine(ExecutingDirectory.FullName, filename));
+        public static DirectoryInfo CombineToExecutingBaseDir(string filename) =>
+            new DirectoryInfo(Path.Combine(ExecutingDirectory.FullName, filename));
 
         /// <summary>
         ///     Compares two FileSystemInfos the right way.
         /// </summary>
         /// <returns></returns>
-        public static bool CompareTo(this FileSystemInfo fi, FileSystemInfo fi2) { return NormalizePath(fi.FullName, true).Equals(NormalizePath(fi2.FullName, true), StringComparison.Ordinal); }
+        public static bool CompareTo(this FileSystemInfo fi, FileSystemInfo fi2) {
+            return NormalizePath(fi.FullName, true).Equals(NormalizePath(fi2.FullName, true), StringComparison.Ordinal);
+        }
 
         /// <summary>
         ///     Compares two FileSystemInfos the right way.
         /// </summary>
         /// <returns></returns>
-        public static bool CompareTo(string fi, string fi2) { return NormalizePath(fi, true).Equals(NormalizePath(fi2, true), StringComparison.Ordinal); }
+        public static bool CompareTo(string fi, string fi2) {
+            return NormalizePath(fi, true).Equals(NormalizePath(fi2, true), StringComparison.Ordinal);
+        }
 
         /// <summary>
         ///     Normalizes path to prepare for comparison or storage
@@ -166,7 +168,7 @@ namespace Nucs.JsonSettings.Inline {
         public static string NormalizePath(string path, bool forComparsion = false) {
             string validBackslash = "\\";
             string invalidBackslash = "/";
-            
+
             //override default backslash that is used in windows.
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 validBackslash = "/";
@@ -174,8 +176,8 @@ namespace Nucs.JsonSettings.Inline {
             }
 
             path = path
-                .Replace(invalidBackslash, validBackslash)
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                  .Replace(invalidBackslash, validBackslash)
+                  .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
             if (forComparsion) {
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -190,12 +192,12 @@ namespace Nucs.JsonSettings.Inline {
                         // ignored
                     }
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 //is root, fix.
                 if ((path.Length == 2) && (path[1] == ':') && char.IsLetter(path[0]))
                     path = path + validBackslash;
             }
+
             return path;
         }
 
@@ -237,18 +239,27 @@ namespace Nucs.JsonSettings.Inline {
         /// <summary>
         ///     Removes or replaces all illegal characters for path in a string.
         /// </summary>
-        public static string RemoveIllegalPathCharacters(string filename, string replacewith = "") => string.Join(replacewith, filename.Split(Path.GetInvalidFileNameChars()));
+        public static string RemoveIllegalPathCharacters(string filename, string replacewith = "") =>
+            string.Join(replacewith, filename.Split(Path.GetInvalidFileNameChars()));
 
         public class FilePathEqualityComparer : IEqualityComparer<string> {
-            public bool Equals(string x, string y) { return Paths.CompareTo(x, y); }
+            public bool Equals(string x, string y) {
+                return Paths.CompareTo(x, y);
+            }
 
-            public int GetHashCode(string obj) { return Paths.NormalizePath(obj, true).GetHashCode(); }
+            public int GetHashCode(string obj) {
+                return Paths.NormalizePath(obj, true).GetHashCode();
+            }
         }
 
         public class FileInfoPathEqualityComparer : IEqualityComparer<FileSystemInfo> {
-            public bool Equals(FileSystemInfo x, FileSystemInfo y) { return Paths.CompareTo(x, y); }
+            public bool Equals(FileSystemInfo x, FileSystemInfo y) {
+                return Paths.CompareTo(x, y);
+            }
 
-            public int GetHashCode(FileSystemInfo obj) { return Paths.NormalizePath(obj.FullName, true).GetHashCode(); }
+            public int GetHashCode(FileSystemInfo obj) {
+                return Paths.NormalizePath(obj.FullName, true).GetHashCode();
+            }
         }
     }
 }
