@@ -311,10 +311,6 @@ When attaching to `OnEncrypt` event, it'll push to the end of the event queue - 
 When attaching to `OnDecrypt`, it is pushed to the beginning of the event queue.<br>
 Hence encryption/encoding and decryption/decoding is automatically in the right order.<br>
 
-
-
-As you can see, `ResolveConfiguration` is also virtual and can be overriden but the logic of `settings` parameter has to be kept.
-
 Changing JsonSerializerSettings
 ---
 The default settings are defined on `static JsonSettings.SerializationSettings`.
