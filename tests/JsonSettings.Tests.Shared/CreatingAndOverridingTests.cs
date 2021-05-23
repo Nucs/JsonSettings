@@ -1,13 +1,13 @@
 ﻿using System.IO;
 using FluentAssertions;
-using Nucs.JsonSettings.xTests.Utils;
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nucs.JsonSettings;
 
 
-namespace Nucs.JsonSettings.xTests {
-    [TestFixture]
+namespace Nucs.JsonSettings.Tests {
+    [TestClass]
     public class CreatingAndOverridingTests {
-        [Test]
+        [TestMethod]
         public void OverrideExistingBySmallerSettingsFile() {
             var path = JsonSettings.ResolvePath(new SettingsLarger(), "swaggy.json", true);
             using (var f = new TempfileLife(path)) {
@@ -25,7 +25,7 @@ namespace Nucs.JsonSettings.xTests {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void CreateNonExistingSettings() {
             var path = JsonSettings.ResolvePath(new Settings(), "swag.json", true);
             using (var f = new TempfileLife(path)) {

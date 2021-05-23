@@ -1,17 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Security;
 using FluentAssertions;
-using Nucs.JsonSettings.Fluent;
-using Nucs.JsonSettings.Modulation;
-using Nucs.JsonSettings.xTests.Utils;
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nucs.JsonSettings;
 
-namespace Nucs.JsonSettings.xTests {
-    [TestFixture]
+
+namespace Nucs.JsonSettings.Tests {
+    [TestClass]
     public class CommonTypesTests {
-        [Test]
+        [TestMethod]
         public void SettingsBag_List() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<SettingsBag>(f.FileName);

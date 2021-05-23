@@ -1,14 +1,14 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nucs.JsonSettings;
 using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
-using Nucs.JsonSettings.xTests.Utils;
-using NUnit.Framework;
 
-namespace Nucs.JsonSettings.xTests {
-    [TestFixture]
+
+namespace Nucs.JsonSettings.Tests {
+    [TestClass]
     public class VersioningModuleTests {
         TempfileLife FindFile(string baseFile, Version version) {
             baseFile = Path.GetFullPath(baseFile);
@@ -20,7 +20,7 @@ namespace Nucs.JsonSettings.xTests {
             throw new FileNotFoundException(version.ToString());
         }
 
-        [TestCase]
+        [TestMethod]
         public void RenameAndLoadDefault_Case1() {
             using (var f = new TempfileLife(false)) {
                 //load
@@ -59,7 +59,7 @@ namespace Nucs.JsonSettings.xTests {
             }
         }
 
-        [TestCase]
+        [TestMethod]
         public void Throw_Case1() {
             using (var f = new TempfileLife(false)) {
                 //load
@@ -79,7 +79,7 @@ namespace Nucs.JsonSettings.xTests {
             }
         }
 
-        [TestCase]
+        [TestMethod]
         public void LoadDefaultAndSave_Case1() {
             using (var f = new TempfileLife(false)) {
                 //load
@@ -104,7 +104,7 @@ namespace Nucs.JsonSettings.xTests {
             }
         }
 
-        [TestCase]
+        [TestMethod]
         public void LoadDefault_Case1() {
             using (var f = new TempfileLife(false)) {
                 //load
@@ -130,7 +130,7 @@ namespace Nucs.JsonSettings.xTests {
             }
         }
 
-        [TestCase]
+        [TestMethod]
         public void LoadDefault_Case2() {
             using (var f = new TempfileLife(false)) {
                 //load
@@ -156,7 +156,7 @@ namespace Nucs.JsonSettings.xTests {
             }
         }
 
-        [TestCase]
+        [TestMethod]
         public void LoadDefault_Case3() {
             using (var f = new TempfileLife(false)) {
                 //load

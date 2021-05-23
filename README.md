@@ -24,10 +24,10 @@ PM> Install-Package nucs.JsonSettings
       - [Suspend Saving](#suspend-autosave)
       - [WPF Support with INotificationChanged/INotificationCollectionChanged](#wpf-support-with-inotificationchangedinotificationcollectionchanged)
       - [Throttled Save](#throttled-save)
-- [Dynamic Settings](#dynamic-settings)
-- [Modulation Api](#modulation-api)
+- [Dynamic Settings Bag](#dynamic-settings)
 - [Changing JsonSerializerSettings](#changing-jsonserializersettings)
 - [Converters](#converters)
+- [Modulation Api](#modulation-api)
 - [License](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
 
 
@@ -126,7 +126,7 @@ SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
 
 * **Hardcoded Settings with Autosave**
     * Automatic save will occur when changes detected on virtual properties
-    * All properties are required
+    * All properties have to be virtual
     * Requires package `nucs.JsonSettings.Autosave` that uses `Castle.Core`.
 ```C#
 Settings x  = JsonSettings.Load<Settings>().EnableAutosave(); //call after loading
@@ -246,7 +246,7 @@ a different interceptor with `NotificationBinder` will be attached to the genera
 - All virtual properties that do not answer to the criteria above.
 
 So evidently, objects inside ObservableCollection or other nested properties that are not in the settings class are not monitored for changes.<br/><br/>
-Any properties that are not marked virtual will not work properly (not just won't autosave), therefore a `JsonSettingsException` is thrown if during proxification a non-virtual property is detected.
+Any properties that are not marked virtual will not work properly (not just won't autosave), therefore a `JsonSettingsException` is thrown if during proxification if a non-virtual property is detected.
 
 #### Requirements
 - Settings class inherit `INotifyPropertyChanged`
@@ -258,58 +258,13 @@ Throttled Save
 ---
 Upcoming feature...
 
-Dynamic Settings
+Dynamic Settings Bag
 ---
 SettingsBag internally stores a key-value dictionary. 
 Any type of Value can be passed as long as Json.NET knows how to serialize it. <br/>
 SettingsBag has built-in feature for autosaving that can be enabled by calling EnableAutosave without WPF binding support. <br/>
 
 //TODO: add example
-
-Modulation Api
----
-Key points
-- All modules are stored inside `JsonSettings`.`ModuleSocket Modulation { get; }`.
-- `ModuleSocket` stores all modules attached to this `JsonSettings` object.
-- Every settings object gets a new module object allocated for every module configured.
-- Attaching modules is done via static extensions <span style='font-size:11px; padding-left: 3px' >[read more](https://github.com/Nucs/JsonSettings/blob/master/src/Fluent/FluentJsonSettings.cs) </span>
-- All modules provided by the library have properties and methods that are suited for inheritance so extending is easy.
-
-//TODO: example + example with Construct
-
-### Execution Order
-The events are many to allow as much interception as possible.<br>
-The event handlers do not return any data but instead they receive a reference of the object that can be modified and will be used in the next stage.<br>
-**Loading**
-```C#
-event BeforeLoadHandler BeforeLoad(JsonSettings sender, ref string source); //source is the file that will be loaded.
-event DecryptHandler Decrypt(JsonSettings sender, ref byte[] data);
-event AfterDecryptHandler AfterDecrypt(JsonSettings sender, ref byte[] data);
-event BeforeDeserializeHandler BeforeDeserialize(JsonSettings sender, ref string data);
-event AfterDeserializeHandler AfterDeserialize(JsonSettings sender);
-event AfterLoadHandler AfterLoad(JsonSettings sender);
-```
-And in a case of `JsonException` during `LoadJson`
-```C#
-//recovered marks if a recovery from failure was successful, handled will prevent any further modules from attempting to recover.
-//if recovered is returned false, JsonSettingsException will be thrown with the original exception as inner exception
-event TryingRecoverHandler TryingRecover(JsonSettings sender, string fileName, JsonException? exception, ref bool recovered, ref bool handled);
-event RecoveredHandler Recovered(JsonSettings sender);
-```
-**Saving**
-```C#
-event BeforeSaveHandler BeforeSave(JsonSettings sender, ref string destinition);
-event BeforeSerializeHandler BeforeSerialize(JsonSettings sender);
-event AfterSerializeHandler AfterSerialize(JsonSettings sender, ref string data);
-event EncryptHandler Encrypt(JsonSettings sender, ref byte[] data);
-event AfterEncryptHandler AfterEncrypt(JsonSettings sender, ref byte[] data);
-event AfterSaveHandler AfterSave(JsonSettings sender, string destinition);
-```
-
-#### Cryptography / Encoding Decoding
-When attaching to `OnEncrypt` event, it'll push to the end of the event queue - meaning it will receive the data after all the events/modules that were attached to it before.<br>
-When attaching to `OnDecrypt`, it is pushed to the beginning of the event queue.<br>
-Hence encryption/encoding and decryption/decoding is automatically in the right order.<br>
 
 Changing JsonSerializerSettings
 ---
@@ -359,7 +314,7 @@ Alternatively per object setting can be done by setting or inheriting `JsonSetti
 it is important to also specify the default configuration so `JsonSettings` behavior will remain persistent ([see more](#changing-jsonserializersettings)) .
 
 ### JsonConverterAttribute
-By far the easiest way to specify a converter is by specifying a `JsonConverterAttribute` the property and Json.NET will do the rest.
+By far the easiest way to specify a converter is by specifying a `JsonConverterAttribute` on the property and Json.NET will do the rest.
 ```C#
 [JsonConverter(typeof(ExchangeConverter))]
 public ExchangeType Exchange { get; set; }
@@ -373,3 +328,50 @@ public interface IVersionable {
     public Version Version { get; set; }
 }
 ```
+
+
+Modulation Api
+---
+Key points
+- All modules are stored inside `JsonSettings`.`ModuleSocket Modulation { get; }`.
+- `ModuleSocket` stores all modules attached to this `JsonSettings` object.
+- Every settings object gets a new module object allocated for every module configured.
+- Attaching modules is done via static extensions <span style='font-size:11px; padding-left: 3px' >[read more](https://github.com/Nucs/JsonSettings/blob/master/src/Fluent/FluentJsonSettings.cs) </span>
+- All modules provided by the library have properties and methods that are suited for inheritance so extending is easy.
+
+//TODO: example + example with Construct
+
+### Execution Order
+The events are many to allow as much interception as possible.<br>
+The event handlers do not return any data but instead they receive a reference of the object that can be modified and will be used in the next stage.<br>
+**Loading**
+```C#
+event BeforeLoadHandler BeforeLoad(JsonSettings sender, ref string source); //source is the file that will be loaded.
+event DecryptHandler Decrypt(JsonSettings sender, ref byte[] data);
+event AfterDecryptHandler AfterDecrypt(JsonSettings sender, ref byte[] data);
+event BeforeDeserializeHandler BeforeDeserialize(JsonSettings sender, ref string data);
+event AfterDeserializeHandler AfterDeserialize(JsonSettings sender);
+event AfterLoadHandler AfterLoad(JsonSettings sender);
+```
+And in a case of `JsonException` during `LoadJson`
+```C#
+//recovered marks if a recovery from failure was successful, handled will prevent any further modules from attempting to recover.
+//if recovered is returned false, JsonSettingsException will be thrown with the original exception as inner exception
+event TryingRecoverHandler TryingRecover(JsonSettings sender, string fileName, JsonException? exception, ref bool recovered, ref bool handled);
+event RecoveredHandler Recovered(JsonSettings sender);
+```
+**Saving**
+```C#
+event BeforeSaveHandler BeforeSave(JsonSettings sender, ref string destinition);
+event BeforeSerializeHandler BeforeSerialize(JsonSettings sender);
+event AfterSerializeHandler AfterSerialize(JsonSettings sender, ref string data);
+event EncryptHandler Encrypt(JsonSettings sender, ref byte[] data);
+event AfterEncryptHandler AfterEncrypt(JsonSettings sender, ref byte[] data);
+event AfterSaveHandler AfterSave(JsonSettings sender, string destinition);
+```
+
+#### Cryptography / Encoding Decoding
+When attaching to `OnEncrypt` event, it'll push to the end of the event queue - meaning it will receive the data after all the events/modules that were attached to it before.<br>
+When attaching to `OnDecrypt`, it is pushed to the beginning of the event queue.<br>
+Hence encryption/encoding and decryption/decoding is automatically in the right order.<br>
+

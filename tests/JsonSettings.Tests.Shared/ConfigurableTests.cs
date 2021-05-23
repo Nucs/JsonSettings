@@ -1,44 +1,41 @@
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Security;
 using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nucs.JsonSettings;
 using Nucs.JsonSettings.Fluent;
-using Newtonsoft.Json;
 using Nucs.JsonSettings.Modulation;
-using Nucs.JsonSettings.xTests.Utils;
-using NUnit.Framework;
+using Nucs.JsonSettings.Tests;
 
-namespace Nucs.JsonSettings.xTests {
-    [TestFixture]
+
+namespace JsonSettingss.Tests {
+    [TestClass]
     public class ConfigurableTests {
-        [Test]
+        [TestMethod]
         public void OnConfigure_AddSingleConfig() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
                 var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
                 o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
-                Assert.True(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
+                Assert.IsTrue(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
             }
         }
 
-        [Test]
+        [TestMethod]
         public void OnConfigure_AddSingleConfig_PriorToLoadNow() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
                 var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName);
                 o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
-                Assert.True(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
+                Assert.IsTrue(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
             }
         }
 
-        [Test]
+        [TestMethod]
         public void OnConfigure_Only_WithEncyption() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
                 var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
                 o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
-                Assert.True(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
+                Assert.IsTrue(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
 
                 o.SomeNumeralProperty = 1;
                 o.SomeProperty = "with some value";
@@ -54,13 +51,13 @@ namespace Nucs.JsonSettings.xTests {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void OnConfigure_Only_WithEncyption_CheckBeforeLoadNow() {
             using (var f = new TempfileLife()) {
                 //used for autodelete file after test ends
                 var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName);
                 o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
-                Assert.True(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
+                Assert.IsTrue(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
                 o.LoadNow();
                 o.SomeNumeralProperty = 1;
                 o.SomeProperty = "with some value";

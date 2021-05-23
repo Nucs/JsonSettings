@@ -1,28 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Examples;
-using Nucs.JsonSettings.xTests.Utils;
-using NUnit.Framework;
 
-namespace Nucs.JsonSettings.xTests.Autosave {
-    [TestFixture]
+namespace Nucs.JsonSettings.Tests.Autosave {
+    [TestClass]
     public class AutosaveNotificationsTests {
         /// <summary>Initializes a new instance of the <see cref="T:System.Object" /> class.</summary>
         public AutosaveNotificationsTests() { }
 
-        [SetUp]
-        public void Setup() {
-            Console.SetOut(TestContext.Out);
-        }
-
-        [Test]
+        [TestMethod]
         public void ClassWithoutInterfacesOrVirtuals() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<InvalidSettings>(f.FileName);
@@ -30,7 +22,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void ClassWithInterfacesOrVirtuals() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
@@ -38,7 +30,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Saving() {
             using (var f = new TempfileLife()) {
                 var rpath = JsonSettings.ResolvePath(f);
@@ -59,7 +51,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Saving_Example() {
             using (var f = new TempfileLife()) {
                 var rpath = JsonSettings.ResolvePath(f);
@@ -86,7 +78,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void IgnoreSavingWhenAbstractPropertyChanges() {
             using (var f = new TempfileLife()) {
                 bool saved = false;
@@ -98,7 +90,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void AccessingAfterLoadingAndMarkingAutosave() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
@@ -109,7 +101,7 @@ namespace Nucs.JsonSettings.xTests.Autosave {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void SavingInterface() {
             using (var f = new TempfileLife()) {
                 var rpath = JsonSettings.ResolvePath(f);

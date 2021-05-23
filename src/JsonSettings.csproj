@@ -44,6 +44,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
 - Added documentation </PackageReleaseNotes>
     <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Autosave\**" />

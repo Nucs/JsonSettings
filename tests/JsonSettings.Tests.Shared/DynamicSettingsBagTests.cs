@@ -1,19 +1,21 @@
 ﻿using FluentAssertions;
-using Nucs.JsonSettings.xTests.Utils;
-using NUnit.Framework;
 
-namespace Nucs.JsonSettings.xTests {
-    [TestFixture]
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nucs.JsonSettings;
+
+
+namespace Nucs.JsonSettings.Tests {
+    [TestClass]
     public class DynamicSettingsBagTests {
-        [Test]
+        [TestMethod]
         public void DynamicSettingsBag_DynamicAccess_Index() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<SettingsBag>(f);
                 dynamic d = o.AsDynamic();
                 d.SomeProp = "Works";
-                Assert.True(d["SomeProp"]=="Works");
+                Assert.IsTrue(d["SomeProp"]=="Works");
                 d.Num = 1;
-                Assert.True(d.Num==1);
+                Assert.IsTrue(d.Num==1);
                 SettingsBag bag = d.AsBag();
                 bag.Save();
 
@@ -23,15 +25,15 @@ namespace Nucs.JsonSettings.xTests {
             }
         }
 
-        [Test]
+        [TestMethod]
         public void DynamicSettingsBag_DynamicAccess_Direct() {
             using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<SettingsBag>(f);
                 dynamic d = o.AsDynamic();
                 d.SomeProp = "Works";
-                Assert.True(d.SomeProp=="Works");
+                Assert.IsTrue(d.SomeProp=="Works");
                 d.Num = 1;
-                Assert.True(d.Num==1);
+                Assert.IsTrue(d.Num==1);
                 SettingsBag bag = d.AsBag();
                 bag.Save();
 
