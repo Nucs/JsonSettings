@@ -51,7 +51,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Nucs.JsonSettings\JsonSettings.csproj" />
+    <ProjectReference Include="..\JsonSettings\JsonSettings.csproj" />
   </ItemGroup>
 
 </Project>

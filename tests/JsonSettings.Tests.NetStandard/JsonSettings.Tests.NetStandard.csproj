@@ -20,8 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-	<ProjectReference Include="..\..\src\Nucs.JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
-    <ProjectReference Include="..\..\src\Nucs.JsonSettings\JsonSettings.csproj" />
+	<ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
   </ItemGroup>
 
   <Import Project="..\JsonSettings.Tests.Shared\JsonSettings.Tests.Shared.projitems" Label="Shared" />

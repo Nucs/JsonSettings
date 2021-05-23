@@ -161,11 +161,11 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-	  <ProjectReference Include="..\..\src\Nucs.JsonSettings.Autosave\JsonSettings.Autosave.csproj">
+	  <ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj">
       <Project>{d6c73fb9-033b-44d8-bc0e-85dc6eff8cde}</Project>
       <Name>JsonSettings.Autosave</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Nucs.JsonSettings\JsonSettings.csproj">
+    <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj">
       <Project>{4040992b-f808-4875-b881-8c3a4397d8d3}</Project>
       <Name>JsonSettings</Name>
     </ProjectReference>

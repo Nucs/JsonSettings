@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31313.381
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings", "src\Nucs.JsonSettings\JsonSettings.csproj", "{4040992B-F808-4875-B881-8C3A4397D8D3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings", "src\JsonSettings\JsonSettings.csproj", "{4040992B-F808-4875-B881-8C3A4397D8D3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.Examples", "examples\JsonSettings.Examples.csproj", "{A1D62AE9-2103-413B-BAFE-CD5F2BCB5DA5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.Autosave", "src\Nucs.JsonSettings.Autosave\JsonSettings.Autosave.csproj", "{D6C73FB9-033B-44D8-BC0E-85DC6EFF8CDE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.Autosave", "src\JsonSettings.Autosave\JsonSettings.Autosave.csproj", "{D6C73FB9-033B-44D8-BC0E-85DC6EFF8CDE}"
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "JsonSettings.Tests.Shared", "tests\JsonSettings.Tests.Shared\JsonSettings.Tests.Shared.shproj", "{77971A5B-DCB1-4C9D-96FC-7022821CA64D}"
 EndProject
