@@ -6,25 +6,22 @@
     <OutputType>Library</OutputType>
     <StartupObject />
     <RootNamespace>Nucs.JsonSettings.xTests</RootNamespace>
-    <TargetFramework>net48</TargetFramework>
     <LangVersion>8</LangVersion>
+    <TargetFrameworks>net48;net5.0-windows</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
   <PackageReference Include="FluentAssertions" Version="4.19.4" />
   <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-  <PackageReference Include="Microsoft.Extensions.Configuration.NewtonsoftJson" Version="5.0.1" />
   <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
   <PackageReference Include="MSTest.TestAdapter" Version="2.2.3" />
   <PackageReference Include="MSTest.TestFramework" Version="2.2.3" />
-  <PackageReference Include="NUnit" Version="3.9.0" />
-  <PackageReference Include="NUnit3TestAdapter" Version="3.13.0" />
   <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Autosave\JsonSettings.Autosave.csproj" />
-    <ProjectReference Include="..\..\src\JsonSettings.csproj" />
+	<ProjectReference Include="..\..\src\Nucs.JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+    <ProjectReference Include="..\..\src\Nucs.JsonSettings\JsonSettings.csproj" />
   </ItemGroup>
 
   <Import Project="..\JsonSettings.Tests.Shared\JsonSettings.Tests.Shared.projitems" Label="Shared" />

@@ -36,8 +36,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\Autosave\JsonSettings.Autosave.csproj" />
-    <ProjectReference Include="..\src\JsonSettings.csproj" />
+    <ProjectReference Include="..\src\Nucs.JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+    <ProjectReference Include="..\src\Nucs.JsonSettings\JsonSettings.csproj" />
   </ItemGroup>
 
   <ItemGroup>

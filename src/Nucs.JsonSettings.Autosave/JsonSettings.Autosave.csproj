@@ -6,23 +6,22 @@
     <FileVersion>2.0.0.5</FileVersion>
     <Authors>Nucs / Eli Belash</Authors>
     <Company>Nucs / Eli Belash</Company>
-	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
-Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summary>
+	  <Summary>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
     <PackageIconUrl>https://i.imgur.com/BOExs52.png</PackageIconUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Description>Easiest way you'll ever write settings for your app. This library is built to be modular and one-liner exploiting the powerful serialization capabilities of Json.NET out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.</Description>
+    <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Description>
     <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
     <Copyright>Eli Belash @ 2021</Copyright>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <RootNamespace>Nucs.JsonSettings</RootNamespace>
-    <PackageId>nucs.JsonSettings</PackageId>
+    <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>
+    <PackageId>Nucs.JsonSettings.Autosave</PackageId>
     <PackageVersion>2.0.0-alpha5</PackageVersion>
-    <Title>Nucs.JsonSettings</Title>
+    <Title>Nucs.JsonSettings.Autosave</Title>
     <PackageReleaseNotes>- Added RecoveryModule  and .WithRecovery to capture parsing errors
 - Added JsonSettings.SuspendAutosave() extension
 - Added proxy construction guard to prevent unncessary allocation on proxy creation.
@@ -42,25 +41,17 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
 - Made all modules extensible
 - SettingsBag: removed locking, optimized and replaced with ConcurrentDictionary for threadsafety
 - Added documentation </PackageReleaseNotes>
-    <LangVersion>9</LangVersion>
-    <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="Autosave\**" />
-    <EmbeddedResource Remove="Autosave\**" />
-    <None Remove="Autosave\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Castle.Core" Version="4.4.1" />
     <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\README.md">
-      <Link>README.md</Link>
-    </Content>
+    <ProjectReference Include="..\Nucs.JsonSettings\JsonSettings.csproj" />
   </ItemGroup>
 
 </Project>

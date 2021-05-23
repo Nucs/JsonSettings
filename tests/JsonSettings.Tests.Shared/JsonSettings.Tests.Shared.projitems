@@ -13,7 +13,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Autosave\AutosaveSuspensionTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Autosave\AutosaveTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CasualExampleSettings.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Class1.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CommonTypesTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ConfigurableTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CreatingAndOverridingTests.cs" />
@@ -22,12 +21,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)HowToUse.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)RecoveryModuleTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SmallClass.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Tests.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SettingsBagTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UtilsTests.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utils\TempfileLife.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VersioningModuleTests.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="$(MSBuildThisFileDirectory)Package.appxmanifest" />
   </ItemGroup>
 </Project>
