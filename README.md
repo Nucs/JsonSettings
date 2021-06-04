@@ -24,7 +24,7 @@ PM> Install-Package nucs.JsonSettings
       - [Suspend Saving](#suspend-autosave)
       - [WPF Support with INotificationChanged/INotificationCollectionChanged](#wpf-support-with-inotificationchangedinotificationcollectionchanged)
       - [Throttled Save](#throttled-save)
-- [Dynamic Settings Bag](#dynamic-settings)
+- [Dynamic Settings Bag](#dynamic-settings-bag)
 - [Changing JsonSerializerSettings](#changing-jsonserializersettings)
 - [Converters](#converters)
 - [Modulation Api](#modulation-api)
