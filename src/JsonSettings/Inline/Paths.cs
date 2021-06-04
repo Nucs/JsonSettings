@@ -12,23 +12,6 @@ namespace Nucs.JsonSettings.Inline {
     ///     Class that determines paths.
     /// </summary>
     internal static class Paths {
-        #pragma warning disable CS0169 // The field 'Paths._cacheprogress' is never used
-        private static Task _cacheprogress;
-        #pragma warning restore CS0169 // The field 'Paths._cacheprogress' is never used
-
-
-        /// <summary>
-        ///     The config dir inside user profile.
-        /// </summary>
-        public static DirectoryInfo ConfigDirectory => new DirectoryInfo(Path.Combine(Environment.ExpandEnvironmentVariables("%USERPROFILE%"), "autoload/"));
-
-        /// <summary>
-        ///     The config file inside user profile.
-        /// </summary>
-        public static FileInfo ConfigFile(string configname) =>
-            new FileInfo(Path.Combine(ConfigDirectory.FullName, Environment.MachineName + $".{configname}.json"));
-
-
         #region GetModuleFileNameLongPath
 
         private const int MAX_PATH = 260;
@@ -98,12 +81,12 @@ namespace Nucs.JsonSettings.Inline {
         /// <summary>
         ///     The path to the entry exe.
         /// </summary>
-        public static readonly FileInfo ExecutingExe = new FileInfo(GetExecutablePath())!;
+        public static readonly FileInfo ExecutingExe = new FileInfo(GetExecutablePath());
 
         /// <summary>
         ///     The path to the entry exe's directory.
         /// </summary>
-        public static DirectoryInfo ExecutingDirectory => ExecutingExe.Directory!;
+        public static readonly DirectoryInfo ExecutingDirectory = ExecutingExe.Directory!;
 
         /// <summary>
         ///     Checks the ability to create and write to a file in the supplied directory.
@@ -140,15 +123,6 @@ namespace Nucs.JsonSettings.Inline {
         /// <returns></returns>
         public static FileInfo CombineToExecutingBase(string filename) =>
             new FileInfo(Path.Combine(ExecutingDirectory.FullName, filename));
-
-        /// <summary>
-        ///     Combines the file name with the dir of <see cref="Paths.ExecutingExe" />, resulting in path of a file inside the
-        ///     directory of the executing exe file.
-        /// </summary>
-        /// <param name="filename"></param>
-        /// <returns></returns>
-        public static DirectoryInfo CombineToExecutingBaseDir(string filename) =>
-            new DirectoryInfo(Path.Combine(ExecutingDirectory.FullName, filename));
 
         /// <summary>
         ///     Compares two FileSystemInfos the right way.
