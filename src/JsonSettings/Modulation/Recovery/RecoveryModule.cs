@@ -21,9 +21,6 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
         }
 
         public override void Attach(JsonSettings socket) {
-            if (RecoveryAction == RecoveryAction.RenameAndLoadDefault && !(socket is IVersionable)) 
-                throw new InvalidOperationException($"{socket._childtype.Name} does not implement IVersionable.");
-
             base.Attach(socket);
             socket.BeforeLoad += SocketOnBeforeLoad;
             socket.TryingRecover += SocketOnTryingRecover;
@@ -64,7 +61,6 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
                     if (lastIdx == -1)
                         lastIdx = loadedPath.Length;
 
-                    uint nonVersionable = 0;
                     //figure naming of existing and rename
                     string newFileName = cleanName;
                     if (File.Exists(newFileName)) {
