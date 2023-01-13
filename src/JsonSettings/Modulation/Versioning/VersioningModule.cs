@@ -18,7 +18,7 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         /// <summary>
-        ///     See https://regex101.com/r/5ITewE/1
+        ///     See https://regex101.com/r/7xXzRt/1
         /// </summary>
         public static readonly Regex VersionMatcher = new Regex(@"(\.\d+\.\d+\.\d+\.\d+(?:\.\d+)?)(?:(?=\.)|-(\d+)|$)", RegexOptions.Compiled | RegexOptions.Multiline);
     }
@@ -155,7 +155,7 @@ namespace Nucs.JsonSettings.Modulation {
                     string newFileName = cleanName;
                     if (File.Exists(newFileName)) {
                         do {
-                            newFileName = cleanName.Insert(lastIdx, $".{sender.Version}{(fileVersion++ == 0 ? "" : $"-{fileVersion}")}");
+                            newFileName = cleanName.Insert(lastIdx, $".{sender.Version}-{fileVersion++}");
                         } while (File.Exists(newFileName));
 
                         try {

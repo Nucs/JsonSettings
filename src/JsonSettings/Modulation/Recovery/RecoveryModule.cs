@@ -65,7 +65,7 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
                     string newFileName = cleanName;
                     if (File.Exists(newFileName)) {
                         do {
-                            newFileName = cleanName.Insert(lastIdx, $".{(sender is IVersionable versionable ? versionable.Version : "")}{(fileVersion++ == 0 ? "" : $"-{fileVersion}")}");
+                            newFileName = cleanName.Insert(lastIdx, $".{(sender is IVersionable versionable ? $"{versionable.Version}-{fileVersion++}" : fileVersion++)}");
                         } while (File.Exists(newFileName));
 
                         try {
