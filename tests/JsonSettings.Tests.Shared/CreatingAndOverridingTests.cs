@@ -9,12 +9,7 @@ namespace Nucs.JsonSettings.Tests {
     public class CreatingAndOverridingTests {
         [TestMethod]
         public void OverrideExistingBySmallerSettingsFile() {
-            var path = JsonSettings.ResolvePath(new SettingsLarger(), "swaggy.json", true);
-            using (var f = new TempfileLife(path)) {
-                if (File.Exists(f))
-                    File.Delete(f);
-                File.Exists(f).Should().BeFalse();
-
+            using (var f = new TempfileLife()) {
                 var o = JsonSettings.Load<SettingsLarger>(f);
                 o.Str = o.Str2 = o.Str3 = "lol";
                 o.Save();
@@ -27,11 +22,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void CreateNonExistingSettings() {
-            var path = JsonSettings.ResolvePath(new Settings(), "swag.json", true);
-            using (var f = new TempfileLife(path)) {
-                if (File.Exists(f))
-                    File.Delete(f);
-                File.Exists(f).Should().BeFalse();
+            using (var f = new TempfileLife(false)) {
                 var o = JsonSettings.Load<Settings>(f);
                 o.Str = "lol";
                 File.Exists(f).Should().BeTrue();
