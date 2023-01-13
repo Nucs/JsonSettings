@@ -19,9 +19,8 @@ namespace Nucs.JsonSettings.Collections {
         /// <returns></returns>
         public new TValue? this[TKey key] {
             get {
-                if (TryGetValue(key, out var val))
-                    return val;
-                return default;
+                TryGetValue(key, out var val);
+                return val;
             }
             set => base[key] = value!;
         }
@@ -42,21 +41,14 @@ namespace Nucs.JsonSettings.Collections {
         public TKey FindKeyByValue(TValue value) {
             EqualityComparer<TValue> comparer = EqualityComparer<TValue>.Default;
             foreach (var pair in this)
-                if (comparer.Equals(value, pair.Value)) return pair.Key;
+                if (comparer.Equals(value, pair.Value))
+                    return pair.Key;
 
             return default(TKey);
         }
 
         public SafeDictionary<TKey, TValue> Clone() {
             return new SafeDictionary<TKey, TValue>(this);
-        }
-
-        public new IEnumerable<TValue> Values() {
-            return base.Values;
-        }
-
-        public new IEnumerable<TKey> Keys() {
-            return base.Keys;
         }
 
         #region Constructors
