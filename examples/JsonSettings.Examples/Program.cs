@@ -13,6 +13,7 @@ namespace Nucs.JsonSettings.Examples {
             //ComplexObjectsProgram.Run(args);
             //INotifyPropertyChangedExample.Run(args);
             //Versioning.Run(args);
+            //RecoverableFromFailureToLoad.Run(args);
         }
     }
 }

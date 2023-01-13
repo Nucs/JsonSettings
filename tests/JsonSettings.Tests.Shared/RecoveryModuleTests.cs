@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings;
@@ -112,6 +113,29 @@ namespace Nucs.JsonSettings.Tests {
                 }).ShouldThrow<InvalidVersionException>();*/
             }
         }
+
+        [TestMethod]
+        public void RenameAndLoadDefault_Case2() {
+            using (var f = new TempfileLife(false)) {
+                var Settings = JsonSettings.Configure<RecoveryWithoutVersionSettings>(f)
+                                       .WithRecovery(RecoveryAction.RenameAndLoadDefault)
+                                       .LoadNow();
+            
+                Settings.Type = "Hello"; //Boom! saves.
+                //someone changed the file manually and messed up the json.
+                File.WriteAllText(f, File.ReadAllText(f, Encoding.UTF8).Replace("Hello", "Hi\"}\n:={}"), Encoding.UTF8); //some random text breaking the json
+            
+                //after some changes and development, you decide to upgrade to 1.0.0.7
+                Settings = JsonSettings.Configure<RecoveryWithoutVersionSettings>(f)
+                                       .WithRecovery(RecoveryAction.RenameAndLoadDefault)
+                                       .LoadNow();
+
+                Console.WriteLine(f.FileName);
+
+                File.Exists(f.FileName.Replace(".json", ".0.json")).Should().BeTrue();
+                Settings.Type.Should().Be("Hi");
+            }
+        }
     }
 
     public class RecoverySettings : JsonSettings, IVersionable {
@@ -123,6 +147,19 @@ namespace Nucs.JsonSettings.Tests {
 
         public Version Version { get; set; } = new Version(1, 0, 0, 0);
 
+        public virtual int Value { get; set; }
+    }
+
+
+    public class RecoveryWithoutVersionSettings : JsonSettings {
+        #region Overrides of JsonSettings
+
+        public override string FileName { get; set; }
+
+        #endregion
+
+        public virtual string Type { get; set; } = "Hi";
+        
         public virtual int Value { get; set; }
     }
 
