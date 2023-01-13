@@ -2,8 +2,8 @@
 
   <PropertyGroup>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <AssemblyVersion>2.0.0.7</AssemblyVersion>
-    <FileVersion>2.0.0.7</FileVersion>
+    <AssemblyVersion>2.0.1</AssemblyVersion>
+    <FileVersion>2.0.1</FileVersion>
     <Authors>Nucs / Eli Belash</Authors>
     <Company>Nucs / Eli Belash</Company>
 	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
@@ -17,11 +17,11 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
-    <Copyright>Eli Belash @ 2021</Copyright>
+    <Copyright>Eli Belash @ 2023</Copyright>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Nucs.JsonSettings</RootNamespace>
     <PackageId>Nucs.JsonSettings</PackageId>
-    <PackageVersion>2.0.0-alpha7</PackageVersion>
+    <PackageVersion>2.0.1</PackageVersion>
     <Title>Nucs.JsonSettings</Title>
     <PackageReleaseNotes>- Added RecoveryModule  and .WithRecovery to capture parsing errors
 - Added JsonSettings.SuspendAutosave() extension
