@@ -7,8 +7,6 @@ using Nucs.JsonSettings.Fluent;
 namespace Nucs.JsonSettings.Tests {
     [TestClass]
     public class HowToUse {
-        #region Settings Bag
-
         [TestMethod]
         public void Use_MostBasic() {
             using (var f = new TempfileLife()) {
@@ -130,7 +128,5 @@ namespace Nucs.JsonSettings.Tests {
                 o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
             }
         }
-
-        #endregion
     }
 }

@@ -27,10 +27,16 @@ public class AutosaveSuspensionTests {
                 o.property = "hi";
                 saved.Value.ShouldBeEquivalentTo(false);
                 module.AutosavingState.Should().Be(AutosavingState.SuspendedChanged);
+                var oo = AutosaveTests.Settings.Load<AutosaveTests.Settings>(f.FileName);
+                oo.property.Should().NotBe("hi", "It should not have saved.");
             }
 
             saved.Value.ShouldBeEquivalentTo(true);
             //test
+
+            o = AutosaveTests.Settings.Load<AutosaveTests.Settings>(f.FileName);
+
+            o.property.Should().Be("hi", "It should not have saved.");
         }
     }
 
