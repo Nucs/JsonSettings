@@ -34,32 +34,32 @@ namespace Nucs.JsonSettings.Inline {
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern int GetModuleFileName(IntPtr hModule, StringBuilder buffer, int length);
 
-        /// <summary>
-        /// Retrieves the fully qualified path for the file that contains the specified module.
-        /// The module must have been loaded by the current process.
-        /// </summary>
-        /// <returns></returns>
-        private static string GetModuleFileNameLongPath() {
-            if (_moduleFileNameLongPath == null) {
-                StringBuilder buffer = new StringBuilder(MAX_PATH);
-                int noOfTimes = 1;
-                int length = 0;
-                // Iterating by allocating chunk of memory each time we find the length is not sufficient.
-                // Performance should not be an issue for current MAX_PATH length due to this change.
-                while (((length = GetModuleFileName(IntPtr.Zero, buffer, buffer.Capacity)) == buffer.Capacity)
-                       && Marshal.GetLastWin32Error() == INSUFFICIENT_BUFFER_ERROR
-                       && buffer.Capacity < MAX_UNICODESTRING_LEN) {
-                    noOfTimes += 2; // Increasing buffer size by 520 in each iteration.
-                    int capacity = noOfTimes * MAX_PATH < MAX_UNICODESTRING_LEN ? noOfTimes * MAX_PATH : MAX_UNICODESTRING_LEN;
-                    buffer.EnsureCapacity(capacity);
-                }
-
-                buffer.Length = length;
-                _moduleFileNameLongPath = Path.GetFullPath(buffer.ToString());
-            }
-
-            return _moduleFileNameLongPath;
+/// <summary>
+/// Retrieves the fully qualified path for the file that contains the specified module.
+/// The module must have been loaded by the current process.
+/// </summary>
+/// <returns></returns>
+private static string GetModuleFileNameLongPath() {
+    if (_moduleFileNameLongPath == null) {
+        StringBuilder buffer = new StringBuilder(MAX_PATH);
+        int noOfTimes = 1;
+        int length = 0;
+        // Iterating by allocating chunk of memory each time we find the length is not sufficient.
+        // Performance should not be an issue for current MAX_PATH length due to this change.
+        while (((length = GetModuleFileName(IntPtr.Zero, buffer, buffer.Capacity)) == buffer.Capacity)
+               && Marshal.GetLastWin32Error() == INSUFFICIENT_BUFFER_ERROR
+               && buffer.Capacity < MAX_UNICODESTRING_LEN) {
+            noOfTimes += 2; // Increasing buffer size by 520 in each iteration.
+            int capacity = noOfTimes * MAX_PATH < MAX_UNICODESTRING_LEN ? noOfTimes * MAX_PATH : MAX_UNICODESTRING_LEN;
+            buffer.EnsureCapacity(capacity);
         }
+
+        buffer.Length = length;
+        _moduleFileNameLongPath = Path.GetFullPath(buffer.ToString());
+    }
+
+    return _moduleFileNameLongPath;
+}
 
         #endregion
 
@@ -81,12 +81,21 @@ namespace Nucs.JsonSettings.Inline {
         /// <summary>
         ///     The path to the entry exe.
         /// </summary>
-        public static readonly FileInfo ExecutingExe = new FileInfo(GetExecutablePath());
+        public static readonly FileInfo ExecutingExe;
 
         /// <summary>
         ///     The path to the entry exe's directory.
         /// </summary>
-        public static readonly DirectoryInfo ExecutingDirectory = ExecutingExe.Directory!;
+        public static readonly DirectoryInfo ExecutingDirectory;
+
+        static Paths() {
+            try {
+                ExecutingExe = new FileInfo(GetExecutablePath());
+                ExecutingDirectory = ExecutingExe.Directory!;
+            } catch (Exception) {
+                ExecutingDirectory = new DirectoryInfo(Environment.CurrentDirectory!);
+            }
+        }
 
         /// <summary>
         ///     Checks the ability to create and write to a file in the supplied directory.
