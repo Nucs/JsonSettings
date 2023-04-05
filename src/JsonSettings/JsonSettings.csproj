@@ -21,7 +21,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Nucs.JsonSettings</RootNamespace>
     <PackageId>Nucs.JsonSettings</PackageId>
-    <PackageVersion>2.0.1</PackageVersion>
+    <PackageVersion>2.0.2</PackageVersion>
     <Title>Nucs.JsonSettings</Title>
     <PackageReleaseNotes>- Added RecoveryModule  and .WithRecovery to capture parsing errors
 - Added JsonSettings.SuspendAutosave() extension
