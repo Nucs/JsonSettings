@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Examples;
+using Nucs.JsonSettings.Tests.Utils;
 
 namespace Nucs.JsonSettings.Tests.Autosave {
     [TestClass]

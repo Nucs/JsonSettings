@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.IO;
 
+namespace Nucs.JsonSettings.Tests.Utils;
+
 public class TempfileLife : IDisposable {
     public string FileName { get; set; }
 

@@ -1,10 +1,9 @@
-﻿
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Tests.Autosave;
+using Nucs.JsonSettings.Tests.Utils;
+
+namespace Nucs.JsonSettings.Tests.Autosave;
 
 [TestClass]
 public class AutosaveSuspensionTests {

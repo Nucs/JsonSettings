@@ -1,6 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0</TargetFrameworks>
 	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <AssemblyVersion>2.0.1</AssemblyVersion>
     <FileVersion>2.0.1</FileVersion>
@@ -27,7 +27,6 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
     <Copyright>Eli Belash @ 2023</Copyright>
-    <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Nucs.JsonSettings</RootNamespace>
     <PackageId>Nucs.JsonSettings</PackageId>
     <PackageVersion>2.0.2</PackageVersion>
@@ -62,7 +61,7 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 

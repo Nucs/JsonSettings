@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings.Tests.Utils;
 
 
 namespace Nucs.JsonSettings.Tests.Autosave {
