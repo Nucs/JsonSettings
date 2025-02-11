@@ -1,7 +1,6 @@
 using System;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Nucs.JsonSettings;
 
 namespace Nucs.JsonSettings.Tests {
     [TestClass]

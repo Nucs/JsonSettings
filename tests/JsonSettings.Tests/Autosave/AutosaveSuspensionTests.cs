@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Tests.Utils;
 

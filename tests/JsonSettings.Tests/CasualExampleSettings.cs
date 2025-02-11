@@ -1,5 +1,3 @@
-using Nucs.JsonSettings;
-
 namespace Nucs.JsonSettings.Tests {
     public class CasualExampleSettings : JsonSettings {
         public override string FileName { get; set; } = "casual.json";
