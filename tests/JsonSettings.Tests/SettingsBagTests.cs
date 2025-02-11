@@ -13,92 +13,85 @@ namespace Nucs.JsonSettings.Tests {
     public class Tests {
         [TestMethod]
         public void SettingsBag_WithEncryption_Autosave() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow().EnableAutosave();
-                o.Autosave = true;
-                o["lol"] = "xoxo";
-                o["loly"] = 2;
-                var x = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
-                x["lol"].ShouldBeEquivalentTo("xoxo");
-                x["loly"].ShouldBeEquivalentTo(2);
-            }
+            using var f = new CreateTempFile();
+            var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow().EnableAutosave();
+            o.Autosave = true;
+            o["lol"] = "xoxo";
+            o["loly"] = 2;
+            var x = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
+            x["lol"].ShouldBeEquivalentTo("xoxo");
+            x["loly"].ShouldBeEquivalentTo(2);
         }
 
         [TestMethod]
         public void SettingsBag_WithEncryption_RegularSave() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
-                o.Autosave = false;
-                o["lol"] = "xoxo";
-                o["loly"] = 2;
-                o.Save();
-                var x = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
-                x["lol"].ShouldBeEquivalentTo("xoxo");
-                x["loly"].ShouldBeEquivalentTo(2);
-            }
+            using var f = new CreateTempFile();
+            var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
+            o.Autosave = false;
+            o["lol"] = "xoxo";
+            o["loly"] = 2;
+            o.Save();
+            var x = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
+            x["lol"].ShouldBeEquivalentTo("xoxo");
+            x["loly"].ShouldBeEquivalentTo(2);
         }
 
         [TestMethod]
         public void SettingsBag_Passless() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
-                ((RijndaelModule) o.Modulation.Modules[0]).Password.ShouldBeEquivalentTo(SecureStringExt.EmptyString);
-                o.Autosave = false;
-                o["lol"] = "xoxo";
-                o["loly"] = 2;
-                o.Save();
-                var x = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
-                x["lol"].ShouldBeEquivalentTo("xoxo");
-                x["loly"].ShouldBeEquivalentTo(2);
-            }
+            using var f = new CreateTempFile();
+            var o = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
+            ((RijndaelModule) o.Modulation.Modules[0]).Password.ShouldBeEquivalentTo(SecureStringExt.EmptyString);
+            o.Autosave = false;
+            o["lol"] = "xoxo";
+            o["loly"] = 2;
+            o.Save();
+            var x = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
+            x["lol"].ShouldBeEquivalentTo("xoxo");
+            x["loly"].ShouldBeEquivalentTo(2);
         }
 
         [TestMethod]
         public void SettingsBag_InvalidPassword() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Configure<SettingsBag>().WithEncryption("yoyo").WithFileName(f.FileName).LoadNow();
-                o["lol"] = "xoxo";
-                o["loly"] = 2;
-                o.Save();
-                Action func = () => JsonSettings.Configure<SettingsBag>().WithEncryption("invalidpass").WithFileName(f.FileName).LoadNow();
-                func.ShouldThrow<JsonSettingsException>("Password is invalid").Where(e => e.Message.StartsWith("Password", StringComparison.OrdinalIgnoreCase));
-            }
+            using var f = new CreateTempFile();
+            var o = JsonSettings.Configure<SettingsBag>().WithEncryption("yoyo").WithFileName(f.FileName).LoadNow();
+            o["lol"] = "xoxo";
+            o["loly"] = 2;
+            o.Save();
+            Action func = () => JsonSettings.Configure<SettingsBag>().WithEncryption("invalidpass").WithFileName(f.FileName).LoadNow();
+            func.ShouldThrow<JsonSettingsException>("Password is invalid").Where(e => e.Message.StartsWith("Password", StringComparison.OrdinalIgnoreCase));
         }
 
         [TestMethod]
         public void SettingsBag_RegularSave() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Load<SettingsBag>(f);
-                o.Autosave = false;
-                o["lol"] = "xoxo";
-                o["loly"] = 2;
-                o.Save();
-                var x = JsonSettings.Load<SettingsBag>(f);
-                x["lol"].ShouldBeEquivalentTo("xoxo");
-                x["loly"].ShouldBeEquivalentTo(2);
-            }
+            using var f = new CreateTempFile();
+            var o = JsonSettings.Load<SettingsBag>(f);
+            o.Autosave = false;
+            o["lol"] = "xoxo";
+            o["loly"] = 2;
+            o.Save();
+            var x = JsonSettings.Load<SettingsBag>(f);
+            x["lol"].ShouldBeEquivalentTo("xoxo");
+            x["loly"].ShouldBeEquivalentTo(2);
         }
 
         [TestMethod]
         public void SettingsBag_Autosave() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Load<SettingsBag>(f);
-                o.Autosave = true;
-                o["lol"] = "xoxo";
-                o["loly"] = 2;
-                var x = JsonSettings.Load<SettingsBag>(f);
-                x["lol"].ShouldBeEquivalentTo("xoxo");
-                x["loly"].ShouldBeEquivalentTo(2);
-            }
+            using var f = new CreateTempFile();
+            var o = JsonSettings.Load<SettingsBag>(f);
+            o.Autosave = true;
+            o["lol"] = "xoxo";
+            o["loly"] = 2;
+            var x = JsonSettings.Load<SettingsBag>(f);
+            x["lol"].ShouldBeEquivalentTo("xoxo");
+            x["loly"].ShouldBeEquivalentTo(2);
         }
 
         [TestMethod]
         public void FilterFileNameProperty() {
-            using (var f = new TempfileLife()) {
-                var n = new FilterFileNameSettings(f);
-                n.Save();
-                File.ReadAllText(n.FileName).IndexOf("FileName", StringComparison.OrdinalIgnoreCase).ShouldBeEquivalentTo(-1);
-            }
+            using var f = new CreateTempFile();
+            var n = new FilterFileNameSettings(f);
+            n.Save();
+            File.ReadAllText(n.FileName).IndexOf("FileName", StringComparison.OrdinalIgnoreCase).ShouldBeEquivalentTo(-1);
         }
 
         [TestMethod]
@@ -108,13 +101,12 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void JsonSettings_ModuleLoader() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Load<ModuleLoadingSttings>(f);
-                o.someprop = "1";
-                o.Save();
-                var x = JsonSettings.Load<ModuleLoadingSttings>(f);
-                x.someprop.ShouldBeEquivalentTo("1");
-            }
+            using var f = new CreateTempFile();
+            var o = JsonSettings.Load<ModuleLoadingSttings>(f);
+            o.someprop = "1";
+            o.Save();
+            var x = JsonSettings.Load<ModuleLoadingSttings>(f);
+            x.someprop.ShouldBeEquivalentTo("1");
         }
 
         class FilterFileNameSettings : JsonSettings {

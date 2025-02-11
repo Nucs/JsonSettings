@@ -43,19 +43,19 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Activation_ObjectConstructor() {
-            Func<object> a = () => Activation.CreateInstance(typeof(AmbiousClass), new object[] {null});
+            var a = () => Activation.CreateInstance(typeof(AmbiousClass), new object[] {null});
             a().Should().BeOfType<AmbiousClass>();
         }
 
         [TestMethod]
         public void Activation_AmbiousDefaultClass() {
-            Func<object> a = () => Activation.CreateInstance(typeof(AmbiousDefaultClass), new object[] {null});
+            var a = () => Activation.CreateInstance(typeof(AmbiousDefaultClass), new object[] {null});
             a().Should().BeOfType<AmbiousDefaultClass>();
         }
 
         [TestMethod]
         public void Activation_AmbiousDefaultWithSameClass() {
-            Func<object> a = () => Activation.CreateInstance(typeof(AmbiousDefaultWithSameClass), new object[] {null, null});
+            var a = () => Activation.CreateInstance(typeof(AmbiousDefaultWithSameClass), new object[] {null, null});
             a().Should().BeOfType<AmbiousDefaultWithSameClass>();
         }
 

@@ -4,14 +4,14 @@ using System.IO;
 
 namespace Nucs.JsonSettings.Tests.Utils;
 
-public class TempfileLife : IDisposable {
+public class CreateTempFile : IDisposable {
     public string FileName { get; set; }
 
-    public TempfileLife(bool create = false) {
-        FileName = Path.GetFullPath(create ? Path.ChangeExtension(Path.GetTempFileName(), "json") : Path.ChangeExtension(Path.GetRandomFileName(), "json"));
+    public CreateTempFile(bool create = false, string extension = "json") {
+        FileName = Path.GetFullPath(create ? Path.ChangeExtension(Path.GetTempFileName(), extension) : Path.ChangeExtension(Path.GetRandomFileName(), extension));
     }
 
-    public TempfileLife(string fileName) {
+    public CreateTempFile(string fileName) {
         if (string.IsNullOrEmpty(fileName))
             throw new ArgumentException("message", nameof(fileName));
 
@@ -27,11 +27,11 @@ public class TempfileLife : IDisposable {
         }
     }
 
-    public static implicit operator string(TempfileLife value) {
+    public static implicit operator string(CreateTempFile value) {
         return value.FileName;
     }
 
-    public static implicit operator FileInfo(TempfileLife value) {
+    public static implicit operator FileInfo(CreateTempFile value) {
         return new FileInfo(value.FileName);
     }
 }

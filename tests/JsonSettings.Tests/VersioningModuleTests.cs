@@ -10,11 +10,11 @@ using Nucs.JsonSettings.Tests.Utils;
 namespace Nucs.JsonSettings.Tests {
     [TestClass]
     public class VersioningModuleTests {
-        TempfileLife FindFile(string baseFile, Version version) {
+        CreateTempFile FindFile(string baseFile, Version version) {
             baseFile = Path.GetFullPath(baseFile);
             foreach (var file in Directory.GetFiles(Path.GetDirectoryName(baseFile), Path.HasExtension(baseFile) ? "*" + Path.GetFileNameWithoutExtension(baseFile) + "*" : "*.*", SearchOption.TopDirectoryOnly)) {
                 if (Path.GetFileName(file).Contains("." + version))
-                    return new TempfileLife(file);
+                    return new CreateTempFile(file);
             }
 
             throw new FileNotFoundException(version.ToString());
@@ -22,164 +22,158 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void RenameAndLoadDefault_Case1() {
-            using (var f = new TempfileLife(false)) {
-                //load
-                var cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.RenameAndLoadDefault)
-                                      .LoadNow();
-
-                //assert
-                cfg.Version.Should().Be(new Version(1, 0, 0, 0));
-
-                //load
-                cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.RenameAndLoadDefault)
+            using var f = new CreateTempFile(false);
+            //load
+            var cfg = JsonSettings.Configure<VersionedSettings>(f)
+                                  .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.RenameAndLoadDefault)
                                   .LoadNow();
 
-                using var _1_0_0_0 = FindFile(f, new Version(1, 0, 0, 0));
+            //assert
+            cfg.Version.Should().Be(new Version(1, 0, 0, 0));
 
-                //change version and save
-                cfg.Version = new Version("1.0.0.1");
-                cfg.Save();
+            //load
+            cfg = JsonSettings.Configure<VersionedSettings>(f)
+                              .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.RenameAndLoadDefault)
+                              .LoadNow();
 
-                //assert 
-                cfg.Version.Should().Be(new Version(1, 0, 0, 1));
-                cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 0, 0, 1), VersioningResultAction.RenameAndLoadDefault)
-                                  .LoadNow();
-                cfg.Version.Should().Be(new Version(1, 0, 0, 1));
+            using var _1_0_0_0 = FindFile(f, new Version(1, 0, 0, 0));
 
-                //assert 
-                cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 0, 0, 2), VersioningResultAction.RenameAndLoadDefault)
-                                  .LoadNow();
-                using var _1_0_0_1 = FindFile(f, new Version(1, 0, 0, 1));
+            //change version and save
+            cfg.Version = new Version("1.0.0.1");
+            cfg.Save();
 
-                cfg.Version.Should().Be(new Version(1, 0, 0, 2));
-            }
+            //assert 
+            cfg.Version.Should().Be(new Version(1, 0, 0, 1));
+            cfg = JsonSettings.Configure<VersionedSettings>(f)
+                              .WithVersioning(new Version(1, 0, 0, 1), VersioningResultAction.RenameAndLoadDefault)
+                              .LoadNow();
+            cfg.Version.Should().Be(new Version(1, 0, 0, 1));
+
+            //assert 
+            cfg = JsonSettings.Configure<VersionedSettings>(f)
+                              .WithVersioning(new Version(1, 0, 0, 2), VersioningResultAction.RenameAndLoadDefault)
+                              .LoadNow();
+            using var _1_0_0_1 = FindFile(f, new Version(1, 0, 0, 1));
+
+            cfg.Version.Should().Be(new Version(1, 0, 0, 2));
         }
 
         [TestMethod]
         public void Throw_Case1() {
-            using (var f = new TempfileLife(false)) {
-                //load
-                var cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
-                                      .LoadNow();
+            using var f = new CreateTempFile(false);
+            //load
+            var cfg = JsonSettings.Configure<VersionedSettings>(f)
+                                  .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
+                                  .LoadNow();
 
-                //assert
-                cfg.Version.Should().Be(new Version(1, 0, 0, 0));
+            //assert
+            cfg.Version.Should().Be(new Version(1, 0, 0, 0));
 
-                //load
-                new Action(() => {
-                    cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.Throw)
-                                      .LoadNow();
-                }).ShouldThrow<InvalidVersionException>();
-            }
+            //load
+            new Action(() => {
+                cfg = JsonSettings.Configure<VersionedSettings>(f)
+                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.Throw)
+                                  .LoadNow();
+            }).ShouldThrow<InvalidVersionException>();
         }
 
         [TestMethod]
         public void LoadDefaultAndSave_Case1() {
-            using (var f = new TempfileLife(false)) {
-                //load
-                var cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
-                                      .LoadNow();
-
-                //assert
-                cfg.Version.Should().Be(new Version(1, 0, 0, 0));
-
-                //load
-                cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.LoadDefaultAndSave)
+            using var f = new CreateTempFile(false);
+            //load
+            var cfg = JsonSettings.Configure<VersionedSettings>(f)
+                                  .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
                                   .LoadNow();
-                cfg.Version.Should().Be(new Version(1, 2, 0, 0));
 
-                new Action(() => {
-                    cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.Throw)
-                                      .LoadNow();
-                }).ShouldNotThrow();
-            }
+            //assert
+            cfg.Version.Should().Be(new Version(1, 0, 0, 0));
+
+            //load
+            cfg = JsonSettings.Configure<VersionedSettings>(f)
+                              .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.LoadDefaultAndSave)
+                              .LoadNow();
+            cfg.Version.Should().Be(new Version(1, 2, 0, 0));
+
+            new Action(() => {
+                cfg = JsonSettings.Configure<VersionedSettings>(f)
+                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.Throw)
+                                  .LoadNow();
+            }).ShouldNotThrow();
         }
 
         [TestMethod]
         public void LoadDefault_Case1() {
-            using (var f = new TempfileLife(false)) {
-                //load
-                var cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
-                                      .LoadNow();
-
-                //assert
-                cfg.Version.Should().Be(new Version(1, 0, 0, 0));
-
-                //load
-                cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                  .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.LoadDefault)
+            using var f = new CreateTempFile(false);
+            //load
+            var cfg = JsonSettings.Configure<VersionedSettings>(f)
+                                  .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
                                   .LoadNow();
 
-                cfg.Version.Should().Be(new Version(1, 2, 0, 0));
+            //assert
+            cfg.Version.Should().Be(new Version(1, 0, 0, 0));
 
-                new Action(() => {
-                    cfg = JsonSettings.Configure<VersionedSettings>(f)
-                                      .WithVersioning(new Version(1, 1, 0, 0), VersioningResultAction.Throw)
-                                      .LoadNow();
-                }).ShouldThrow<InvalidVersionException>();
-            }
+            //load
+            cfg = JsonSettings.Configure<VersionedSettings>(f)
+                              .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.LoadDefault)
+                              .LoadNow();
+
+            cfg.Version.Should().Be(new Version(1, 2, 0, 0));
+
+            new Action(() => {
+                cfg = JsonSettings.Configure<VersionedSettings>(f)
+                                  .WithVersioning(new Version(1, 1, 0, 0), VersioningResultAction.Throw)
+                                  .LoadNow();
+            }).ShouldThrow<InvalidVersionException>();
         }
 
         [TestMethod]
         public void LoadDefault_Case2() {
-            using (var f = new TempfileLife(false)) {
-                //load
-                var cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
-                                      .WithVersioning(VersioningResultAction.Throw)
-                                      .LoadNow();
-
-                //assert
-                cfg.Version.Should().Be(new Version(1, 2, 0, 0));
-
-                //load
-                cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
-                                  .WithVersioning(VersioningResultAction.LoadDefault)
+            using var f = new CreateTempFile(false);
+            //load
+            var cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
+                                  .WithVersioning(VersioningResultAction.Throw)
                                   .LoadNow();
 
-                cfg.Version.Should().Be(new Version(1, 2, 0, 0));
+            //assert
+            cfg.Version.Should().Be(new Version(1, 2, 0, 0));
 
-                new Action(() => {
-                    cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
-                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
-                                      .LoadNow();
-                }).ShouldThrow<InvalidVersionException>();
-            }
+            //load
+            cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
+                              .WithVersioning(VersioningResultAction.LoadDefault)
+                              .LoadNow();
+
+            cfg.Version.Should().Be(new Version(1, 2, 0, 0));
+
+            new Action(() => {
+                cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
+                                  .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
+                                  .LoadNow();
+            }).ShouldThrow<InvalidVersionException>();
         }
 
         [TestMethod]
         public void LoadDefault_Case3() {
-            using (var f = new TempfileLife(false)) {
-                //load
-                var cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
-                                      .WithVersioning(VersioningResultAction.Throw)
-                                      .LoadNow();
-
-                //assert
-                cfg.Version.Should().Be(new Version(1, 3, 0, 0));
-
-                //load
-                cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
-                                  .WithVersioning(VersioningResultAction.LoadDefault)
+            using var f = new CreateTempFile(false);
+            //load
+            var cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
+                                  .WithVersioning(VersioningResultAction.Throw)
                                   .LoadNow();
 
-                cfg.Version.Should().Be(new Version(1, 3, 0, 0));
+            //assert
+            cfg.Version.Should().Be(new Version(1, 3, 0, 0));
 
-                new Action(() => {
-                    cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
-                                      .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
-                                      .LoadNow();
-                }).ShouldThrow<InvalidVersionException>();
-            }
+            //load
+            cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
+                              .WithVersioning(VersioningResultAction.LoadDefault)
+                              .LoadNow();
+
+            cfg.Version.Should().Be(new Version(1, 3, 0, 0));
+
+            new Action(() => {
+                cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
+                                  .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
+                                  .LoadNow();
+            }).ShouldThrow<InvalidVersionException>();
         }
     }
 

@@ -10,62 +10,60 @@ namespace Nucs.JsonSettings.Tests.Autosave;
 public class AutosaveSuspensionTests {
     [TestMethod]
     public void Case1() {
-        using (var f = new TempfileLife()) {
-            StrongBox<bool> saved = new StrongBox<bool>(false);
-            var o = AutosaveTests.Settings.Load<AutosaveTests.Settings>(f.FileName)
-                                 .EnableAutosave();
-            o.AfterSave += (s, destinition) => { saved.Value = true; };
-            var module = o.Modulation.GetModule<AutosaveModule>();
+        using var f = new CreateTempFile();
+        var saved = new StrongBox<bool>(false);
+        var o = JsonSettings.Load<AutosaveTests.Settings>(f.FileName)
+                            .EnableAutosave();
+        o.AfterSave += (s, destinition) => { saved.Value = true; };
+        var module = o.Modulation.GetModule<AutosaveModule>();
 
-            //act
-            module.AutosavingState.Should().Be(AutosavingState.Running);
+        //act
+        module.AutosavingState.Should().Be(AutosavingState.Running);
 
-            using (o.SuspendAutosave()) {
-                module.AutosavingState.Should().Be(AutosavingState.Suspended);
-
-                saved.Value.ShouldBeEquivalentTo(false);
-                o.property = "hi";
-                saved.Value.ShouldBeEquivalentTo(false);
-                module.AutosavingState.Should().Be(AutosavingState.SuspendedChanged);
-                var oo = AutosaveTests.Settings.Load<AutosaveTests.Settings>(f.FileName);
-                oo.property.Should().NotBe("hi", "It should not have saved.");
-            }
-
-            saved.Value.ShouldBeEquivalentTo(true);
-            //test
-
-            o = AutosaveTests.Settings.Load<AutosaveTests.Settings>(f.FileName);
-
-            o.property.Should().Be("hi", "It should not have saved.");
-        }
-    }
-
-    [TestMethod]
-    public void Case2() {
-        using (var f = new TempfileLife()) {
-            StrongBox<bool> saved = new StrongBox<bool>(false);
-            var o = JsonSettings.Load<AutosaveTests.Settings>(f.FileName)
-                                .EnableAutosave();
-            o.AfterSave += (s, destinition) => { saved.Value = true; };
-            var module = o.Modulation.GetModule<AutosaveModule>();
-
-            //act
-            module.AutosavingState.Should().Be(AutosavingState.Running);
-
-            var suspender = o.SuspendAutosave();
+        using (o.SuspendAutosave()) {
             module.AutosavingState.Should().Be(AutosavingState.Suspended);
 
             saved.Value.ShouldBeEquivalentTo(false);
             o.property = "hi";
             saved.Value.ShouldBeEquivalentTo(false);
             module.AutosavingState.Should().Be(AutosavingState.SuspendedChanged);
-            suspender.Resume();
-
-            //resuming/disposing twice should have any effect
-            saved.Value.ShouldBeEquivalentTo(true);
-            saved.Value = false;
-            suspender.Resume();
-            saved.Value.ShouldBeEquivalentTo(false);
+            var oo = JsonSettings.Load<AutosaveTests.Settings>(f.FileName);
+            oo.property.Should().NotBe("hi", "It should not have saved.");
         }
+
+        saved.Value.ShouldBeEquivalentTo(true);
+        //test
+
+        o = JsonSettings.Load<AutosaveTests.Settings>(f.FileName);
+
+        o.property.Should().Be("hi", "It should not have saved.");
+    }
+
+    [TestMethod]
+    public void Case2() {
+        using var f = new CreateTempFile();
+        var saved = new StrongBox<bool>(false);
+        var o = JsonSettings.Load<AutosaveTests.Settings>(f.FileName)
+                            .EnableAutosave();
+        o.AfterSave += (s, destinition) => { saved.Value = true; };
+        var module = o.Modulation.GetModule<AutosaveModule>();
+
+        //act
+        module.AutosavingState.Should().Be(AutosavingState.Running);
+
+        var suspender = o.SuspendAutosave();
+        module.AutosavingState.Should().Be(AutosavingState.Suspended);
+
+        saved.Value.ShouldBeEquivalentTo(false);
+        o.property = "hi";
+        saved.Value.ShouldBeEquivalentTo(false);
+        module.AutosavingState.Should().Be(AutosavingState.SuspendedChanged);
+        suspender.Resume();
+
+        //resuming/disposing twice should have any effect
+        saved.Value.ShouldBeEquivalentTo(true);
+        saved.Value = false;
+        suspender.Resume();
+        saved.Value.ShouldBeEquivalentTo(false);
     }
 }
