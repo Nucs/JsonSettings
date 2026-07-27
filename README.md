@@ -10,8 +10,17 @@ to serialize nested (custom) objects, dictionaries and lists as simply as by cre
 
 ### Installation
 ```sh
-PM> Install-Package nucs.JsonSettings
+dotnet add package Nucs.JsonSettings
+dotnet add package Nucs.JsonSettings.Autosave   # optional, only for EnableAutosave()
 ```
+```sh
+PM> Install-Package Nucs.JsonSettings
+PM> Install-Package Nucs.JsonSettings.Autosave
+```
+
+Both packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`.
+The `netstandard2.0` asset covers everything without an exact match, including
+`net472`+, `netcoreapp3.1`, `net5.0`, `net7.0`, `net9.0`, Unity and Xamarin.
 
 ## Table of Contents
 - [Features Overview](#features-overview)
@@ -34,7 +43,7 @@ PM> Install-Package nucs.JsonSettings
 Features Overview
 ---
  - Initialized in a fluent static API <span style='font-size:11px; padding-left: 3px' >[read more](#the-basics)</span>
- - Cross-platform targeting `netstandard2.0`
+ - Cross-platform, multi-targeting `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`
  - Modularity allowing easy extension and high control over behavior on a per-object level  <span style='font-size:11px; padding-left: 3px' >[read more](#modulation-api)</span>
  - Autosaving on changes  <span style='font-size:11px; padding-left: 3px' >[read more](#autosave)</span>
    - Via `INotificationChanged`/`INotificationCollectionChanged` allowing WPF binding (with interval throttling support to avoid cpu overload)  <span style='font-size:11px; padding-left: 3px' >[read more](#inotificationchanged-and-wpf-support)</span>
