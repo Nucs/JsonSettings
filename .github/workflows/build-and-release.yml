@@ -1,4 +1,4 @@
-name: Build and Release
+﻿name: Build and Release
 
 on:
   push:
@@ -46,8 +46,9 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        # global.json pins the SDK floor at 10.0.100 (the minimum that can build net10.0).
-        # 6.0.x and 8.0.x are installed alongside so their targeting packs are present.
+        # 10.0.x is required: it is the only SDK that can build the net10.0 target, and
+        # there is no global.json, so whatever is installed here decides the build. 6.0.x
+        # and 8.0.x are installed alongside so their targeting packs are present.
         dotnet-version: |
           6.0.x
           8.0.x
