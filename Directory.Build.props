@@ -187,6 +187,12 @@ Bug fixes
   was dropped with no exception and no partial file. Most likely to bite when the settings
   variable is not touched again before the scope closes, which the JIT may treat as the
   object being dead.
+- Encryption: a wrong password is now reliably reported as a wrong password. Detection
+  relied on the padding check alone, which accepts wrong-key output by chance about once in
+  256 attempts; when it did, the failure surfaced as "Unable to parse file" with a JSON
+  reader error, pointing at file corruption rather than at the password. The decrypted
+  payload is now also checked for being valid UTF-8. This is a better diagnostic, not an
+  integrity guarantee, and the on-disk format is unchanged.
 - Encryption: fixed a truncated-read defect. The initialization vector was read without
   checking how many bytes came back, so a short read left part of the IV zeroed and
   produced garbage plaintext or a misleading padding error rather than failing. Files too
