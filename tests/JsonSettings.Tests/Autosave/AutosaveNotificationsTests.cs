@@ -2,7 +2,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Examples;
@@ -18,7 +18,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
         public void ClassWithoutInterfacesOrVirtuals() {
             using var f = new CreateTempFile();
             var o = JsonSettings.Load<InvalidSettings>(f.FileName);
-            new Action(() => o.EnableAutosave()).ShouldThrow<JsonSettingsException>();
+            new Action(() => o.EnableAutosave()).Should().Throw<JsonSettingsException>();
         }
 
         [TestMethod]
@@ -36,13 +36,13 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             var saved = false;
             var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
             o.AfterSave += (s, destinition) => { saved = true; };
-            o.property.ShouldBeEquivalentTo(null);
+            o.property.Should().BeNull();
             Console.WriteLine(File.ReadAllText(rpath));
 
             o.property = "test";
-            saved.ShouldBeEquivalentTo(true);
+            saved.Should().Be(true);
             var o2 = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-            o2.property.ShouldBeEquivalentTo("test");
+            o2.property.Should().Be("test");
             var jsn = File.ReadAllText(rpath);
             jsn.Contains("\"test\"").Should().BeTrue();
             Console.WriteLine(jsn);
@@ -82,17 +82,17 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             o.AfterSave += (s, destinition) => { saved = true; };
 
             o.FileName = "test.jsn";
-            saved.ShouldBeEquivalentTo(false);
+            saved.Should().Be(false);
         }
 
         [TestMethod]
         public void AccessingAfterLoadingAndMarkingAutosave() {
             using var f = new CreateTempFile();
             var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-            o.property.ShouldBeEquivalentTo(null);
+            o.property.Should().BeNull();
             o.property = "test";
             var o2 = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-            o2.property.ShouldBeEquivalentTo("test");
+            o2.property.Should().Be("test");
         }
 
         [TestMethod]
@@ -102,10 +102,10 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             var o = JsonSettings.Load<InterfacedSettings>(f.FileName).EnableIAutosave<InterfacedSettings, ISettings>();
 
             Console.WriteLine(File.ReadAllText(rpath));
-            o.property.ShouldBeEquivalentTo(null);
+            o.property.Should().BeNull();
             o.property = "test";
             var o2 = JsonSettings.Load<InterfacedSettings>(f.FileName);
-            o2.property.ShouldBeEquivalentTo("test");
+            o2.property.Should().Be("test");
 
             var jsn = File.ReadAllText(rpath);
             jsn.Contains("\"test\"").Should().BeTrue();

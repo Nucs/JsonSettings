@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Tests.Utils;
@@ -24,15 +24,15 @@ public class AutosaveSuspensionTests {
         using (o.SuspendAutosave()) {
             module.AutosavingState.Should().Be(AutosavingState.Suspended);
 
-            saved.Value.ShouldBeEquivalentTo(false);
+            saved.Value.Should().Be(false);
             o.property = "hi";
-            saved.Value.ShouldBeEquivalentTo(false);
+            saved.Value.Should().Be(false);
             module.AutosavingState.Should().Be(AutosavingState.SuspendedChanged);
             var oo = JsonSettings.Load<AutosaveTests.Settings>(f.FileName);
             oo.property.Should().NotBe("hi", "It should not have saved.");
         }
 
-        saved.Value.ShouldBeEquivalentTo(true);
+        saved.Value.Should().Be(true);
         //test
 
         o = JsonSettings.Load<AutosaveTests.Settings>(f.FileName);
@@ -55,17 +55,17 @@ public class AutosaveSuspensionTests {
         var suspender = o.SuspendAutosave();
         module.AutosavingState.Should().Be(AutosavingState.Suspended);
 
-        saved.Value.ShouldBeEquivalentTo(false);
+        saved.Value.Should().Be(false);
         o.property = "hi";
-        saved.Value.ShouldBeEquivalentTo(false);
+        saved.Value.Should().Be(false);
         module.AutosavingState.Should().Be(AutosavingState.SuspendedChanged);
         suspender.Resume();
 
         //resuming/disposing twice should have any effect
-        saved.Value.ShouldBeEquivalentTo(true);
+        saved.Value.Should().Be(true);
         saved.Value = false;
         suspender.Resume();
-        saved.Value.ShouldBeEquivalentTo(false);
+        saved.Value.Should().Be(false);
     }
 
     /// <summary>
@@ -96,9 +96,9 @@ public class AutosaveSuspensionTests {
         GC.WaitForPendingFinalizers();
         GC.Collect();
 
-        saved.Value.ShouldBeEquivalentTo(false);
+        saved.Value.Should().Be(false);
         suspender.Dispose();
-        saved.Value.ShouldBeEquivalentTo(true);
+        saved.Value.Should().Be(true);
 
         var reloaded = JsonSettings.Load<AutosaveTests.Settings>(f.FileName);
         reloaded.property.Should().Be("hi", "the write owed by the suspension must survive the collection");

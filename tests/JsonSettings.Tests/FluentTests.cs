@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 using System.IO;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Tests.Utils;
@@ -18,8 +18,8 @@ namespace Nucs.JsonSettings.Tests {
             o["lol"] = "xoxo";
             o["loly"] = 2;
             var x = gen();
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -30,8 +30,8 @@ namespace Nucs.JsonSettings.Tests {
             o["lol"] = "xoxo";
             o["loly"] = 2;
             var x = gen();
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -42,8 +42,8 @@ namespace Nucs.JsonSettings.Tests {
             o["lol"] = "xoxo";
             o["loly"] = 2;
             var x = gen();
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -54,8 +54,8 @@ namespace Nucs.JsonSettings.Tests {
             o["lol"] = "xoxo";
             o["loly"] = 2;
             var x = gen();
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -66,8 +66,8 @@ namespace Nucs.JsonSettings.Tests {
             o["lol"] = "xoxo";
             o["loly"] = 2;
             var x = gen();
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -94,7 +94,7 @@ namespace Nucs.JsonSettings.Tests {
 
             //validate
             new Action(() => { o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).LoadNow(); })
-               .ShouldThrow<JsonSettingsException>();
+               .Should().Throw<JsonSettingsException>();
         }
 
         [TestMethod]
@@ -144,7 +144,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void JsonSettings_FileNameIsNullByDefault() {
-            new Action(() => { JsonSettings.Load<FilenamelessSettings>(); }).ShouldThrow<JsonSettingsException>();
+            new Action(() => { JsonSettings.Load<FilenamelessSettings>(); }).Should().Throw<JsonSettingsException>();
         }
 
         [TestMethod]
@@ -152,14 +152,14 @@ namespace Nucs.JsonSettings.Tests {
             using var f = new CreateTempFile();
             //validate
             Action act = () => JsonSettings.Construct<SettingsBag>(f.FileName).LoadNow().EnableAutosave();
-            act.ShouldNotThrow("LoadNow handles non existent folders and files.");
+            act.Should().NotThrow("LoadNow handles non existent folders and files.");
         }
         [TestMethod]
         public void Fluent_ConstructLoadNow_Issue1_WithRemotePath() { //Issue #1 on github
             using var f = new CreateTempFile( @"\MoalemYar\"+Path.GetRandomFileName());
             //validate
             Action act = () => JsonSettings.Construct<SettingsBag>(f.FileName).LoadNow().EnableAutosave();
-            act.ShouldNotThrow("LoadNow handles non existent folders and files.");
+            act.Should().NotThrow("LoadNow handles non existent folders and files.");
         }
         class FilterFileNameSettings : JsonSettings {
             public override string FileName { get; set; }

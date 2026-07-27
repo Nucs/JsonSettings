@@ -29,7 +29,11 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
         <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
         <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
-        <PackageReference Include="FluentAssertions" Version="4.19.4" />
+        <!-- AwesomeAssertions, not FluentAssertions. FluentAssertions 8 relicensed to a
+             commercial Xceed license that bills per developer for non-OSS use; this is the
+             Apache-2.0 community fork of 7.x, and the last version of this project's assertion
+             library that a consumer can build without a licence question. -->
+        <PackageReference Include="AwesomeAssertions" Version="9.5.0" />
     </ItemGroup>
 
     <!-- DynamicSettingsBagTests exercises `dynamic`, whose binder must be referenced

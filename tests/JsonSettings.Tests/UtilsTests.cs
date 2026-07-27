@@ -1,5 +1,5 @@
-using System;
-using FluentAssertions;
+﻿using System;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Nucs.JsonSettings.Tests {
@@ -32,7 +32,7 @@ namespace Nucs.JsonSettings.Tests {
         [TestMethod]
         public void Activation_NoEmptyConst() {
             Action a = () => Activation.CreateInstance(typeof(NoEmptyConst));
-            a.ShouldThrow<ReflectiveException>();
+            a.Should().Throw<ReflectiveException>();
         }
 
         [TestMethod]
@@ -62,7 +62,7 @@ namespace Nucs.JsonSettings.Tests {
         [TestMethod]
         public void Activation_NoMatchClass() {
             Action a = () => Activation.CreateInstance(typeof(NoMatchClass), new object[] {null});
-            a.ShouldThrow<MissingMethodException>();
+            a.Should().Throw<MissingMethodException>();
         }
 
         class AmbiousClass {

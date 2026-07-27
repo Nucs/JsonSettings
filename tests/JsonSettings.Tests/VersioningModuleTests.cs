@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
@@ -74,7 +74,7 @@ namespace Nucs.JsonSettings.Tests {
                 cfg = JsonSettings.Configure<VersionedSettings>(f)
                                   .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.Throw)
                                   .LoadNow();
-            }).ShouldThrow<InvalidVersionException>();
+            }).Should().Throw<InvalidVersionException>();
         }
 
         [TestMethod]
@@ -98,7 +98,7 @@ namespace Nucs.JsonSettings.Tests {
                 cfg = JsonSettings.Configure<VersionedSettings>(f)
                                   .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.Throw)
                                   .LoadNow();
-            }).ShouldNotThrow();
+            }).Should().NotThrow();
         }
 
         [TestMethod]
@@ -123,7 +123,7 @@ namespace Nucs.JsonSettings.Tests {
                 cfg = JsonSettings.Configure<VersionedSettings>(f)
                                   .WithVersioning(new Version(1, 1, 0, 0), VersioningResultAction.Throw)
                                   .LoadNow();
-            }).ShouldThrow<InvalidVersionException>();
+            }).Should().Throw<InvalidVersionException>();
         }
 
         [TestMethod]
@@ -148,7 +148,7 @@ namespace Nucs.JsonSettings.Tests {
                 cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
                                   .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
                                   .LoadNow();
-            }).ShouldThrow<InvalidVersionException>();
+            }).Should().Throw<InvalidVersionException>();
         }
 
         [TestMethod]
@@ -173,7 +173,7 @@ namespace Nucs.JsonSettings.Tests {
                 cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
                                   .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
                                   .LoadNow();
-            }).ShouldThrow<InvalidVersionException>();
+            }).Should().Throw<InvalidVersionException>();
         }
     }
 

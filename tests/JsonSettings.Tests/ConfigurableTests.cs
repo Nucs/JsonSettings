@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
@@ -42,7 +42,7 @@ namespace Nucs.JsonSettings.Tests {
             o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
             o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
             o.SomeProperty.Should().Be("with some value");
-            o.SomeNumeralProperty.ShouldBeEquivalentTo(1);
+            o.SomeNumeralProperty.Should().Be(1);
             o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
         }
 
@@ -63,7 +63,7 @@ namespace Nucs.JsonSettings.Tests {
             o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
             o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
             o.SomeProperty.Should().Be("with some value");
-            o.SomeNumeralProperty.ShouldBeEquivalentTo(1);
+            o.SomeNumeralProperty.Should().Be(1);
             o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
         }
     }

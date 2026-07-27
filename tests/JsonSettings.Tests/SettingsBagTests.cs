@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Security;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
@@ -19,8 +19,8 @@ namespace Nucs.JsonSettings.Tests {
             o["lol"] = "xoxo";
             o["loly"] = 2;
             var x = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -32,22 +32,22 @@ namespace Nucs.JsonSettings.Tests {
             o["loly"] = 2;
             o.Save();
             var x = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
         public void SettingsBag_Passless() {
             using var f = new CreateTempFile();
             var o = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
-            ((RijndaelModule) o.Modulation.Modules[0]).Password.ShouldBeEquivalentTo(SecureStringExt.EmptyString);
+            ((RijndaelModule) o.Modulation.Modules[0]).Password.Should().BeEquivalentTo(SecureStringExt.EmptyString);
             o.Autosave = false;
             o["lol"] = "xoxo";
             o["loly"] = 2;
             o.Save();
             var x = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -58,7 +58,7 @@ namespace Nucs.JsonSettings.Tests {
             o["loly"] = 2;
             o.Save();
             Action func = () => JsonSettings.Configure<SettingsBag>().WithEncryption("invalidpass").WithFileName(f.FileName).LoadNow();
-            func.ShouldThrow<JsonSettingsException>("Password is invalid").Where(e => e.Message.StartsWith("Password", StringComparison.OrdinalIgnoreCase));
+            func.Should().Throw<JsonSettingsException>("Password is invalid").Where(e => e.Message.StartsWith("Password", StringComparison.OrdinalIgnoreCase));
         }
 
         [TestMethod]
@@ -70,8 +70,8 @@ namespace Nucs.JsonSettings.Tests {
             o["loly"] = 2;
             o.Save();
             var x = JsonSettings.Load<SettingsBag>(f);
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -82,8 +82,8 @@ namespace Nucs.JsonSettings.Tests {
             o["lol"] = "xoxo";
             o["loly"] = 2;
             var x = JsonSettings.Load<SettingsBag>(f);
-            x["lol"].ShouldBeEquivalentTo("xoxo");
-            x["loly"].ShouldBeEquivalentTo(2);
+            x["lol"].Should().Be("xoxo");
+            x["loly"].Should().Be(2);
         }
 
         [TestMethod]
@@ -91,12 +91,12 @@ namespace Nucs.JsonSettings.Tests {
             using var f = new CreateTempFile();
             var n = new FilterFileNameSettings(f);
             n.Save();
-            File.ReadAllText(n.FileName).IndexOf("FileName", StringComparison.OrdinalIgnoreCase).ShouldBeEquivalentTo(-1);
+            File.ReadAllText(n.FileName).IndexOf("FileName", StringComparison.OrdinalIgnoreCase).Should().Be(-1);
         }
 
         [TestMethod]
         public void JsonSettings_FileNameIsNullByDefault() {
-            new Action(() => { JsonSettings.Load<FilenamelessSettings>(); }).ShouldThrow<JsonSettingsException>();
+            new Action(() => { JsonSettings.Load<FilenamelessSettings>(); }).Should().Throw<JsonSettingsException>();
         }
 
         [TestMethod]
@@ -106,7 +106,7 @@ namespace Nucs.JsonSettings.Tests {
             o.someprop = "1";
             o.Save();
             var x = JsonSettings.Load<ModuleLoadingSttings>(f);
-            x.someprop.ShouldBeEquivalentTo("1");
+            x.someprop.Should().Be("1");
         }
 
         class FilterFileNameSettings : JsonSettings {

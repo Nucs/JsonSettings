@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Tests.Utils;
 
@@ -20,7 +20,7 @@ namespace Nucs.JsonSettings.Tests {
             var o2 = JsonSettings.Load<SettingsBag>(f.FileName);
             var ret = o2["prop"];
             ret.Should().BeOfType<List<string>>();
-            ((List<string>)ret).Count.ShouldBeEquivalentTo(2);
+            ((List<string>)ret).Count.Should().Be(2);
         }
 
         class FilterFileNameSettings : JsonSettings {

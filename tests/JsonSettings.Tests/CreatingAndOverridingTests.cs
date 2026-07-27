@@ -1,5 +1,5 @@
 ﻿using System.IO;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Tests.Utils;
 
@@ -16,7 +16,7 @@ namespace Nucs.JsonSettings.Tests {
 
             File.Exists(f).Should().BeTrue();
             var o2 = JsonSettings.Load<Settings>(f);
-            o2.Str.ShouldBeEquivalentTo("lol");
+            o2.Str.Should().Be("lol");
         }
 
         [TestMethod]

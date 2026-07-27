@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 using System.IO;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Tests.Utils;
@@ -98,7 +98,7 @@ namespace Nucs.JsonSettings.Tests {
             new Action(() => JsonSettings.Configure<CompatSettings>(f.FileName)
                                          .WithEncryption(Password)
                                          .LoadNow())
-                .ShouldThrow<Exception>("a file too short to hold an IV cannot be decrypted");
+                .Should().Throw<Exception>("a file too short to hold an IV cannot be decrypted");
         }
 
         public class CompatSettings : JsonSettings {

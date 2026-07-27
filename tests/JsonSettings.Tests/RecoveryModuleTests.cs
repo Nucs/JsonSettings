@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
@@ -54,7 +54,7 @@ namespace Nucs.JsonSettings.Tests {
             new Action(() => JsonSettings.Configure<ThrowingRecoverySettings>(f)
                                          .WithRecovery(RecoveryAction.Throw)
                                          .WithVersioning(new Version(1, 0, 0, 2), VersioningResultAction.RenameAndLoadDefault)
-                                         .LoadNow()).ShouldThrow<JsonSettingsRecoveryException>();
+                                         .LoadNow()).Should().Throw<JsonSettingsRecoveryException>();
         }
 
         [TestMethod]
@@ -78,7 +78,7 @@ namespace Nucs.JsonSettings.Tests {
                 cfg = JsonSettings.Configure<RecoverySettings>(f)
                                   .WithVersioning(new Version(1, 2, 0, 0), VersioningResultAction.Throw)
                                   .LoadNow();
-            }).ShouldNotThrow();
+            }).Should().NotThrow();
         }
 
         [TestMethod]
@@ -107,7 +107,7 @@ namespace Nucs.JsonSettings.Tests {
                     cfg = JsonSettings.Configure<RecoverySettings>(f)
                                       .WithVersioning(new Version(1, 1, 0, 0), VersioningResultAction.Throw)
                                       .LoadNow();
-                }).ShouldThrow<InvalidVersionException>();*/
+                }).Should().Throw<InvalidVersionException>();*/
         }
 
         [TestMethod]
