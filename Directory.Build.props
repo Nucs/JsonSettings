@@ -152,6 +152,31 @@
 
   <PropertyGroup>
     <PackageReleaseNotes>2.1.0
+
+Bug fixes
+- SuspendAutosave: fixed silent data loss. A change made inside a suspension scope defers
+  its save to the end of the scope, but the scope reached the settings object only through
+  a weak reference. If a garbage collection ran while the scope was open the pending write
+  was dropped with no exception and no partial file. Most likely to bite when the settings
+  variable is not touched again before the scope closes, which the JIT may treat as the
+  object being dead.
+- Encryption: fixed a truncated-read defect. The initialization vector was read without
+  checking how many bytes came back, so a short read left part of the IV zeroed and
+  produced garbage plaintext or a misleading padding error rather than failing. Files too
+  short to contain an IV are now rejected outright.
+- Encryption is unchanged on disk. Existing encrypted files stay readable: the cipher is
+  the same (AES-128-block CBC, previously spelled RijndaelManaged), and the PBKDF2
+  pseudorandom function is still SHA-1, now stated explicitly so it cannot be "modernised"
+  by accident. A ciphertext written by 2.0.x is checked against every target in the test
+  suite.
+- Paths: MoveFileEx is no longer P/Invoked on non-Windows, where it raised
+  DllNotFoundException instead of doing nothing. IsDirectoryWritable builds its probe path
+  with Path.Combine (it previously concatenated, testing a sibling of the intended
+  directory) and no longer collides between concurrent processes. Paths.ExecutingExe is
+  now nullable rather than being left null behind a non-nullable declaration when the
+  executable path cannot be determined, as under single-file publish.
+
+Targets and packaging
 - Multi-targeting: netstandard2.0, net48, net6.0, net8.0 and net10.0 for both
   Nucs.JsonSettings and Nucs.JsonSettings.Autosave (Autosave previously shipped
   netstandard2.0 only).
@@ -162,9 +187,6 @@
 - Packages now ship the README, declare their license as an SPDX expression instead of a
   deprecated licenseUrl, and publish a .snupkg symbol package with Source Link instead of
   embedding .pdb files in lib/.
-- Paths: MoveFileEx is no longer P/Invoked on non-Windows, IsDirectoryWritable builds its
-  probe path with Path.Combine, and Paths.ExecutingExe is no longer left null when the
-  executable path cannot be determined (single-file publish).
 
 2.0.2
 - Added RecoveryModule and .WithRecovery to capture parsing errors
