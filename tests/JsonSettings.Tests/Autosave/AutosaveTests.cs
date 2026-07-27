@@ -17,21 +17,21 @@ namespace Nucs.JsonSettings.Tests.Autosave {
 
         [TestMethod]
         public void ClassWithoutInterfacesOrVirtuals() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<InvalidSettings>(f.FileName);
             new Action(() => o.EnableAutosave()).Should().Throw<JsonSettingsException>();
         }
 
         [TestMethod]
         public void ClassWithInterfacesOrVirtuals() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
             o.GetType().Namespace.Should().Be("Castle.Proxies");
         }
 
         [TestMethod]
         public void Saving() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var rpath = JsonSettings.ResolvePath(f);
 
             var saved = false;
@@ -51,7 +51,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
 
         [TestMethod]
         public void IgnoreSavingWhenAbstractPropertyChanges() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var saved = false;
             var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
             o.AfterSave += (s, destinition) => { saved = true; };
@@ -62,7 +62,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
 
         [TestMethod]
         public void AccessingAfterLoadingAndMarkingAutosave() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             Console.WriteLine(Path.GetFullPath(f.FileName));
             var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
             o.property.Should().BeNull();
@@ -73,7 +73,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
 
         [TestMethod]
         public void SavingInterface() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var rpath = JsonSettings.ResolvePath(f);
             var o = JsonSettings.Load<InterfacedSettings>(f.FileName).EnableIAutosave<InterfacedSettings, ISettings>();
 
@@ -89,7 +89,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
         }
         [TestMethod]
         public void SavingInterface_NonVirtual() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var rpath = JsonSettings.ResolvePath(f);
             var o = JsonSettings.Load<NonVirtualSettings>(f.FileName).EnableIAutosave<NonVirtualSettings, ISettings>();
 
@@ -106,7 +106,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
 
         [TestMethod]
         public void SuspendAutosaving_Case1() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<SettingsBag>(f);
 
             var d = o.AsDynamic();

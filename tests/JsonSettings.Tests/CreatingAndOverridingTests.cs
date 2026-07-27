@@ -9,7 +9,7 @@ namespace Nucs.JsonSettings.Tests {
     public class CreatingAndOverridingTests {
         [TestMethod]
         public void OverrideExistingBySmallerSettingsFile() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<SettingsLarger>(f);
             o.Str = o.Str2 = o.Str3 = "lol";
             o.Save();
@@ -21,7 +21,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void CreateNonExistingSettings() {
-            using var f = new CreateTempFile(false);
+            using var f = new TempFile(false);
             var o = JsonSettings.Load<Settings>(f);
             o.Str = "lol";
             File.Exists(f).Should().BeTrue();

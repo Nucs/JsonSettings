@@ -9,7 +9,7 @@ namespace Nucs.JsonSettings.Tests {
     public class HowToUse {
         [TestMethod]
         public void Use_MostBasic() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Load<CasualExampleSettings>(f.FileName);
             o.SomeNumeralProperty = 1;
@@ -26,7 +26,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Use_Configure_CasualSettingsExample() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //load using Configure
             var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
             o.SomeNumeralProperty = 1;
@@ -42,7 +42,7 @@ namespace Nucs.JsonSettings.Tests {
         }
         [TestMethod]
         public void Use_Configure_CasualSettingsExample_Load() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //load using Load      with configuration
             var o = JsonSettings.Load<CasualExampleSettings>(f.FileName, s => s.WithBase64().WithEncryption("SuperPassword"));
             o.SomeNumeralProperty = 1;
@@ -59,7 +59,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Use_Configure_CasualSettingsExample_LoadSelf() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //load using Load      with configuration and custom constructor and password fetcher from one of the class's property.
             var o = JsonSettings.Load<CasualExampleSettings>(f.FileName, s => s.WithBase64().WithEncryption(set => set.SomeProperty), new object[] {"SuperPassword"});
             o.SomeNumeralProperty = 1;
@@ -74,7 +74,7 @@ namespace Nucs.JsonSettings.Tests {
         }
         [TestMethod]
         public void Use_SettingsBag() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Load<SettingsBag>(f.FileName);
             o["somekey"] = "with some value";
@@ -91,7 +91,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Use_SettingsBag_AutoSave() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Load<SettingsBag>(f.FileName).EnableAutosave();
             o["somekey"] = "with some value";
@@ -107,7 +107,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Use__CasualSettingsExample() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Load<CasualExampleSettings>(f.FileName);
             o.SomeNumeralProperty = 1;

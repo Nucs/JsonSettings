@@ -54,7 +54,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void DecryptsCiphertextWrittenByAnEarlierVersion() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             File.WriteAllBytes(f.FileName, Convert.FromBase64String(PreExistingCiphertextBase64));
 
             var settings = JsonSettings.Configure<CompatSettings>(f.FileName)
@@ -67,7 +67,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void RoundTripsFreshlyWrittenCiphertext() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
 
             var written = JsonSettings.Configure<CompatSettings>(f.FileName)
                                       .WithEncryption(Password)
@@ -86,7 +86,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void RejectsCiphertextTruncatedInsideTheInitializationVector() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var full = Convert.FromBase64String(PreExistingCiphertextBase64);
 
             //cut inside the 16-byte IV. This used to be read with the return value discarded,

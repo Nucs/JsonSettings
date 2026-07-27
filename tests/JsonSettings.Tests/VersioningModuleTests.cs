@@ -10,11 +10,11 @@ using Nucs.JsonSettings.Tests.Utils;
 namespace Nucs.JsonSettings.Tests {
     [TestClass]
     public class VersioningModuleTests {
-        CreateTempFile FindFile(string baseFile, Version version) {
+        TempFile FindFile(string baseFile, Version version) {
             baseFile = Path.GetFullPath(baseFile);
             foreach (var file in Directory.GetFiles(Path.GetDirectoryName(baseFile), Path.HasExtension(baseFile) ? "*" + Path.GetFileNameWithoutExtension(baseFile) + "*" : "*.*", SearchOption.TopDirectoryOnly)) {
                 if (Path.GetFileName(file).Contains("." + version))
-                    return new CreateTempFile(file);
+                    return new TempFile(file);
             }
 
             throw new FileNotFoundException(version.ToString());
@@ -22,7 +22,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void RenameAndLoadDefault_Case1() {
-            using var f = new CreateTempFile(false);
+            using var f = new TempFile(false);
             //load
             var cfg = JsonSettings.Configure<VersionedSettings>(f)
                                   .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.RenameAndLoadDefault)
@@ -60,7 +60,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Throw_Case1() {
-            using var f = new CreateTempFile(false);
+            using var f = new TempFile(false);
             //load
             var cfg = JsonSettings.Configure<VersionedSettings>(f)
                                   .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
@@ -79,7 +79,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void LoadDefaultAndSave_Case1() {
-            using var f = new CreateTempFile(false);
+            using var f = new TempFile(false);
             //load
             var cfg = JsonSettings.Configure<VersionedSettings>(f)
                                   .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
@@ -103,7 +103,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void LoadDefault_Case1() {
-            using var f = new CreateTempFile(false);
+            using var f = new TempFile(false);
             //load
             var cfg = JsonSettings.Configure<VersionedSettings>(f)
                                   .WithVersioning(new Version(1, 0, 0, 0), VersioningResultAction.Throw)
@@ -128,7 +128,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void LoadDefault_Case2() {
-            using var f = new CreateTempFile(false);
+            using var f = new TempFile(false);
             //load
             var cfg = JsonSettings.Configure<VersionedWithAttrSettings>(f)
                                   .WithVersioning(VersioningResultAction.Throw)
@@ -153,7 +153,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void LoadDefault_Case3() {
-            using var f = new CreateTempFile(false);
+            using var f = new TempFile(false);
             //load
             var cfg = JsonSettings.Configure<VersionedWithAttrInheritedSettings>(f)
                                   .WithVersioning(VersioningResultAction.Throw)

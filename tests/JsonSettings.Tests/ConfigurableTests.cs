@@ -9,7 +9,7 @@ namespace Nucs.JsonSettings.Tests {
     public class ConfigurableTests {
         [TestMethod]
         public void OnConfigure_AddSingleConfig() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
             o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
@@ -18,7 +18,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void OnConfigure_AddSingleConfig_PriorToLoadNow() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName);
             o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
@@ -27,7 +27,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void OnConfigure_Only_WithEncyption() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
             o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
@@ -48,7 +48,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void OnConfigure_Only_WithEncyption_CheckBeforeLoadNow() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName);
             o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();

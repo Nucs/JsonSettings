@@ -11,7 +11,7 @@ namespace Nucs.JsonSettings.Tests {
     public class CommonTypesTests {
         [TestMethod]
         public void SettingsBag_List() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<SettingsBag>(f.FileName);
 
             o["prop"] = new List<string>() {"swag", "lol"};

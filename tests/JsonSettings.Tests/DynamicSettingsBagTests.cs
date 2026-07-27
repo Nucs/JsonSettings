@@ -9,7 +9,7 @@ namespace Nucs.JsonSettings.Tests {
     public class DynamicSettingsBagTests {
         [TestMethod]
         public void DynamicSettingsBag_DynamicAccess_Index() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<SettingsBag>(f);
             var d = o.AsDynamic();
             d.SomeProp = "Works";
@@ -26,7 +26,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void DynamicSettingsBag_DynamicAccess_Direct() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<SettingsBag>(f);
             var d = o.AsDynamic();
             d.SomeProp = "Works";

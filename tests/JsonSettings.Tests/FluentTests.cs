@@ -12,7 +12,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_WithFileNameAndEncryptionAndAutosave() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var gen = () => new SettingsBag().WithFileName((string) f).WithEncryption("qweqwe").LoadNow().EnableAutosave();
             var o = gen();
             o["lol"] = "xoxo";
@@ -24,7 +24,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_WithBas64() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var gen = () => new SettingsBag().WithFileName((string) f).WithBase64().LoadNow().EnableAutosave();
             var o = gen();
             o["lol"] = "xoxo";
@@ -36,7 +36,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_WithEncryptionAndWithBas64() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var gen = () => new SettingsBag().WithFileName((string) f).WithEncryption("qweqwe").WithBase64().LoadNow().EnableAutosave();
             var o = gen();
             o["lol"] = "xoxo";
@@ -48,7 +48,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_WithhBas64AndEncryption() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var gen = () => new SettingsBag().WithFileName((string) f).WithBase64().WithEncryption("qweqwe").LoadNow().EnableAutosave();
             var o = gen();
             o["lol"] = "xoxo";
@@ -60,7 +60,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_SimpleLoad() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var gen = () => new SettingsBag().WithFileName((string) f).LoadNow().EnableAutosave();
             var o = gen();
             o["lol"] = "xoxo";
@@ -72,7 +72,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_SimpleSave() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var gen = () => new SettingsBag().WithFileName((string) f).LoadNow();
             var o = gen();
             o["lol"] = "xoxo";
@@ -82,7 +82,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_SavingWithBase64_LoadingWithout() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName)
                                 .WithBase64()
@@ -99,7 +99,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_ConstructorFileNameComparison() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
 
             //validate
@@ -108,7 +108,7 @@ namespace Nucs.JsonSettings.Tests {
         }
         [TestMethod]
         public void Fluent_ConstructorFileNameVsWithFilenameComparison() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
             var n = JsonSettings.Configure<CasualExampleSettings>().WithFileName(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
 
@@ -118,7 +118,7 @@ namespace Nucs.JsonSettings.Tests {
         }
         [TestMethod]
         public void Fluent_PostSaveFilenameComparison() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
             var n = JsonSettings.Configure<CasualExampleSettings>().WithFileName(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
             //validate
@@ -134,7 +134,7 @@ namespace Nucs.JsonSettings.Tests {
         }
         [TestMethod]
         public void Fluent_WithFileName() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Configure<CasualExampleSettings>().WithFileName(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
 
             //validate
@@ -149,14 +149,14 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void Fluent_ConstructLoadNow_Issue1_WithLocalPath() { //Issue #1 on github
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             //validate
             Action act = () => JsonSettings.Construct<SettingsBag>(f.FileName).LoadNow().EnableAutosave();
             act.Should().NotThrow("LoadNow handles non existent folders and files.");
         }
         [TestMethod]
         public void Fluent_ConstructLoadNow_Issue1_WithRemotePath() { //Issue #1 on github
-            using var f = new CreateTempFile( @"\MoalemYar\"+Path.GetRandomFileName());
+            using var f = new TempFile( @"\MoalemYar\"+Path.GetRandomFileName());
             //validate
             Action act = () => JsonSettings.Construct<SettingsBag>(f.FileName).LoadNow().EnableAutosave();
             act.Should().NotThrow("LoadNow handles non existent folders and files.");

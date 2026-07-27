@@ -11,7 +11,7 @@ namespace Nucs.JsonSettings.Tests.Autosave;
 public class AutosaveSuspensionTests {
     [TestMethod]
     public void Case1() {
-        using var f = new CreateTempFile();
+        using var f = new TempFile();
         var saved = new StrongBox<bool>(false);
         var o = JsonSettings.Load<AutosaveTests.Settings>(f.FileName)
                             .EnableAutosave();
@@ -42,7 +42,7 @@ public class AutosaveSuspensionTests {
 
     [TestMethod]
     public void Case2() {
-        using var f = new CreateTempFile();
+        using var f = new TempFile();
         var saved = new StrongBox<bool>(false);
         var o = JsonSettings.Load<AutosaveTests.Settings>(f.FileName)
                             .EnableAutosave();
@@ -87,7 +87,7 @@ public class AutosaveSuspensionTests {
     /// </remarks>
     [TestMethod]
     public void CommitsOwedSaveAfterSettingsBecomeUnreachable() {
-        using var f = new CreateTempFile();
+        using var f = new TempFile();
         var saved = new StrongBox<bool>(false);
 
         var suspender = OpenSuspensionAndChange(f.FileName, saved);

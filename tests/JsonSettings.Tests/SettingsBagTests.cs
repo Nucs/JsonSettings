@@ -13,7 +13,7 @@ namespace Nucs.JsonSettings.Tests {
     public class Tests {
         [TestMethod]
         public void SettingsBag_WithEncryption_Autosave() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow().EnableAutosave();
             o.Autosave = true;
             o["lol"] = "xoxo";
@@ -25,7 +25,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void SettingsBag_WithEncryption_RegularSave() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Configure<SettingsBag>().WithEncryption("swag").WithFileName(f.FileName).LoadNow();
             o.Autosave = false;
             o["lol"] = "xoxo";
@@ -38,7 +38,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void SettingsBag_Passless() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
             ((RijndaelModule) o.Modulation.Modules[0]).Password.Should().BeEquivalentTo(SecureStringExt.EmptyString);
             o.Autosave = false;
@@ -52,7 +52,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void SettingsBag_InvalidPassword() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Configure<SettingsBag>().WithEncryption("yoyo").WithFileName(f.FileName).LoadNow();
             o["lol"] = "xoxo";
             o["loly"] = 2;
@@ -63,7 +63,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void SettingsBag_RegularSave() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<SettingsBag>(f);
             o.Autosave = false;
             o["lol"] = "xoxo";
@@ -76,7 +76,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void SettingsBag_Autosave() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<SettingsBag>(f);
             o.Autosave = true;
             o["lol"] = "xoxo";
@@ -88,7 +88,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void FilterFileNameProperty() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var n = new FilterFileNameSettings(f);
             n.Save();
             File.ReadAllText(n.FileName).IndexOf("FileName", StringComparison.OrdinalIgnoreCase).Should().Be(-1);
@@ -101,7 +101,7 @@ namespace Nucs.JsonSettings.Tests {
 
         [TestMethod]
         public void JsonSettings_ModuleLoader() {
-            using var f = new CreateTempFile();
+            using var f = new TempFile();
             var o = JsonSettings.Load<ModuleLoadingSttings>(f);
             o.someprop = "1";
             o.Save();
