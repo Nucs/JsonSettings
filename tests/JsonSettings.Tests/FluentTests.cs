@@ -103,7 +103,10 @@ namespace Nucs.JsonSettings.Tests {
             var o = JsonSettings.Configure<CasualExampleSettings>(f.FileName).WithBase64().WithEncryption("SuperPassword").LoadNow();
 
             //validate
-            o.FileName.Should().EndWith(f.FileName).And.Contain("\\");
+            //Path.DirectorySeparatorChar, not a hardcoded "\". The assertion means "this was
+            //resolved to a full path", which is true on every platform; spelling it with a
+            //backslash made it true only on Windows.
+            o.FileName.Should().EndWith(f.FileName).And.Contain(Path.DirectorySeparatorChar.ToString());
             Console.WriteLine($"{f.FileName} -> {o.FileName}");
         }
         [TestMethod]
@@ -156,7 +159,14 @@ namespace Nucs.JsonSettings.Tests {
         }
         [TestMethod]
         public void Fluent_ConstructLoadNow_Issue1_WithRemotePath() { //Issue #1 on github
-            using var f = new TempFile( @"\MoalemYar\"+Path.GetRandomFileName());
+            //The point of issue #1 is a path whose DIRECTORY does not exist yet: LoadNow must
+            //create it rather than throw. The literal @"\MoalemYar\" expressed that only on
+            //Windows, where it means "MoalemYar at the root of the current drive". On Linux
+            //there is no such thing - backslash is an ordinary filename character - so the path
+            //collapsed to a directory-less name and reached Directory.CreateDirectory("").
+            //It also littered: TempFile removes the file, never the folder, so every Windows run
+            //left another C:\MoalemYar behind.
+            using var f = new TempFile(Path.Combine(Path.GetTempPath(), "MoalemYar", Path.GetRandomFileName()));
             //validate
             Action act = () => JsonSettings.Construct<SettingsBag>(f.FileName).LoadNow().EnableAutosave();
             act.Should().NotThrow("LoadNow handles non existent folders and files.");

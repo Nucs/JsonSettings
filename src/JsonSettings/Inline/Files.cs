@@ -29,7 +29,12 @@ namespace Nucs.JsonSettings {
             string parent = Path.GetDirectoryName(file);
 
             try {
-                if (parent != null) 
+                //IsNullOrEmpty, not just null: Path.GetDirectoryName returns string.Empty - never
+                //null - for a path that has no directory component at all, and
+                //Directory.CreateDirectory("") throws ArgumentException. That is not an IOException,
+                //so the catch below does not cover it and it escaped to the caller as a bare
+                //"Path cannot be the empty string or all whitespace", naming nothing useful.
+                if (!string.IsNullOrEmpty(parent))
                     Directory.CreateDirectory(parent);
                 
                 return File.Open(file, filemode, fileaccess, fileshare);
