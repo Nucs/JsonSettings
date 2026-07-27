@@ -188,6 +188,13 @@ Targets and packaging
   deprecated licenseUrl, and publish a .snupkg symbol package with Source Link instead of
   embedding .pdb files in lib/.
 
+Testing
+- The test suite now runs against every shipped asset rather than a subset. net472 was
+  added specifically to cover lib/netstandard2.0, which is what consumers without an exact
+  framework match receive and which previously had no test behind it at all.
+- Tests also run on Linux, so the platform-conditional code in Paths is executed rather
+  than only compiled. .NET Framework targets remain Windows-only.
+
 2.0.2
 - Added RecoveryModule and .WithRecovery to capture parsing errors
 - Added JsonSettings.SuspendAutosave() extension
