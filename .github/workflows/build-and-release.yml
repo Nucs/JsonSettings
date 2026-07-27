@@ -62,6 +62,38 @@ jobs:
     - name: Restore
       run: dotnet restore JsonSettings.sln
 
+    # Fails the PR that introduces a vulnerable dependency, rather than waiting for
+    # Dependabot to notice after it has already merged to master. Dependabot only reads
+    # manifests, so it sees direct references and nothing they pull in; this reads the
+    # restored graph, which is why NuGetAuditMode is set to 'all' in Directory.Build.props.
+    #
+    # The output is parsed rather than the exit code trusted: `dotnet list package
+    # --vulnerable` exits 0 whether or not it found anything, so `run: dotnet list package
+    # --vulnerable` on its own is a step that can never fail. Verified against a project
+    # pinned to Newtonsoft.Json 12.0.3 - it prints the advisory and still exits 0.
+    #
+    # An unrecognised result is also a failure. If the audit source is unreachable the
+    # command can succeed having checked nothing, and "we could not tell" must not be
+    # reported as "nothing wrong".
+    - name: Audit dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        output=$(dotnet list JsonSettings.sln package --vulnerable --include-transitive 2>&1)
+        echo "$output"
+
+        if grep -q "has the following vulnerable packages" <<<"$output"; then
+          echo "::error::Vulnerable NuGet packages found. Upgrade them, or if there is no fixed version yet, record the decision before merging."
+          exit 1
+        fi
+
+        if ! grep -q "has no vulnerable packages" <<<"$output"; then
+          echo "::error::Could not determine vulnerability status - the audit source may be unreachable. Refusing to report this as a pass."
+          exit 1
+        fi
+
+        echo "No known vulnerabilities in the restored dependency graph."
+
     - name: Build
       run: dotnet build JsonSettings.sln --configuration Release --no-restore
 

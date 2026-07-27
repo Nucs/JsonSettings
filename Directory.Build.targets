@@ -61,8 +61,29 @@
       CS0109;CS0168;CS0219;
       CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8619;CS8620;CS8622;CS8625;
       CS8714;CS8765;CS8767;
-      SYSLIB0051
+      SYSLIB0051;
+      NU1901;NU1902;NU1903;NU1904;
+      NETSDK1138
     </WarningsNotAsErrors>
+
+    <!-- The last two entries above are not debt, they are decisions:
+
+         NU1901-NU1904 are NuGet's vulnerability advisories. They are excluded from
+         warnings-as-errors because unlike every other code here, they can appear with NO
+         change to this repository: a CVE published overnight against an already-pinned
+         dependency would otherwise break every developer's next build in the middle of
+         unrelated work. They stay loud as warnings, and the build-and-release workflow
+         fails on them in CI, which is where the decision to keep shipping or to bump
+         actually gets made.
+
+         NETSDK1138 is "this target framework is out of support", which net6.0 now is. That
+         is a deliberate choice - see the TargetFrameworks in both shipped projects - so the
+         reminder should stay visible without breaking a build over a decision already
+         taken. It is pre-allowed rather than added on the day it starts firing: the SDK
+         does not currently emit it for a net6.0 LIBRARY, only for the net6.0-windows
+         Examples app, and a future SDK deciding otherwise should not be a surprise
+         build break. -->
+
   </PropertyGroup>
 
 </Project>

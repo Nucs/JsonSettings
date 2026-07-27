@@ -150,6 +150,33 @@
     <LangVersion>12.0</LangVersion>
   </PropertyGroup>
 
+  <!-- ====================================================================================
+       Dependency vulnerability auditing.
+
+       NuGetAudit is on by default, but its default MODE is 'direct': only packages this
+       repository names itself are checked, and anything they drag in is not. That is the
+       same blind spot Dependabot has, because Dependabot reads manifests too. A
+       vulnerability reaching us through Castle.Core or the test SDK would be invisible to
+       both.
+
+       'all' audits the whole restored graph, transitive included, and 'low' means nothing
+       is filtered out by severity - for a settings library that people point at files
+       containing passwords, the interesting advisories are not only the ones scored high.
+
+       These are set explicitly rather than left to the SDK because the default has already
+       moved once between SDK versions, and a security control that silently changes scope
+       when a runner image updates is not a control.
+
+       Findings surface as NU1901-NU1904 at restore. They are deliberately NOT errors; see
+       the WarningsNotAsErrors note in Directory.Build.targets for why, and
+       .github/workflows/build-and-release.yml for the CI step that does fail on them.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
+
   <PropertyGroup>
     <PackageReleaseNotes>2.1.0
 
