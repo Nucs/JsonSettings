@@ -128,6 +128,28 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <!-- ====================================================================================
+       Language version.
+
+       This was <LangVersion>9</LangVersion> in JsonSettings.csproj and 'latest' in
+       JsonSettings.Autosave, JsonSettings.Tests and JsonSettings.Examples. 'latest' is
+       not a version, it is "whatever this machine's SDK supports": C# 12 on the 8.0.x
+       SDK the workflow installed, C# 14 on a current developer machine. Code using a
+       newer construct therefore compiled locally and failed in CI, with an error
+       pointing at the syntax rather than at the mismatch that caused it.
+
+       12.0 is pinned repo-wide because it is the newest version buildable by an 8.0.x
+       SDK, so contributors who have not upgraded can still build everything except the
+       net10.0 target. The tests need at least 10.0 for file-scoped namespaces and
+       natural lambda types; nothing in the repo needs more than 12.
+
+       JsonSettings.csproj deliberately keeps its own, lower LangVersion; see the note
+       there.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+
   <PropertyGroup>
     <PackageReleaseNotes>2.1.0
 - Multi-targeting: netstandard2.0, net48, net6.0, net8.0 and net10.0 for both

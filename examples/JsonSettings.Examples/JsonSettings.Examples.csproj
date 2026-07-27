@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <RootNamespace>Nucs.JsonSettings</RootNamespace>
-    <LangVersion>latest</LangVersion>
     <!-- A demo app, not a shipped artifact. It exists so the library is compiled against
          from a real consumer on every shipped target. -->
     <IsPackable>false</IsPackable>

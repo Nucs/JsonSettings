@@ -1,0 +1,19 @@
+{
+  "//": [
+    "Pins the SDK floor so a checkout builds the same way everywhere.",
+    "",
+    "10.0.100 is the minimum that can build the net10.0 target at all. rollForward",
+    "latestMajor keeps newer SDKs working without a repo edit, which matters because",
+    "the GitHub-hosted runner images move on their own schedule; the language version",
+    "is pinned separately in Directory.Build.props, so a newer SDK does not quietly",
+    "change what the compiler accepts.",
+    "",
+    "Contributors on an older SDK can still build every target except net10.0 by",
+    "passing -f, but `dotnet build` on the solution will tell them to upgrade rather",
+    "than failing later with a confusing NETSDK1045."
+  ],
+  "sdk": {
+    "version": "10.0.100",
+    "rollForward": "latestMajor"
+  }
+}
