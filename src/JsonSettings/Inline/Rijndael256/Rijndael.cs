@@ -138,9 +138,14 @@ namespace Rijndael256 {
         /// <returns>The plaintext.</returns>
         public static string Decrypt(byte[] ciphertext, string password, KeySize keySize) {
             using (var ms = new MemoryStream(ciphertext)) {
-                // Extract the IV from the ciphertext
+                // Extract the IV from the ciphertext.
+                // Same discarded-return-value shape as the file overload below; a MemoryStream
+                // will not short-read, but it WILL happily return fewer bytes when the buffer it
+                // wraps is smaller than the IV, and a truncated file is exactly the input that
+                // gets here. Reject it explicitly instead of decrypting with a zero-padded IV.
                 var iv = new byte[InitializationVectorSize];
-                ms.Read(iv, 0, iv.Length);
+                if (ms.Read(iv, 0, iv.Length) != iv.Length)
+                    throw new EndOfStreamException($"Ciphertext is {ciphertext.Length} bytes, shorter than its {iv.Length}-byte initialization vector.");
 
                 // Create a CryptoStream to decrypt the ciphertext
                 using (var cs = new CryptoStream(ms, CreateDecryptor(password, iv, keySize), CryptoStreamMode.Read)) {
@@ -169,9 +174,11 @@ namespace Rijndael256 {
             }
 
             using (var ms = new MemoryStream(ciphertext)) {
-                // Extract the IV from the ciphertext
+                // Extract the IV from the ciphertext; see the Decrypt overload above for why the
+                // length is checked rather than discarded.
                 var iv = new byte[InitializationVectorSize];
-                ms.Read(iv, 0, iv.Length);
+                if (ms.Read(iv, 0, iv.Length) != iv.Length)
+                    throw new EndOfStreamException($"Ciphertext is {ciphertext.Length} bytes, shorter than its {iv.Length}-byte initialization vector.");
 
                 // Create a CryptoStream to decrypt the ciphertext
                 using (var cs = new CryptoStream(ms, CreateDecryptor(password, iv, keySize), CryptoStreamMode.Read)) {
@@ -190,9 +197,20 @@ namespace Rijndael256 {
         public static void Decrypt(string ciphertextFile, string plaintextFile, string password, KeySize keySize) {
             // Open the ciphertext file
             using (var fsc = new FileStream(ciphertextFile, FileMode.Open, FileAccess.Read)) {
-                // Read the IV from the beginning of the ciphertext file
+                // Read the IV from the beginning of the ciphertext file.
+                // Stream.Read is permitted to return fewer bytes than asked for, and the return
+                // value used to be discarded here (CA2022). A short read left the tail of the IV
+                // as zeros, which does not throw -- it silently derives the wrong transform and
+                // produces garbage plaintext or a misleading padding error much further on. Read
+                // until the IV is full, and treat a truncated file as the error it is.
                 var iv = new byte[InitializationVectorSize];
-                fsc.Read(iv, 0, iv.Length);
+                var ivRead = 0;
+                while (ivRead < iv.Length) {
+                    var read = fsc.Read(iv, ivRead, iv.Length - ivRead);
+                    if (read == 0)
+                        throw new EndOfStreamException($"Ciphertext file '{ciphertextFile}' ended after {ivRead} bytes, before its {iv.Length}-byte initialization vector was complete.");
+                    ivRead += read;
+                }
 
                 // Create a new plaintext file to write the plaintext to
                 using (var fsp = new FileStream(plaintextFile, FileMode.Create, FileAccess.Write)) {
@@ -236,8 +254,15 @@ namespace Rijndael256 {
         /// <param name="keySize">The cipher key size. 256-bit is stronger, but slower.</param>
         /// <returns>The symmetric encryptor.</returns>
         public static ICryptoTransform CreateEncryptor(string password, byte[] iv, KeySize keySize) {
-            var rijndael = new RijndaelManaged {Mode = BlockCipherMode};
-            return rijndael.CreateEncryptor(GenerateKey(password, keySize), iv);
+            // Aes, not RijndaelManaged (obsolete as of SYSLIB0022). This is not a cipher change:
+            // AES *is* Rijndael restricted to a 128-bit block, RijndaelManaged defaults BlockSize
+            // to 128, and nothing here ever set it otherwise -- the IV is fixed at
+            // InitializationVectorSize = 16 bytes, which only a 128-bit block accepts. The class
+            // has always documented itself as "AES implementation of the Rijndael symmetric-key
+            // cipher". Ciphertext written by older versions decrypts unchanged.
+            using var aes = Aes.Create();
+            aes.Mode = BlockCipherMode;
+            return aes.CreateEncryptor(GenerateKey(password, keySize), iv);
         }
 
         /// <summary>
@@ -248,8 +273,10 @@ namespace Rijndael256 {
         /// <param name="keySize">The cipher key size.</param>
         /// <returns>The symmetric decryptor.</returns>
         public static ICryptoTransform CreateDecryptor(string password, byte[] iv, KeySize keySize) {
-            var rijndael = new RijndaelManaged {Mode = BlockCipherMode};
-            return rijndael.CreateDecryptor(GenerateKey(password, keySize), iv);
+            //see CreateEncryptor for why Aes is a drop-in for RijndaelManaged here.
+            using var aes = Aes.Create();
+            aes.Mode = BlockCipherMode;
+            return aes.CreateDecryptor(GenerateKey(password, keySize), iv);
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System.IO;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Nucs.JsonSettings;
+using Nucs.JsonSettings.Tests.Utils;
 
 
 namespace Nucs.JsonSettings.Tests {
@@ -9,26 +9,24 @@ namespace Nucs.JsonSettings.Tests {
     public class CreatingAndOverridingTests {
         [TestMethod]
         public void OverrideExistingBySmallerSettingsFile() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Load<SettingsLarger>(f);
-                o.Str = o.Str2 = o.Str3 = "lol";
-                o.Save();
+            using var f = new TempFile();
+            var o = JsonSettings.Load<SettingsLarger>(f);
+            o.Str = o.Str2 = o.Str3 = "lol";
+            o.Save();
 
-                File.Exists(f).Should().BeTrue();
-                var o2 = JsonSettings.Load<Settings>(f);
-                o2.Str.ShouldBeEquivalentTo("lol");
-            }
+            File.Exists(f).Should().BeTrue();
+            var o2 = JsonSettings.Load<Settings>(f);
+            o2.Str.Should().Be("lol");
         }
 
         [TestMethod]
         public void CreateNonExistingSettings() {
-            using (var f = new TempfileLife(false)) {
-                var o = JsonSettings.Load<Settings>(f);
-                o.Str = "lol";
-                File.Exists(f).Should().BeTrue();
-                o.Save();
-                File.Exists(f).Should().BeTrue();
-            }
+            using var f = new TempFile(false);
+            var o = JsonSettings.Load<Settings>(f);
+            o.Str = "lol";
+            File.Exists(f).Should().BeTrue();
+            o.Save();
+            File.Exists(f).Should().BeTrue();
         }
 
         class Settings : JsonSettings {

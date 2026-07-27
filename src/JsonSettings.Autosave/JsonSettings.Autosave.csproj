@@ -1,62 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <AssemblyVersion>2.0.1</AssemblyVersion>
-    <FileVersion>2.0.1</FileVersion>
-    <Authors>Nucs / Eli Belash</Authors>
-    <Company>Nucs / Eli Belash</Company>
 	  <Summary>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
-    <PackageIcon>icon.png</PackageIcon>
-  </PropertyGroup>
-
-  <!-- The icon ships inside the package. PackageIconUrl (which pointed at imgur) is deprecated
-       by NuGet and is no longer rendered on nuget.org. -->
-  <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)..\..\assets\icon.png" Pack="true" PackagePath="\" Visible="false" />
-  </ItemGroup>
-
-  <PropertyGroup>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Description>
-    <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
-    <NeutralLanguage />
-    <SignAssembly>false</SignAssembly>
-    <Copyright>Eli Belash @ 2023</Copyright>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>
     <PackageId>Nucs.JsonSettings.Autosave</PackageId>
-    <PackageVersion>2.0.2</PackageVersion>
     <Title>Nucs.JsonSettings.Autosave</Title>
-    <PackageReleaseNotes>- Added RecoveryModule  and .WithRecovery to capture parsing errors
-- Added JsonSettings.SuspendAutosave() extension
-- Added proxy construction guard to prevent unncessary allocation on proxy creation.
-- Fix non virtual built-in properties returning null after being wrapped with proxy.
-- Added ProxyGeneratedAttribute that is attached to every proxy-generated class
-- Module: made Dispose() inheritable.
-- Module.Socket: changed to WeakReference&lt;JsonSettings&gt;
-- SettingsBag: added support for SuspendAutosave #26
-- VersioningModule: some internal fixes and renames #19
-- Added RecoveryModule and WithRecovery api. #19
-- JsonSettings: added TryingRecover and Recovered events.
-- JsonSettings: Removed ThrowOnEmptyFile, this is handled by RecoveryModule now
-- Made all module functions and variables protected or virtual.
-- FluentJsonSettings: replaced dynamic creation with hardcoded creation (faster).
-- Added proper Versioning example
-- JsonSettings: add OnXXXX methods that trigger event changed to protected internal.
-- Made all modules extensible
-- SettingsBag: removed locking, optimized and replaced with ConcurrentDictionary for threadsafety
-- Added documentation </PackageReleaseNotes>
-    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Castle.Core" Version="5.1.1" />
-    <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>

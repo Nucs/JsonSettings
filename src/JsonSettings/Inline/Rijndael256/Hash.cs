@@ -65,7 +65,28 @@ namespace Rijndael256
         /// <returns>The hash.</returns>
         internal static byte[] Pbkdf2(byte[] data, byte[] salt, int iterations, int size = 64)
         {
+            // SHA-1 is the pseudorandom function here and must STAY SHA-1. It is not a choice
+            // being made now: the parameterless-PRF constructor this used to call defaults to
+            // SHA-1, so every settings file this library has ever encrypted has a key derived
+            // with it. Switching the PRF would leave all of them undecryptable with no error
+            // beyond a padding failure. This is a file-format constant, not a style preference.
+            //
+            // Spelling it out also clears SYSLIB0041, which flags that constructor precisely
+            // because its defaults are invisible at the call site, and SYSLIB0060 on net10.0,
+            // which asks for the static one-shot instead of the instance type.
+            //
+            // The three arms below are byte-for-byte identical in output; only the API used to
+            // ask for it differs, because the newer spellings do not exist on the older
+            // contracts. Rfc2898DeriveBytes.Pbkdf2 is .NET 6+, and the constructor overload
+            // taking a HashAlgorithmName exists on .NET Framework 4.7.2+ but not in
+            // netstandard2.0, which is why the fallback keeps the obsolete form.
+#if NET6_0_OR_GREATER
+            return Rfc2898DeriveBytes.Pbkdf2(data, salt, iterations, HashAlgorithmName.SHA1, size);
+#elif NET472_OR_GREATER
+            return (new Rfc2898DeriveBytes(data, salt, iterations, HashAlgorithmName.SHA1)).GetBytes(size);
+#else
             return (new Rfc2898DeriveBytes(data, salt, iterations)).GetBytes(size);
+#endif
         }
     }
 }

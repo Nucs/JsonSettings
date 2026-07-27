@@ -1,0 +1,573 @@
+﻿name: Build and Release
+
+on:
+  push:
+    branches: [ "master" ]
+    tags:
+      - "v*"             # real release: pack, publish to nuget.org, create a GitHub release
+      - "testpublish/*"  # dry run: pack and verify, publish nothing
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+# Least privilege by default; jobs opt in to what they need. This was `permissions: write-all`,
+# which handed every job in the file - including ones that only read - the ability to push code,
+# publish releases and rewrite issues.
+permissions:
+  contents: read
+
+# A second push to the same branch makes the first run's results irrelevant. Tags are excluded
+# from cancellation: a release run must never be killed halfway between pushing a package to
+# nuget.org and creating the release that documents it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # ---------------------------------------------------------------------------------------
+  # Build + test everything. Runs on every push, pull request and tag.
+  #
+  # windows-latest is required here, not preferred: two of the five test target frameworks
+  # are net472 and net48, and .NET Framework assemblies need a .NET Framework runtime to
+  # execute. A Linux runner can compile them but cannot run them, which would silently
+  # reduce the matrix to the three .NET targets - including dropping net472, the only
+  # target that exercises the netstandard2.0 asset that most consumers actually receive.
+  #
+  # This job therefore owns everything that can only be done on Windows: the full solution
+  # build (JsonSettings.Examples is a WinForms app and does not build off Windows at all),
+  # the warning baseline, and the complete five-framework test matrix. See test-linux for
+  # the half that Windows cannot answer.
+  # ---------------------------------------------------------------------------------------
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        # 10.0.x is required: it is the only SDK that can build the net10.0 target, and
+        # there is no global.json, so whatever is installed here decides the build. 6.0.x
+        # and 8.0.x are installed alongside so their targeting packs are present.
+        dotnet-version: |
+          6.0.x
+          8.0.x
+          10.0.x
+
+    - name: Restore
+      run: dotnet restore JsonSettings.sln
+
+    # Fails the PR that introduces a vulnerable dependency, rather than waiting for
+    # Dependabot to notice after it has already merged to master. Dependabot only reads
+    # manifests, so it sees direct references and nothing they pull in; this reads the
+    # restored graph, which is why NuGetAuditMode is set to 'all' in Directory.Build.props.
+    #
+    # The output is parsed rather than the exit code trusted: `dotnet list package
+    # --vulnerable` exits 0 whether or not it found anything, so `run: dotnet list package
+    # --vulnerable` on its own is a step that can never fail. Verified against a project
+    # pinned to Newtonsoft.Json 12.0.3 - it prints the advisory and still exits 0.
+    #
+    # An unrecognised result is also a failure. If the audit source is unreachable the
+    # command can succeed having checked nothing, and "we could not tell" must not be
+    # reported as "nothing wrong".
+    - name: Audit dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        output=$(dotnet list JsonSettings.sln package --vulnerable --include-transitive 2>&1)
+        echo "$output"
+
+        if grep -q "has the following vulnerable packages" <<<"$output"; then
+          echo "::error::Vulnerable NuGet packages found. Upgrade them, or if there is no fixed version yet, record the decision before merging."
+          exit 1
+        fi
+
+        if ! grep -q "has no vulnerable packages" <<<"$output"; then
+          echo "::error::Could not determine vulnerability status - the audit source may be unreachable. Refusing to report this as a pass."
+          exit 1
+        fi
+
+        echo "No known vulnerabilities in the restored dependency graph."
+
+    - name: Build
+      run: dotnet build JsonSettings.sln --configuration Release --no-restore
+
+    # Warnings are already errors for anything outside the allowlist in
+    # Directory.Build.targets. This catches the other half: new instances of the codes that
+    # ARE allowlisted, which the compiler will happily let through forever. See
+    # .github/warning-baseline.json.
+    - name: Check warning baseline
+      shell: pwsh
+      run: ./.github/check-warning-baseline.ps1
+
+    - name: Test
+      run: dotnet test JsonSettings.sln --configuration Release --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
+
+    - name: Upload Coverage Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-reports-windows
+        path: |
+          **/*.cobertura.xml
+        retention-days: 5
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-windows
+        path: ${{ github.workspace }}/**/TestResults/**/*.trx
+        retention-days: 5
+
+  # ---------------------------------------------------------------------------------------
+  # The half Windows cannot answer.
+  #
+  # This library advertises itself as cross-platform and has real platform-conditional
+  # code, all of it in Inline/Paths.cs: GetExecutablePath branches on
+  # RuntimeInformation.IsOSPlatform, MarkForDeletion P/Invokes kernel32, and the
+  # path-comparison helpers switch separator characters. None of that was ever executed by
+  # CI, because CI only ran on Windows. That is not a theoretical gap - the non-Windows
+  # branch of GetExecutablePath was calling the obsolete Assembly.CodeBase, and
+  # MarkForDeletion would raise DllNotFoundException off Windows rather than declining.
+  #
+  # It genuinely exercises that code rather than merely compiling it: the Paths static
+  # constructor runs on the first settings load, so every test in the suite goes through
+  # GetExecutablePath before it does anything else.
+  #
+  # Only the .NET targets run here. net472 and net48 are deliberately absent - Mono is not
+  # what this library ships against, and pretending to test .NET Framework on Linux would
+  # be worse than not testing it. Those two are covered on Windows.
+  #
+  # The solution is NOT built here. JsonSettings.Examples is a WinForms app targeting
+  # net*-windows, which cannot build on Linux at all, so this builds the test project
+  # directly - which pulls in both shipped libraries as project references anyway.
+  # ---------------------------------------------------------------------------------------
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          6.0.x
+          8.0.x
+          10.0.x
+
+    - name: Test
+      shell: bash
+      run: |
+        set -euo pipefail
+        for framework in net6.0 net8.0 net10.0; do
+          echo "::group::test $framework"
+          # -f per framework rather than one run: it stops the build from also compiling the
+          # net472/net48 targets, which would succeed and then produce test assemblies no
+          # runtime on this machine can load.
+          dotnet test tests/JsonSettings.Tests/JsonSettings.Tests.csproj \
+            --configuration Release \
+            --framework "$framework" \
+            --verbosity normal \
+            --logger trx
+          echo "::endgroup::"
+        done
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-linux
+        path: ${{ github.workspace }}/**/TestResults/**/*.trx
+        retention-days: 5
+
+  # ---------------------------------------------------------------------------------------
+  # Coverage and test reporting.
+  #
+  # `if: always()` at the JOB level, not just on the steps inside it: the previous version
+  # only had it on the publish step, so a failing test run - the exact case where you most
+  # want the report - skipped the whole job and published nothing.
+  # ---------------------------------------------------------------------------------------
+  report:
+    needs: [ build, test-linux ]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+    - uses: actions/checkout@v4
+
+    # pattern + merge-multiple so both platforms' results land in one tree. continue-on-error
+    # is kept HERE and only here, because "the artifact does not exist" is a legitimate
+    # outcome: a build that failed to compile never reached its test step. Everything
+    # downstream is guarded on whether anything was actually downloaded, so it does not have
+    # to swallow its own failures too.
+    - name: Download Coverage Reports
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        pattern: coverage-reports-*
+        merge-multiple: true
+
+    - name: Download Test Results
+      uses: actions/download-artifact@v4
+      continue-on-error: true
+      with:
+        pattern: test-results-*
+        merge-multiple: true
+
+    # Distinguishes "there is nothing to report" from "reporting is broken". Every step in
+    # this job used to carry continue-on-error: true, which meant the job could not fail -
+    # so a reporting pipeline that silently stopped working looked exactly like a healthy
+    # one. Nothing below swallows failures any more; instead the steps are skipped outright
+    # when there is genuinely no input, which is the only case that was ever being excused.
+    - name: Look for reportable input
+      id: inputs
+      shell: bash
+      run: |
+        set -euo pipefail
+        trx=$(find . -name '*.trx' | wc -l)
+        cov=$(find . -name '*.cobertura.xml' | wc -l)
+        echo "Found $trx trx file(s) and $cov coverage file(s)."
+        echo "trx=$trx" >> $GITHUB_OUTPUT
+        echo "coverage=$cov" >> $GITHUB_OUTPUT
+        if [ "$trx" -eq 0 ] && [ "$cov" -eq 0 ]; then
+          echo "::notice::No test or coverage artifacts. The build did not reach its test step; nothing to report."
+        fi
+
+    - name: Combine Coverage Reports
+      if: steps.inputs.outputs.coverage != '0'
+      uses: danielpalme/ReportGenerator-GitHub-Action@5.3.11
+      with:
+        reports: "**/*.cobertura.xml"
+        targetdir: "${{ github.workspace }}"
+        reporttypes: "Cobertura"
+        verbosity: "Info"
+        title: "Code Coverage"
+        tag: "${{ github.run_number }}_${{ github.run_id }}"
+
+    - name: Publish Code Coverage Report
+      if: steps.inputs.outputs.coverage != '0'
+      uses: irongut/CodeCoverageSummary@v1.3.0
+      with:
+        filename: "Cobertura.xml"
+        badge: true
+        fail_below_min: false
+        format: markdown
+        hide_branch_rate: false
+        hide_complexity: false
+        indicators: true
+        output: both
+        thresholds: "10 30"
+
+    # Both of the following need a WRITE token. A pull_request event from a fork gets a
+    # read-only one no matter what `permissions:` says, so they are skipped there rather than
+    # left to fail the job with a 403 that looks like a broken build. Because the condition
+    # now excludes every case where they cannot work, they are allowed to fail when they do
+    # run - a 403 or a malformed report is a real problem worth surfacing.
+    - name: Add Coverage PR Comment
+      if: >-
+        steps.inputs.outputs.coverage != '0'
+        && github.event_name == 'pull_request'
+        && github.event.pull_request.head.repo.full_name == github.repository
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        recreate: true
+        path: code-coverage-results.md
+
+    - name: Publish Test Results
+      if: >-
+        always()
+        && steps.inputs.outputs.trx != '0'
+        && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      with:
+        files: "**/*.trx"
+
+  # ---------------------------------------------------------------------------------------
+  # Release gate. Establishes ONE version for every downstream job to use.
+  #
+  # This replaces a `publish` job that consisted of a six-cell framework x runtime matrix
+  # which checked out, installed the SDK, computed a version and then had no further steps at
+  # all - six no-op jobs whose only effect was to gate create-release, itself a job that
+  # generated release notes and never created a release.
+  # ---------------------------------------------------------------------------------------
+  validate-release:
+    needs: [ build, test-linux ]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      is_prerelease: ${{ steps.version.outputs.IS_PRERELEASE }}
+      is_publishable: ${{ steps.version.outputs.IS_PUBLISHABLE }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        # Required by get-release-notes.ps1 and by the ancestry check below. The default
+        # depth of 1 has no tags and no history, under which both silently do nothing useful.
+        fetch-depth: 0
+
+    - name: Extract and validate version
+      id: version
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        REF="${GITHUB_REF#refs/tags/}"
+        if [[ "$REF" == testpublish/* ]]; then
+          VERSION="${REF#testpublish/}"
+          PUBLISHABLE=false
+        else
+          VERSION="${REF#v}"
+          PUBLISHABLE=true
+        fi
+
+        # Reject anything the version scheme cannot express before it reaches `dotnet pack`,
+        # where a malformed value surfaces as an obscure NuGet error at the end of a long job.
+        if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9A-Za-z.-]+)?$ ]]; then
+          echo "::error::Tag '$REF' does not yield a valid version (got '$VERSION'). Expected v<major>.<minor>.<patch>[.<build>][-<prerelease>]."
+          exit 1
+        fi
+
+        # A prerelease is a version with a suffix. Deriving it from the version rather than
+        # regex-matching the ref for '-alpha|-beta|-prerelease' means -rc.1, -preview.2 and
+        # any other suffix are handled too; the old check treated those as full releases.
+        if [[ "$VERSION" == *-* ]]; then IS_PRERELEASE=true; else IS_PRERELEASE=false; fi
+
+        echo "VERSION=$VERSION"               >> $GITHUB_OUTPUT
+        echo "IS_PRERELEASE=$IS_PRERELEASE"   >> $GITHUB_OUTPUT
+        echo "IS_PUBLISHABLE=$PUBLISHABLE"    >> $GITHUB_OUTPUT
+        echo "Releasing $VERSION (prerelease: $IS_PRERELEASE, publishable: $PUBLISHABLE)"
+
+    - name: Verify the tag is on master
+      if: steps.version.outputs.IS_PUBLISHABLE == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+          echo "Tagged commit is reachable from origin/master."
+        else
+          echo "::error::Tag ${GITHUB_REF#refs/tags/} is not on master. Releases must be tagged from master."
+          exit 1
+        fi
+
+  # ---------------------------------------------------------------------------------------
+  # Pack, verify, and hand the artifacts to the jobs that publish them.
+  #
+  # Packing happens ONCE, here, and every downstream job consumes the same artifact. The
+  # previous version rebuilt and repacked inside the push job, which is how the release and
+  # the published package could in principle disagree.
+  # ---------------------------------------------------------------------------------------
+  pack:
+    needs: validate-release
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          6.0.x
+          8.0.x
+          10.0.x
+
+    # One property. Directory.Build.props derives VersionPrefix from it and the SDK derives
+    # AssemblyVersion, FileVersion, InformationalVersion and PackageVersion from that, with a
+    # prerelease suffix stripped from the assembly identity. The previous version passed
+    # -p:AssemblyVersion=${{ ... ASSEMBLY_VERSION }} referring to an output that job never
+    # set, so it always expanded to an empty string.
+    - name: Pack
+      shell: pwsh
+      run: |
+        $version = "${{ needs.validate-release.outputs.version }}"
+        $output = Join-Path $env:GITHUB_WORKSPACE 'artifacts/nuget'
+        New-Item -ItemType Directory -Force -Path $output | Out-Null
+
+        foreach ($project in @(
+            'src/JsonSettings/JsonSettings.csproj',
+            'src/JsonSettings.Autosave/JsonSettings.Autosave.csproj')) {
+          Write-Host "::group::pack $project"
+          # No --no-build: pack builds it, so the packed binaries are guaranteed to be the
+          # ones stamped with this version rather than whatever a previous step left on disk.
+          dotnet pack $project --configuration Release --output $output -p:Version=$version
+          if ($LASTEXITCODE -ne 0) { throw "pack failed for $project" }
+          Write-Host '::endgroup::'
+        }
+
+        Get-ChildItem $output | Format-Table Name, Length
+
+    # The check that would have caught the release-blocking defect this pipeline shipped
+    # with: both csprojs hardcoded <PackageVersion>2.0.2</PackageVersion>, so -p:Version was
+    # silently ignored and `dotnet pack` produced 2.0.2 no matter what tag was pushed. Pack
+    # succeeds in that state - the only visible symptom is the filename, and nothing looked.
+    - name: Verify packages match the tag
+      shell: pwsh
+      run: |
+        $version = "${{ needs.validate-release.outputs.version }}"
+        $output = Join-Path $env:GITHUB_WORKSPACE 'artifacts/nuget'
+        $expected = @("Nucs.JsonSettings.$version.nupkg", "Nucs.JsonSettings.Autosave.$version.nupkg")
+
+        $actual = @(Get-ChildItem $output -Filter *.nupkg | Select-Object -ExpandProperty Name)
+        $failed = $false
+
+        foreach ($name in $expected) {
+          if ($actual -contains $name) {
+            Write-Host "  ok      $name"
+          } else {
+            Write-Host "::error::Expected $name but pack did not produce it."
+            $failed = $true
+          }
+        }
+
+        # Also catch the reverse: a stray extra package would mean the push loop below
+        # publishes something nobody asked for.
+        foreach ($name in $actual) {
+          if ($expected -notcontains $name) {
+            Write-Host "::error::Unexpected package $name - pack produced something not in the expected set."
+            $failed = $true
+          }
+        }
+
+        if ($failed) {
+          Write-Host "Produced: $($actual -join ', ')"
+          exit 1
+        }
+        Write-Host "Both packages carry version $version."
+
+    - name: Upload packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: |
+          artifacts/nuget/*.nupkg
+          artifacts/nuget/*.snupkg
+        retention-days: 5
+
+  # ---------------------------------------------------------------------------------------
+  # GitHub release. Only for v* tags - a testpublish/* tag stops after pack.
+  # ---------------------------------------------------------------------------------------
+  create-release:
+    needs: [ validate-release, pack ]
+    if: needs.validate-release.outputs.is_publishable == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0   # get-release-notes.ps1 needs history and tags; see that script.
+
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages
+        path: artifacts
+
+    - name: Generate checksums
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd artifacts
+        for f in *.nupkg *.snupkg; do
+          [ -e "$f" ] || continue
+          sha256sum "$f" | cut -d' ' -f1 > "$f.sha256"
+          echo "$f: $(cat "$f.sha256")"
+        done
+
+    - name: Compose release notes
+      id: notes
+      shell: pwsh
+      run: |
+        $version = "${{ needs.validate-release.outputs.version }}"
+        $commits = ./.github/get-release-notes.ps1 -CurrentTag $env:GITHUB_REF
+
+        # Written to a FILE and handed to the release action via body_path. The previous
+        # version pushed the notes through a $GITHUB_OUTPUT heredoc delimited by a bare EOF,
+        # which any commit subject consisting of "EOF" would have terminated early, and
+        # applied `-replace "'", "''"` - SQL-style quote doubling that does nothing here
+        # except corrupt apostrophes in commit messages.
+        @(
+          "## Nucs.JsonSettings v$version"
+          ""
+          "### Install"
+          ""
+          '```'
+          "dotnet add package Nucs.JsonSettings --version $version"
+          "dotnet add package Nucs.JsonSettings.Autosave --version $version"
+          '```'
+          ""
+          "Targets netstandard2.0, net48, net6.0, net8.0 and net10.0."
+          ""
+          "### Changes"
+          ""
+          $commits
+        ) | Set-Content -Path RELEASE_BODY.md -Encoding utf8
+
+        Write-Host "Composed RELEASE_BODY.md ($((Get-Content RELEASE_BODY.md).Count) lines)"
+
+    - name: Create release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          artifacts/*.nupkg
+          artifacts/*.snupkg
+          artifacts/*.sha256
+        body_path: RELEASE_BODY.md
+        prerelease: ${{ needs.validate-release.outputs.is_prerelease }}
+        draft: false
+
+  # ---------------------------------------------------------------------------------------
+  # nuget.org. Last job in the chain, so a failure anywhere above stops the one action in
+  # this pipeline that cannot be undone: a published package version is permanent.
+  # ---------------------------------------------------------------------------------------
+  publish-nuget:
+    needs: [ validate-release, pack, create-release ]
+    if: needs.validate-release.outputs.is_publishable == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages
+        path: artifacts
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    # Loops over every package. The previous version ran
+    #   Get-ChildItem $out -Filter *.nupkg | Select-Object -First 1
+    # once per package, against a shared output directory - and "first" sorts by name, so
+    # Nucs.JsonSettings.<v>.nupkg won both times (a digit sorts before a letter). The step
+    # named "Push JsonSettings.Autosave to NuGet" pushed the core package a second time,
+    # nuget.org answered 409, the job failed, and Autosave was never published at all.
+    #
+    # --skip-duplicate makes a re-run after a partial failure idempotent instead of fatal.
+    # Pushing the .nupkg also uploads the adjacent .snupkg, so symbols need no separate step.
+    - name: Push to NuGet
+      shell: bash
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+        packages=(artifacts/*.nupkg)
+        if [ ${#packages[@]} -eq 0 ]; then
+          echo "::error::No .nupkg found in artifacts/."
+          exit 1
+        fi
+        for package in "${packages[@]}"; do
+          echo "::group::push $package"
+          dotnet nuget push "$package" \
+            --api-key "${{ secrets.NUGETAPIKEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+          echo "::endgroup::"
+        done

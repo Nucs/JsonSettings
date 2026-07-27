@@ -1,37 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <Authors>Nucs / Eli Belash</Authors>
-    <Company>Nucs / Eli Belash</Company>
-	  <Summary>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Description>
-    <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
-    <NeutralLanguage />
-    <SignAssembly>false</SignAssembly>
-    <Copyright>Eli Belash @ 2021</Copyright>
     <RootNamespace>Nucs.JsonSettings</RootNamespace>
-    <PackageId></PackageId>
-    <PackageVersion></PackageVersion>
-    <Title></Title>
-    <PackageReleaseNotes>- Upgraded to .NETCore project type
-- Target changed to .NET Standard 2.0
-- Root namespace renamed to Nucs.</PackageReleaseNotes>
-    <LangVersion>latest</LangVersion>
+    <!-- A demo app, not a shipped artifact. It exists so the library is compiled against
+         from a real consumer on every shipped target. -->
     <IsPackable>false</IsPackable>
 	<OutputType>Exe</OutputType>
 	<UseWindowsForms>true</UseWindowsForms>
-	<TargetFramework>net5.0-windows</TargetFramework>
+	<TargetFrameworks>net6.0-windows;net8.0-windows;net10.0-windows</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Castle.Core" Version="5.1.1" />
-    <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,11 +2,11 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
 using Nucs.JsonSettings.Examples;
+using Nucs.JsonSettings.Tests.Utils;
 
 namespace Nucs.JsonSettings.Tests.Autosave {
     [TestClass]
@@ -16,107 +16,100 @@ namespace Nucs.JsonSettings.Tests.Autosave {
 
         [TestMethod]
         public void ClassWithoutInterfacesOrVirtuals() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Load<InvalidSettings>(f.FileName);
-                new Action(() => o.EnableAutosave()).ShouldThrow<JsonSettingsException>();
-            }
+            using var f = new TempFile();
+            var o = JsonSettings.Load<InvalidSettings>(f.FileName);
+            new Action(() => o.EnableAutosave()).Should().Throw<JsonSettingsException>();
         }
 
         [TestMethod]
         public void ClassWithInterfacesOrVirtuals() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.GetType().Namespace.Should().Be("Castle.Proxies");
-            }
+            using var f = new TempFile();
+            var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
+            o.GetType().Namespace.Should().Be("Castle.Proxies");
         }
 
         [TestMethod]
         public void Saving() {
-            using (var f = new TempfileLife()) {
-                var rpath = JsonSettings.ResolvePath(f);
+            using var f = new TempFile();
+            var rpath = JsonSettings.ResolvePath(f);
 
-                bool saved = false;
-                var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += (s, destinition) => { saved = true; };
-                o.property.ShouldBeEquivalentTo(null);
-                Console.WriteLine(File.ReadAllText(rpath));
+            var saved = false;
+            var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
+            o.AfterSave += (s, destinition) => { saved = true; };
+            o.property.Should().BeNull();
+            Console.WriteLine(File.ReadAllText(rpath));
 
-                o.property = "test";
-                saved.ShouldBeEquivalentTo(true);
-                var o2 = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o2.property.ShouldBeEquivalentTo("test");
-                var jsn = File.ReadAllText(rpath);
-                jsn.Contains("\"test\"").Should().BeTrue();
-                Console.WriteLine(jsn);
-            }
+            o.property = "test";
+            saved.Should().Be(true);
+            var o2 = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
+            o2.property.Should().Be("test");
+            var jsn = File.ReadAllText(rpath);
+            jsn.Contains("\"test\"").Should().BeTrue();
+            Console.WriteLine(jsn);
         }
 
         [TestMethod]
         public void Saving_Example() {
-            using (var f = new TempfileLife()) {
-                var rpath = JsonSettings.ResolvePath(f);
+            using var f = new TempFile();
+            var rpath = JsonSettings.ResolvePath(f);
 
-                StrongBox<int> saved = new StrongBox<int>(0);
-                var o = JsonSettings.Load<ExampleNotifyingSettings>(f).EnableAutosave();
-                saved.Value.Should().Be(0);
-                o.AfterSave += (s, destinition) => { saved.Value++; };
-                o.Residents.Add("Cookie Monster"); //Boom! saves.
-                saved.Value.Should().Be(1);
-                o.Residents = new ObservableCollection<string>(); //Boom! saves.
-                saved.Value.Should().Be(2);
-                o.Residents.Add("Cookie Monster"); //Boom! saves.
-                saved.Value.Should().Be(3);
-                o.NonAutosavingProperty = new ObservableCollection<object>(); //doesn't save
-                o.NonAutosavingProperty.Add("Jim"); //doesn't save
-                saved.Value.Should().Be(3);
-                o.Street += "-1"; //Boom! saves.
-                saved.Value.Should().Be(4);
-                o.AutoProperty = "Hello"; //Boom! saves.
-                saved.Value.Should().Be(5);
-                o.IgnoredFromAutosaving = "Hello"; //doesn't save
-                saved.Value.Should().Be(5);
-            }
+            var saved = new StrongBox<int>(0);
+            var o = JsonSettings.Load<ExampleNotifyingSettings>(f).EnableAutosave();
+            saved.Value.Should().Be(0);
+            o.AfterSave += (s, destinition) => { saved.Value++; };
+            o.Residents.Add("Cookie Monster"); //Boom! saves.
+            saved.Value.Should().Be(1);
+            o.Residents = new ObservableCollection<string>(); //Boom! saves.
+            saved.Value.Should().Be(2);
+            o.Residents.Add("Cookie Monster"); //Boom! saves.
+            saved.Value.Should().Be(3);
+            o.NonAutosavingProperty = new ObservableCollection<object>(); //doesn't save
+            o.NonAutosavingProperty.Add("Jim"); //doesn't save
+            saved.Value.Should().Be(3);
+            o.Street += "-1"; //Boom! saves.
+            saved.Value.Should().Be(4);
+            o.AutoProperty = "Hello"; //Boom! saves.
+            saved.Value.Should().Be(5);
+            o.IgnoredFromAutosaving = "Hello"; //doesn't save
+            saved.Value.Should().Be(5);
         }
 
         [TestMethod]
         public void IgnoreSavingWhenAbstractPropertyChanges() {
-            using (var f = new TempfileLife()) {
-                bool saved = false;
-                var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.AfterSave += (s, destinition) => { saved = true; };
+            using var f = new TempFile();
+            var saved = false;
+            var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
+            o.AfterSave += (s, destinition) => { saved = true; };
 
-                o.FileName = "test.jsn";
-                saved.ShouldBeEquivalentTo(false);
-            }
+            o.FileName = "test.jsn";
+            saved.Should().Be(false);
         }
 
         [TestMethod]
         public void AccessingAfterLoadingAndMarkingAutosave() {
-            using (var f = new TempfileLife()) {
-                var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o.property.ShouldBeEquivalentTo(null);
-                o.property = "test";
-                var o2 = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-                o2.property.ShouldBeEquivalentTo("test");
-            }
+            using var f = new TempFile();
+            var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
+            o.property.Should().BeNull();
+            o.property = "test";
+            var o2 = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
+            o2.property.Should().Be("test");
         }
 
         [TestMethod]
         public void SavingInterface() {
-            using (var f = new TempfileLife()) {
-                var rpath = JsonSettings.ResolvePath(f);
-                var o = JsonSettings.Load<InterfacedSettings>(f.FileName).EnableIAutosave<InterfacedSettings, ISettings>();
+            using var f = new TempFile();
+            var rpath = JsonSettings.ResolvePath(f);
+            var o = JsonSettings.Load<InterfacedSettings>(f.FileName).EnableIAutosave<InterfacedSettings, ISettings>();
 
-                Console.WriteLine(File.ReadAllText(rpath));
-                o.property.ShouldBeEquivalentTo(null);
-                o.property = "test";
-                var o2 = JsonSettings.Load<InterfacedSettings>(f.FileName);
-                o2.property.ShouldBeEquivalentTo("test");
+            Console.WriteLine(File.ReadAllText(rpath));
+            o.property.Should().BeNull();
+            o.property = "test";
+            var o2 = JsonSettings.Load<InterfacedSettings>(f.FileName);
+            o2.property.Should().Be("test");
 
-                var jsn = File.ReadAllText(rpath);
-                jsn.Contains("\"test\"").Should().BeTrue();
-                Console.WriteLine(jsn);
-            }
+            var jsn = File.ReadAllText(rpath);
+            jsn.Contains("\"test\"").Should().BeTrue();
+            Console.WriteLine(jsn);
         }
 
         public interface ISettings {

@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- Runnable frameworks only. netstandard2.0 is not a runtime: VSTest reports
+             "No suitable test runtime provider was found for any source in this run" and
+             `dotnet test` exits 1 even when every other target passes.
+
+             One entry per shipped lib/ asset, because a test TFM only ever exercises the
+             asset NuGet picks for it:
+
+               net472  -> lib/netstandard2.0   (the fallback every unlisted consumer gets:
+                                                net47x, netcoreapp3.1, net5.0, net7.0,
+                                                net9.0, Unity, Xamarin)
+               net48   -> lib/net48
+               net6.0  -> lib/net6.0
+               net8.0  -> lib/net8.0
+               net10.0 -> lib/net10.0
+
+             Without the net472 row the netstandard2.0 asset ships completely untested. -->
+        <TargetFrameworks>net472;net48;net6.0;net8.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <RootNamespace>Nucs.JsonSettings.Tests</RootNamespace>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="coverlet.collector" Version="6.0.0" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+        <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
+        <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
+        <!-- AwesomeAssertions, not FluentAssertions. FluentAssertions 8 relicensed to a
+             commercial Xceed license that bills per developer for non-OSS use; this is the
+             Apache-2.0 community fork of 7.x, and the last version of this project's assertion
+             library that a consumer can build without a licence question. -->
+        <PackageReference Include="AwesomeAssertions" Version="9.5.0" />
+    </ItemGroup>
+
+    <!-- DynamicSettingsBagTests exercises `dynamic`, whose binder must be referenced
+         explicitly on .NET Framework. In-box everywhere else. -->
+    <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+        <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+      <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,247 @@
+﻿<Project>
+
+  <!-- ====================================================================================
+       Versioning — ONE place for every project in the repository.
+
+       WHAT WAS BROKEN. Both shipped csprojs hardcoded three separate version properties:
+       <AssemblyVersion>2.0.1</AssemblyVersion>, <FileVersion>2.0.1</FileVersion> and
+       <PackageVersion>2.0.2</PackageVersion>. Command-line properties cannot override a
+       value the project sets unconditionally, so the release workflow's
+       `-p:Version=$TAG` was silently discarded for packaging:
+
+           $ dotnet pack src/JsonSettings/JsonSettings.csproj -p:Version=2.1.0
+           -> Nucs.JsonSettings.2.0.2.nupkg
+
+       Tagging v2.1.0 would therefore have tried to publish 2.0.2, which is already on
+       nuget.org, and been rejected with a 409. Worse, a single artifact carried three
+       disagreeing versions at once: AssemblyVersion 2.1.0.0 (the workflow passed an EMPTY
+       -p:AssemblyVersion=, which blanked the project value and let the SDK fall back to
+       $(Version)), FileVersion 2.0.1 (project value, never overridden) and PackageVersion
+       2.0.2 (project value, never overridden).
+
+       WHAT REPLACES IT. Nothing below is unconditional, so anything passed on the command
+       line wins, and $(VersionPrefix) is derived FROM $(Version) when only $(Version) is
+       supplied. That makes a single `-p:Version=<tag>` correct on its own:
+
+           -p:Version=2.1.0         -> Assembly 2.1.0, File 2.1.0, Package 2.1.0
+           -p:Version=2.1.0-beta1   -> Assembly 2.1.0, File 2.1.0, Package 2.1.0-beta1
+
+       The prerelease suffix is dropped from AssemblyVersion/FileVersion deliberately: the
+       CLR binds on AssemblyVersion, so 2.1.0-beta1 and 2.1.0 must be the same identity or
+       every consumer needs a binding redirect to move between them. That is the same rule
+       the old workflow expressed as `ASSEMBLY_VERSION=${VERSION%%-*}` in shell — except
+       that computed value was written to an output the packaging job never set, and so
+       always expanded to the empty string.
+
+       BUMPING THE VERSION FOR A LOCAL/DEV BUILD: edit the fallback below. Releases do not
+       read it — they are driven entirely by the tag.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <!-- Split an explicit $(Version) into prefix + suffix so AssemblyVersion/FileVersion
+         (which the SDK derives from $(VersionPrefix)) never carry a prerelease tag. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != '' And $(Version.Contains('-'))">$(Version.Substring(0, $(Version.IndexOf('-'))))</VersionPrefix>
+    <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
+
+    <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
+         builds from a source archive rather than a tag. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.1.0</VersionPrefix>
+  </PropertyGroup>
+
+  <!-- ====================================================================================
+       Shared package identity.
+
+       These were duplicated verbatim across JsonSettings.csproj and
+       JsonSettings.Autosave.csproj — including a 19-line <PackageReleaseNotes> block
+       repeated character for character. Two copies of the same text drift; the copyright
+       year already read 2023 in both shipped projects and 2021 in the Examples project.
+
+       A project's own value still wins: Directory.Build.props is imported BEFORE the
+       project body, so anything a csproj sets afterwards overrides what is here. That is
+       how PackageId, Title, Description and Summary stay per-package.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <Authors>Nucs / Eli Belash</Authors>
+    <Company>Nucs / Eli Belash</Company>
+    <Copyright>Eli Belash @ 2026</Copyright>
+    <NeutralLanguage />
+    <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Nucs/JsonSettings</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+
+  <!-- ====================================================================================
+       Package presentation.
+
+       `dotnet pack` used to emit two deprecation warnings on every run:
+
+         NU5125  the 'licenseUrl' element will be deprecated; use 'license'
+         NU5048  'PackageIconUrl'/'iconUrl' is deprecated; use 'PackageIcon'/'icon'
+
+       Both are more than cosmetic. nuget.org stopped rendering iconUrl, so the packages
+       showed the default placeholder image, and licenseUrl pointed at a GitHub blob URL
+       that no tooling can parse into a license identity, so `dotnet list package` with
+       transitive output and every license-compliance scanner saw "unknown". The LICENSE
+       in this repository is MIT, so the SPDX expression states that in the form tools read.
+
+       The README was also declared but never shipped: JsonSettings.csproj had a
+       <None Include="..\..\README.md"> with only a <Link>, which puts the file in the IDE
+       solution tree and nowhere else. Packing it is what makes the nuget.org landing page
+       show anything other than the one-line <Description>.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)assets\icon.png" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+  <!-- ====================================================================================
+       Symbols and Source Link.
+
+       Both shipped projects carried
+       <AllowedOutputExtensionsInPackageBuildOutputFolder>...;.pdb</...>, which drops the
+       .pdb next to the .dll inside lib/. That does make stepping possible, but it inflates
+       every consumer's restore with debug data they did not ask for; across five targets
+       it roughly doubled the package, and it is not what any debugger looks for.
+
+       A .snupkg is the supported channel: nuget.org serves it from its symbol server, so
+       Visual Studio and Rider fetch symbols on demand rather than everyone paying for them
+       up front. Combined with Source Link the pdb also records where the sources live, so
+       stepping into the library resolves to the exact commit on GitHub.
+
+       ContinuousIntegrationBuild is scoped to CI on purpose: it normalises source paths to
+       deterministic ones, which is what makes a rebuild of the same commit produce a
+       byte-identical assembly, but it also makes local debugging harder to no benefit.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- ====================================================================================
+       Language version.
+
+       This was <LangVersion>9</LangVersion> in JsonSettings.csproj and 'latest' in
+       JsonSettings.Autosave, JsonSettings.Tests and JsonSettings.Examples. 'latest' is
+       not a version, it is "whatever this machine's SDK supports": C# 12 on the 8.0.x
+       SDK the workflow installed, C# 14 on a current developer machine. Code using a
+       newer construct therefore compiled locally and failed in CI, with an error
+       pointing at the syntax rather than at the mismatch that caused it.
+
+       12.0 is pinned repo-wide because it is the newest version buildable by an 8.0.x
+       SDK, so contributors who have not upgraded can still build everything except the
+       net10.0 target. The tests need at least 10.0 for file-scoped namespaces and
+       natural lambda types; nothing in the repo needs more than 12.
+
+       JsonSettings.csproj deliberately keeps its own, lower LangVersion; see the note
+       there.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+
+  <!-- ====================================================================================
+       Dependency vulnerability auditing.
+
+       NuGetAudit is on by default, but its default MODE is 'direct': only packages this
+       repository names itself are checked, and anything they drag in is not. That is the
+       same blind spot Dependabot has, because Dependabot reads manifests too. A
+       vulnerability reaching us through Castle.Core or the test SDK would be invisible to
+       both.
+
+       'all' audits the whole restored graph, transitive included, and 'low' means nothing
+       is filtered out by severity - for a settings library that people point at files
+       containing passwords, the interesting advisories are not only the ones scored high.
+
+       These are set explicitly rather than left to the SDK because the default has already
+       moved once between SDK versions, and a security control that silently changes scope
+       when a runner image updates is not a control.
+
+       Findings surface as NU1901-NU1904 at restore. They are deliberately NOT errors; see
+       the WarningsNotAsErrors note in Directory.Build.targets for why, and
+       .github/workflows/build-and-release.yml for the CI step that does fail on them.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageReleaseNotes>2.1.0
+
+Bug fixes
+- SuspendAutosave: fixed silent data loss. A change made inside a suspension scope defers
+  its save to the end of the scope, but the scope reached the settings object only through
+  a weak reference. If a garbage collection ran while the scope was open the pending write
+  was dropped with no exception and no partial file. Most likely to bite when the settings
+  variable is not touched again before the scope closes, which the JIT may treat as the
+  object being dead.
+- Encryption: fixed a truncated-read defect. The initialization vector was read without
+  checking how many bytes came back, so a short read left part of the IV zeroed and
+  produced garbage plaintext or a misleading padding error rather than failing. Files too
+  short to contain an IV are now rejected outright.
+- Encryption is unchanged on disk. Existing encrypted files stay readable: the cipher is
+  the same (AES-128-block CBC, previously spelled RijndaelManaged), and the PBKDF2
+  pseudorandom function is still SHA-1, now stated explicitly so it cannot be "modernised"
+  by accident. A ciphertext written by 2.0.x is checked against every target in the test
+  suite.
+- Paths: MoveFileEx is no longer P/Invoked on non-Windows, where it raised
+  DllNotFoundException instead of doing nothing. IsDirectoryWritable builds its probe path
+  with Path.Combine (it previously concatenated, testing a sibling of the intended
+  directory) and no longer collides between concurrent processes. Paths.ExecutingExe is
+  now nullable rather than being left null behind a non-nullable declaration when the
+  executable path cannot be determined, as under single-file publish.
+
+Targets and packaging
+- Multi-targeting: netstandard2.0, net48, net6.0, net8.0 and net10.0 for both
+  Nucs.JsonSettings and Nucs.JsonSettings.Autosave (Autosave previously shipped
+  netstandard2.0 only).
+- Removed the System.Security.SecureString 4.3.0 dependency. Every type used is part of
+  netstandard2.0 and in-box on .NET Framework and modern .NET, so it only added a
+  dependency edge.
+- Upgraded Newtonsoft.Json to 13.0.3 and Castle.Core to 5.1.1.
+- Packages now ship the README, declare their license as an SPDX expression instead of a
+  deprecated licenseUrl, and publish a .snupkg symbol package with Source Link instead of
+  embedding .pdb files in lib/.
+
+Testing
+- The test suite now runs against every shipped asset rather than a subset. net472 was
+  added specifically to cover lib/netstandard2.0, which is what consumers without an exact
+  framework match receive and which previously had no test behind it at all.
+- Tests also run on Linux, so the platform-conditional code in Paths is executed rather
+  than only compiled. .NET Framework targets remain Windows-only.
+
+2.0.2
+- Added RecoveryModule and .WithRecovery to capture parsing errors
+- Added JsonSettings.SuspendAutosave() extension
+- Added proxy construction guard to prevent unncessary allocation on proxy creation.
+- Fix non virtual built-in properties returning null after being wrapped with proxy.
+- Added ProxyGeneratedAttribute that is attached to every proxy-generated class
+- Module: made Dispose() inheritable.
+- Module.Socket: changed to WeakReference&lt;JsonSettings&gt;
+- SettingsBag: added support for SuspendAutosave #26
+- VersioningModule: some internal fixes and renames #19
+- Added RecoveryModule and WithRecovery api. #19
+- JsonSettings: added TryingRecover and Recovered events.
+- JsonSettings: Removed ThrowOnEmptyFile, this is handled by RecoveryModule now
+- Made all module functions and variables protected or virtual.
+- FluentJsonSettings: replaced dynamic creation with hardcoded creation (faster).
+- Added proper Versioning example
+- JsonSettings: add OnXXXX methods that trigger event changed to protected internal.
+- Made all modules extensible
+- SettingsBag: removed locking, optimized and replaced with ConcurrentDictionary for threadsafety
+- Added documentation</PackageReleaseNotes>
+  </PropertyGroup>
+
+</Project>
