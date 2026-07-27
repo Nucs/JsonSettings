@@ -71,21 +71,46 @@ private static string GetModuleFileNameLongPath() {
                 return GetModuleFileNameLongPath();
             } else {
                 try {
-                    return Path.GetFullPath(Process.GetCurrentProcess().MainModule.FileName);
+                    return Path.GetFullPath(Process.GetCurrentProcess().MainModule!.FileName!);
                 } catch (Exception) {
-                    return Uri.UnescapeDataString(new UriBuilder(Assembly.GetEntryAssembly().CodeBase).Path);
+#if NET6_0_OR_GREATER
+                    //Environment.ProcessPath replaces Assembly.CodeBase, which is obsolete
+                    //(SYSLIB0012) and throws outright for assemblies with no on-disk location -
+                    //single-file publish being the common case, and exactly the situation in
+                    //which the MainModule lookup above is most likely to have failed too.
+                    var processPath = Environment.ProcessPath;
+                    if (!string.IsNullOrEmpty(processPath))
+                        return Path.GetFullPath(processPath!);
+
+                    throw;
+#else
+                    return Uri.UnescapeDataString(new UriBuilder(Assembly.GetEntryAssembly()!.CodeBase!).Path);
+#endif
                 }
             }
         }
 
         /// <summary>
-        ///     The path to the entry exe.
+        ///     The path to the entry exe, or null when it could not be determined.
         /// </summary>
-        public static readonly FileInfo ExecutingExe;
+        /// <remarks>
+        ///     Nullable because there are real situations in which no answer exists: a
+        ///     single-file or trimmed publish, a host that loaded us without a process main
+        ///     module, or a platform where neither probe above succeeds. This used to be declared
+        ///     non-nullable and then left unassigned on the fallback path below, so every one of
+        ///     those cases handed callers a null through a reference the compiler had promised
+        ///     was not null.
+        /// </remarks>
+        public static readonly FileInfo? ExecutingExe;
 
         /// <summary>
         ///     The path to the entry exe's directory.
         /// </summary>
+        /// <remarks>
+        ///     Always non-null: falls back to the current directory, which is what
+        ///     <see cref="CombineToExecutingBase"/> resolves relative settings file names
+        ///     against.
+        /// </remarks>
         public static readonly DirectoryInfo ExecutingDirectory;
 
         static Paths() {
@@ -93,7 +118,8 @@ private static string GetModuleFileNameLongPath() {
                 ExecutingExe = new FileInfo(GetExecutablePath());
                 ExecutingDirectory = ExecutingExe.Directory!;
             } catch (Exception) {
-                ExecutingDirectory = new DirectoryInfo(Environment.CurrentDirectory!);
+                ExecutingExe = null;
+                ExecutingDirectory = new DirectoryInfo(Environment.CurrentDirectory);
             }
         }
 
@@ -104,7 +130,17 @@ private static string GetModuleFileNameLongPath() {
         /// <returns>True if successful; otherwise false.</returns>
         public static bool IsDirectoryWritable(this DirectoryInfo directory) {
             var success = false;
-            var fullPath = directory + "toster.txt";
+
+            //Path.Combine, not string concatenation. DirectoryInfo.ToString() returns the path
+            //exactly as it was constructed, WITHOUT a trailing separator, so `directory + "toster.txt"`
+            //turned C:\foo into C:\footoster.txt - a probe against a sibling of the directory
+            //being tested, in a directory that may not even exist. The answer was about the
+            //wrong location every time the caller passed a path without a trailing slash.
+            //
+            //The name is randomised because the probe file used to be a fixed "toster.txt":
+            //two processes checking the same directory at once would collide on FileMode.CreateNew
+            //and one of them would conclude the directory was read-only.
+            var fullPath = Path.Combine(directory.FullName, Path.GetRandomFileName());
 
             if (directory.Exists)
                 try {
@@ -208,7 +244,7 @@ private static string GetModuleFileNameLongPath() {
         /// <returns>bool</returns>
         /// <remarks>http://msdn.microsoft.com/en-us/library/aa365240(VS.85).aspx</remarks>
         [DllImport("kernel32.dll", EntryPoint = "MoveFileEx")]
-        private static extern bool MoveFileEx(string lpExistingFileName, string lpNewFileName, MoveFileFlags dwFlags);
+        private static extern bool MoveFileEx(string lpExistingFileName, string? lpNewFileName, MoveFileFlags dwFlags);
 
         public static FileInfo MarkForDeletion(FileInfo file) {
             MarkForDeletion(file.FullName);
@@ -218,6 +254,15 @@ private static string GetModuleFileNameLongPath() {
         public static string MarkForDeletion(string filename) {
             if (File.Exists(filename) == false)
                 return filename;
+
+            //MoveFileEx lives in kernel32. Unlike GetExecutablePath above, this had no platform
+            //guard, so on Linux or macOS the P/Invoke raised DllNotFoundException instead of
+            //quietly doing nothing - turning a best-effort cleanup into a crash on a library that
+            //advertises itself as cross-platform. There is no portable equivalent of
+            //delete-on-reboot, so the honest behaviour off Windows is to decline.
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return filename;
+
             //Usage for marking the file to delete on reboot
             MoveFileEx(filename, null, MoveFileFlags.MOVEFILE_DELAY_UNTIL_REBOOT);
             return filename;
