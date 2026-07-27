@@ -2,12 +2,14 @@
 
   <PropertyGroup>
 	  <Summary>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Description>
     <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>
     <PackageId>Nucs.JsonSettings.Autosave</PackageId>
     <Title>Nucs.JsonSettings.Autosave</Title>
+    <!-- GeneratePackageOnBuild is deliberately absent; see the note in JsonSettings.csproj.
+         In short: on a multi-targeted project it makes `dotnet pack` from a clean tree fail
+         with NU5026, and packaging is the release pipeline's job. -->
   </PropertyGroup>
 
   <ItemGroup>
