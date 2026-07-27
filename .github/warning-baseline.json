@@ -1,0 +1,30 @@
+{
+  "comment": [
+    "Frozen count of distinct compiler-warning sites per project and target framework.",
+    "Checked by .github/check-warning-baseline.ps1; see Directory.Build.targets for why",
+    "the numbers differ so much between legacy and modern targets.",
+    "",
+    "A site is one file(line,col) + warning code pair, deduplicated, so the same warning",
+    "reported by several inner builds counts once.",
+    "",
+    "These numbers may only ever go DOWN. If a change legitimately reduces them, lower the",
+    "baseline in the same commit; the checker treats an unlowered baseline as a warning,",
+    "not a failure, so it will not block you."
+  ],
+  "projects": {
+    "src/JsonSettings/JsonSettings.csproj": {
+      "netstandard2.0": 32,
+      "net48": 32,
+      "net6.0": 69,
+      "net8.0": 69,
+      "net10.0": 69
+    },
+    "src/JsonSettings.Autosave/JsonSettings.Autosave.csproj": {
+      "netstandard2.0": 0,
+      "net48": 0,
+      "net6.0": 0,
+      "net8.0": 0,
+      "net10.0": 0
+    }
+  }
+}

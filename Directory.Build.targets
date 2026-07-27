@@ -1,0 +1,68 @@
+<Project>
+
+  <!-- ====================================================================================
+       Warning policy.
+
+       This file exists rather than Directory.Build.props because the condition below reads
+       $(IsPackable), which projects set in their own body. props is imported BEFORE the
+       project body and would see it empty; targets is imported after.
+
+       WHY THERE IS A POLICY AT ALL. Multi-targeting a library with <Nullable>enable</Nullable>
+       and no #if made the nullable warning surface depend on the target framework, because
+       the reference assemblies differ: netstandard2.0 and net48 are unannotated, net6.0 and
+       later are annotated, so the compiler can see nullability mismatches on modern targets
+       that it cannot see on legacy ones. A clean rebuild of src/JsonSettings gives:
+
+           netstandard2.0   32 warning sites
+           net48            32
+           net6.0           69
+           net8.0           69
+           net10.0          69
+
+       Those 35-odd extra warnings are not new defects introduced by the retarget; they are
+       pre-existing nullability gaps that only became visible once an annotated BCL was in
+       the picture. CS8765 fires only on net6.0+ (DynamicSettingsBag overrides), CS8604 only
+       on netstandard2.0/net48.
+
+       The same mechanism is why the SYSLIB obsoletions and the Roslyn analyzers had never
+       been evaluated against this code at all before the retarget. Those did turn up real
+       defects (a discarded Stream.Read return value corrupting an initialization vector,
+       and a PBKDF2 call whose SHA-1 PRF was an invisible default rather than a documented
+       file-format constant) and they are fixed rather than allowlisted. SYSLIB0051 is the
+       one obsoletion deliberately kept: InvalidVersionException's serialization constructor
+       exists for .NET Framework binary-serialization compatibility.
+
+       WHAT THE POLICY DOES. Warnings are errors, with an explicit allowlist of exactly the
+       codes the repository emits today. The debt stays visible as warnings and nothing is
+       silenced, but a NEW KIND of problem fails the build instead of scrolling past in a
+       log that already prints hundreds of lines. The counts above are additionally frozen
+       by .github/check-warning-baseline.ps1, which fails if the number of sites grows, so
+       new instances of the existing codes cannot accumulate either.
+
+       SHRINKING THE ALLOWLIST is the way to pay the debt down: fix every site for one code,
+       delete that code from the list, and it can never come back.
+
+       NOT COVERED: src/JsonSettings.Autosave does not set <Nullable>enable</Nullable> at
+       all, which is why it reports 0 sites rather than a real number. Enabling it there is
+       a separate piece of work with its own warning wave, deliberately not bundled here.
+       ==================================================================================== -->
+  <PropertyGroup Condition="'$(IsPackable)' != 'false'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Every code src/ emits as of the 2.1.0 baseline. One concern per line.
+           CS0109      member does not hide an inherited member; 'new' is redundant
+           CS0168      variable declared but never used
+           CS0219      variable assigned but its value is never used
+           CS86xx      nullable reference type analysis
+           CS87xx      nullable annotation/constraint mismatches on overrides and interfaces
+           SYSLIB0051  formatter-based serialization ctor, kept for .NET Framework compat -->
+    <WarningsNotAsErrors>
+      $(WarningsNotAsErrors);
+      CS0109;CS0168;CS0219;
+      CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8619;CS8620;CS8622;CS8625;
+      CS8714;CS8765;CS8767;
+      SYSLIB0051
+    </WarningsNotAsErrors>
+  </PropertyGroup>
+
+</Project>
