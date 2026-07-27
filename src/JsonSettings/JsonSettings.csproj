@@ -3,7 +3,6 @@
     <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
 	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
 Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summary>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>Easiest way you'll ever write settings for your app. This library is built to be modular and one-liner exploiting the powerful serialization capabilities of Json.NET out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.</Description>
     <RootNamespace>Nucs.JsonSettings</RootNamespace>
     <PackageId>Nucs.JsonSettings</PackageId>
@@ -15,6 +14,12 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- GeneratePackageOnBuild is deliberately absent. On a multi-targeted project it hooks
+         Pack into the build, and the hooked Pack runs before every inner target framework has
+         written its assembly, so `dotnet pack` from a clean tree fails with NU5026 reporting
+         that a target framework's assembly "was not found on disk". Packaging is the release
+         pipeline's job and it packs explicitly; a developer build has no reason to emit
+         .nupkg files into bin/ as a side effect. -->
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Autosave\**" />
