@@ -36,6 +36,22 @@ namespace Nucs.JsonSettings.Autosave {
                 settings.Save();
         }
 
+        /// <summary>
+        ///     Resolves a strong reference to the <see cref="JsonSettings"/> this module is attached to,
+        ///     or null when the module is detached or the instance has already been collected.
+        /// </summary>
+        /// <remarks>
+        ///     <see cref="Module.Socket"/> is a <see cref="WeakReference{T}"/>, so anything that must
+        ///     still be able to reach the settings later has to hold on to the returned reference for
+        ///     that whole period rather than re-resolving the socket on demand.
+        ///     See <see cref="Autosave.SuspendAutosave"/>.
+        /// </remarks>
+        internal JsonSettings? TryGetSettings() {
+            if (Socket != null && Socket.TryGetTarget(out var settings))
+                return settings;
+            return null;
+        }
+
         protected override void Dispose(bool disposing) {
             base.Dispose(disposing);
             NotificationsHandler?.Dispose();
