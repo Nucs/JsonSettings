@@ -3,8 +3,21 @@
     <PropertyGroup>
         <!-- Runnable frameworks only. netstandard2.0 is not a runtime: VSTest reports
              "No suitable test runtime provider was found for any source in this run" and
-             `dotnet test` exits 1 even when every other target passes. -->
-        <TargetFrameworks>net48;net6.0;net8.0</TargetFrameworks>
+             `dotnet test` exits 1 even when every other target passes.
+
+             One entry per shipped lib/ asset, because a test TFM only ever exercises the
+             asset NuGet picks for it:
+
+               net472  -> lib/netstandard2.0   (the fallback every unlisted consumer gets:
+                                                net47x, netcoreapp3.1, net5.0, net7.0,
+                                                net9.0, Unity, Xamarin)
+               net48   -> lib/net48
+               net6.0  -> lib/net6.0
+               net8.0  -> lib/net8.0
+               net10.0 -> lib/net10.0
+
+             Without the net472 row the netstandard2.0 asset ships completely untested. -->
+        <TargetFrameworks>net472;net48;net6.0;net8.0;net10.0</TargetFrameworks>
         <ImplicitUsings>disable</ImplicitUsings>
         <RootNamespace>Nucs.JsonSettings.Tests</RootNamespace>
         <IsPackable>false</IsPackable>
@@ -20,7 +33,9 @@
         <PackageReference Include="FluentAssertions" Version="4.19.4" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <!-- DynamicSettingsBagTests exercises `dynamic`, whose binder must be referenced
+         explicitly on .NET Framework. In-box everywhere else. -->
+    <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
         <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     </ItemGroup>
 
