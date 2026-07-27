@@ -1,0 +1,113 @@
+<Project>
+
+  <!-- ====================================================================================
+       Versioning — ONE place for every project in the repository.
+
+       WHAT WAS BROKEN. Both shipped csprojs hardcoded three separate version properties:
+       <AssemblyVersion>2.0.1</AssemblyVersion>, <FileVersion>2.0.1</FileVersion> and
+       <PackageVersion>2.0.2</PackageVersion>. Command-line properties cannot override a
+       value the project sets unconditionally, so the release workflow's
+       `-p:Version=$TAG` was silently discarded for packaging:
+
+           $ dotnet pack src/JsonSettings/JsonSettings.csproj -p:Version=2.1.0
+           -> Nucs.JsonSettings.2.0.2.nupkg
+
+       Tagging v2.1.0 would therefore have tried to publish 2.0.2, which is already on
+       nuget.org, and been rejected with a 409. Worse, a single artifact carried three
+       disagreeing versions at once: AssemblyVersion 2.1.0.0 (the workflow passed an EMPTY
+       -p:AssemblyVersion=, which blanked the project value and let the SDK fall back to
+       $(Version)), FileVersion 2.0.1 (project value, never overridden) and PackageVersion
+       2.0.2 (project value, never overridden).
+
+       WHAT REPLACES IT. Nothing below is unconditional, so anything passed on the command
+       line wins, and $(VersionPrefix) is derived FROM $(Version) when only $(Version) is
+       supplied. That makes a single `-p:Version=<tag>` correct on its own:
+
+           -p:Version=2.1.0         -> Assembly 2.1.0, File 2.1.0, Package 2.1.0
+           -p:Version=2.1.0-beta1   -> Assembly 2.1.0, File 2.1.0, Package 2.1.0-beta1
+
+       The prerelease suffix is dropped from AssemblyVersion/FileVersion deliberately: the
+       CLR binds on AssemblyVersion, so 2.1.0-beta1 and 2.1.0 must be the same identity or
+       every consumer needs a binding redirect to move between them. That is the same rule
+       the old workflow expressed as `ASSEMBLY_VERSION=${VERSION%%-*}` in shell — except
+       that computed value was written to an output the packaging job never set, and so
+       always expanded to the empty string.
+
+       BUMPING THE VERSION FOR A LOCAL/DEV BUILD: edit the fallback below. Releases do not
+       read it — they are driven entirely by the tag.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <!-- Split an explicit $(Version) into prefix + suffix so AssemblyVersion/FileVersion
+         (which the SDK derives from $(VersionPrefix)) never carry a prerelease tag. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != '' And $(Version.Contains('-'))">$(Version.Substring(0, $(Version.IndexOf('-'))))</VersionPrefix>
+    <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
+
+    <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
+         builds from a source archive rather than a tag. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.1.0</VersionPrefix>
+  </PropertyGroup>
+
+  <!-- ====================================================================================
+       Shared package identity.
+
+       These were duplicated verbatim across JsonSettings.csproj and
+       JsonSettings.Autosave.csproj — including a 19-line <PackageReleaseNotes> block
+       repeated character for character. Two copies of the same text drift; the copyright
+       year already read 2023 in both shipped projects and 2021 in the Examples project.
+
+       A project's own value still wins: Directory.Build.props is imported BEFORE the
+       project body, so anything a csproj sets afterwards overrides what is here. That is
+       how PackageId, Title, Description and Summary stay per-package.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <Authors>Nucs / Eli Belash</Authors>
+    <Company>Nucs / Eli Belash</Company>
+    <Copyright>Eli Belash @ 2026</Copyright>
+    <NeutralLanguage />
+    <PackageProjectUrl>https://github.com/Nucs/JsonSettings</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Nucs/JsonSettings</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageReleaseNotes>2.1.0
+- Multi-targeting: netstandard2.0, net48, net6.0, net8.0 and net10.0 for both
+  Nucs.JsonSettings and Nucs.JsonSettings.Autosave (Autosave previously shipped
+  netstandard2.0 only).
+- Removed the System.Security.SecureString 4.3.0 dependency. Every type used is part of
+  netstandard2.0 and in-box on .NET Framework and modern .NET, so it only added a
+  dependency edge.
+- Upgraded Newtonsoft.Json to 13.0.3 and Castle.Core to 5.1.1.
+- Packages now ship the README, declare their license as an SPDX expression instead of a
+  deprecated licenseUrl, and publish a .snupkg symbol package with Source Link instead of
+  embedding .pdb files in lib/.
+- Paths: MoveFileEx is no longer P/Invoked on non-Windows, IsDirectoryWritable builds its
+  probe path with Path.Combine, and Paths.ExecutingExe is no longer left null when the
+  executable path cannot be determined (single-file publish).
+
+2.0.2
+- Added RecoveryModule and .WithRecovery to capture parsing errors
+- Added JsonSettings.SuspendAutosave() extension
+- Added proxy construction guard to prevent unncessary allocation on proxy creation.
+- Fix non virtual built-in properties returning null after being wrapped with proxy.
+- Added ProxyGeneratedAttribute that is attached to every proxy-generated class
+- Module: made Dispose() inheritable.
+- Module.Socket: changed to WeakReference&lt;JsonSettings&gt;
+- SettingsBag: added support for SuspendAutosave #26
+- VersioningModule: some internal fixes and renames #19
+- Added RecoveryModule and WithRecovery api. #19
+- JsonSettings: added TryingRecover and Recovered events.
+- JsonSettings: Removed ThrowOnEmptyFile, this is handled by RecoveryModule now
+- Made all module functions and variables protected or virtual.
+- FluentJsonSettings: replaced dynamic creation with hardcoded creation (faster).
+- Added proper Versioning example
+- JsonSettings: add OnXXXX methods that trigger event changed to protected internal.
+- Made all modules extensible
+- SettingsBag: removed locking, optimized and replaced with ConcurrentDictionary for threadsafety
+- Added documentation</PackageReleaseNotes>
+  </PropertyGroup>
+
+</Project>
