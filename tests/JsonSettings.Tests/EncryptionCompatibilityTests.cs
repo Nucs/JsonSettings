@@ -101,6 +101,44 @@ namespace Nucs.JsonSettings.Tests {
                 .Should().Throw<Exception>("a file too short to hold an IV cannot be decrypted");
         }
 
+        /// <summary>
+        ///     A wrong password whose decryption happens to survive padding validation must still
+        ///     be reported as a wrong password.
+        /// </summary>
+        /// <remarks>
+        ///     Detection used to rest entirely on the CryptographicException raised by PKCS7
+        ///     padding validation, which is a probabilistic signal: CBC decryption under the
+        ///     wrong key yields random bytes whose final block is valid padding by chance about
+        ///     once in 256 attempts - measured at 0.40% over 3000 loads. In those cases
+        ///     decryption "succeeded", garbage reached the JSON parser, and the caller was told
+        ///     "Unable to parse file" with a JsonReaderException about an unexpected character.
+        ///     That reads as a corrupt file rather than a mistyped password, which is the one
+        ///     thing the message needed to convey.
+        ///
+        ///     Not hypothetical: it surfaced as a red CI run, on one framework out of five, in
+        ///     SettingsBag_InvalidPassword.
+        ///
+        ///     "p433" is not arbitrary. It was found by searching wrong passwords against the
+        ///     fixture above for one whose decryption passes padding validation, so this hits the
+        ///     0.4% branch on EVERY run instead of once in 256. Both AES and PBKDF2 are
+        ///     deterministic functions of key and input, so the collision reproduces identically
+        ///     on every framework and platform - including across the three different KDF APIs
+        ///     Hash.Pbkdf2 uses. Verified failing against the unfixed library, where it reports
+        ///     the parse error quoted above.
+        /// </remarks>
+        [TestMethod]
+        public void ReportsAWrongPasswordAsAWrongPasswordEvenWhenPaddingValidates() {
+            using var f = new TempFile();
+            File.WriteAllBytes(f.FileName, Convert.FromBase64String(PreExistingCiphertextBase64));
+
+            new Action(() => JsonSettings.Configure<CompatSettings>(f.FileName)
+                                         .WithEncryption("p433")
+                                         .LoadNow())
+                .Should().Throw<JsonSettingsException>()
+                .Where(e => e.Message.StartsWith("Password", StringComparison.OrdinalIgnoreCase),
+                       "a wrong password must blame the password, not the file contents");
+        }
+
         public class CompatSettings : JsonSettings {
             public override string FileName { get; set; }
             public string Value { get; set; }
