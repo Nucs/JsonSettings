@@ -1,4 +1,4 @@
-# <img src="https://i.imgur.com/BOExs52.png" width="25" style="margin: 5px 0px 0px 10px"/> JsonSettings
+# <img src="assets/icon.png" width="25" style="margin: 5px 0px 0px 10px"/> JsonSettings
 [![Nuget version](https://img.shields.io/nuget/vpre/Nucs.JsonSettings.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![Nuget downloads](https://osscdn.nucs.workers.dev/jsonsettings-downloads-ujVrxmtCZN.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![GitHub license](https://osscdn.nucs.workers.dev/jsonsettings-license-yaUkzolvyW.svg)](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
