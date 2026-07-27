@@ -30,13 +30,18 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------------------
-  # Build + test. Runs on every push, pull request and tag.
+  # Build + test everything. Runs on every push, pull request and tag.
   #
-  # windows-latest is required, not preferred: two of the five test target frameworks are
-  # net472 and net48, and .NET Framework assemblies need a .NET Framework runtime to execute.
-  # A Linux runner can compile them but cannot run them, which would silently reduce the
-  # matrix to the three .NET targets - including dropping net472, the only target that
-  # exercises the netstandard2.0 asset that most consumers actually receive.
+  # windows-latest is required here, not preferred: two of the five test target frameworks
+  # are net472 and net48, and .NET Framework assemblies need a .NET Framework runtime to
+  # execute. A Linux runner can compile them but cannot run them, which would silently
+  # reduce the matrix to the three .NET targets - including dropping net472, the only
+  # target that exercises the netstandard2.0 asset that most consumers actually receive.
+  #
+  # This job therefore owns everything that can only be done on Windows: the full solution
+  # build (JsonSettings.Examples is a WinForms app and does not build off Windows at all),
+  # the warning baseline, and the complete five-framework test matrix. See test-linux for
+  # the half that Windows cannot answer.
   # ---------------------------------------------------------------------------------------
   build:
     runs-on: windows-latest
@@ -75,7 +80,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: coverage-reports
+        name: coverage-reports-windows
         path: |
           **/*.cobertura.xml
         retention-days: 5
@@ -84,7 +89,68 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results
+        name: test-results-windows
+        path: ${{ github.workspace }}/**/TestResults/**/*.trx
+        retention-days: 5
+
+  # ---------------------------------------------------------------------------------------
+  # The half Windows cannot answer.
+  #
+  # This library advertises itself as cross-platform and has real platform-conditional
+  # code, all of it in Inline/Paths.cs: GetExecutablePath branches on
+  # RuntimeInformation.IsOSPlatform, MarkForDeletion P/Invokes kernel32, and the
+  # path-comparison helpers switch separator characters. None of that was ever executed by
+  # CI, because CI only ran on Windows. That is not a theoretical gap - the non-Windows
+  # branch of GetExecutablePath was calling the obsolete Assembly.CodeBase, and
+  # MarkForDeletion would raise DllNotFoundException off Windows rather than declining.
+  #
+  # It genuinely exercises that code rather than merely compiling it: the Paths static
+  # constructor runs on the first settings load, so every test in the suite goes through
+  # GetExecutablePath before it does anything else.
+  #
+  # Only the .NET targets run here. net472 and net48 are deliberately absent - Mono is not
+  # what this library ships against, and pretending to test .NET Framework on Linux would
+  # be worse than not testing it. Those two are covered on Windows.
+  #
+  # The solution is NOT built here. JsonSettings.Examples is a WinForms app targeting
+  # net*-windows, which cannot build on Linux at all, so this builds the test project
+  # directly - which pulls in both shipped libraries as project references anyway.
+  # ---------------------------------------------------------------------------------------
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          6.0.x
+          8.0.x
+          10.0.x
+
+    - name: Test
+      shell: bash
+      run: |
+        set -euo pipefail
+        for framework in net6.0 net8.0 net10.0; do
+          echo "::group::test $framework"
+          # -f per framework rather than one run: it stops the build from also compiling the
+          # net472/net48 targets, which would succeed and then produce test assemblies no
+          # runtime on this machine can load.
+          dotnet test tests/JsonSettings.Tests/JsonSettings.Tests.csproj \
+            --configuration Release \
+            --framework "$framework" \
+            --verbosity normal \
+            --logger trx
+          echo "::endgroup::"
+        done
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-linux
         path: ${{ github.workspace }}/**/TestResults/**/*.trx
         retention-days: 5
 
@@ -96,7 +162,7 @@ jobs:
   # want the report - skipped the whole job and published nothing.
   # ---------------------------------------------------------------------------------------
   report:
-    needs: build
+    needs: [ build, test-linux ]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -106,17 +172,20 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # pattern + merge-multiple so both platforms' results land in one tree.
     - name: Download Coverage Reports
       uses: actions/download-artifact@v4
       continue-on-error: true
       with:
-        name: coverage-reports
+        pattern: coverage-reports-*
+        merge-multiple: true
 
     - name: Download Test Results
       uses: actions/download-artifact@v4
       continue-on-error: true
       with:
-        name: test-results
+        pattern: test-results-*
+        merge-multiple: true
 
     - name: Combine Coverage Reports
       uses: danielpalme/ReportGenerator-GitHub-Action@5.3.11
@@ -145,18 +214,20 @@ jobs:
 
     # Both of the following need a WRITE token. A pull_request event from a fork gets a
     # read-only one no matter what `permissions:` says, so they are skipped there rather than
-    # left to fail the job with a 403 that looks like a broken build.
+    # left to fail the job with a 403 that looks like a broken build. Because the condition
+    # now excludes every case where they cannot work, they are allowed to fail when they do
+    # run - a 403 or a malformed report is a real problem worth surfacing.
     - name: Add Coverage PR Comment
-      uses: marocchino/sticky-pull-request-comment@v2
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      uses: marocchino/sticky-pull-request-comment@v2
       continue-on-error: true
       with:
         recreate: true
         path: code-coverage-results.md
 
     - name: Publish Test Results
-      uses: EnricoMi/publish-unit-test-result-action@v2
       if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      uses: EnricoMi/publish-unit-test-result-action@v2
       continue-on-error: true
       with:
         files: "**/*.trx"
@@ -170,7 +241,7 @@ jobs:
   # generated release notes and never created a release.
   # ---------------------------------------------------------------------------------------
   validate-release:
-    needs: build
+    needs: [ build, test-linux ]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     outputs:
