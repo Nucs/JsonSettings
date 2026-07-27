@@ -1,21 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
-	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 	<Summary>Easiest way you'll ever write settings for your app. Cross-platform, modular and still a one-liner.
 Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summary>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageIcon>icon.png</PackageIcon>
-  </PropertyGroup>
-
-  <!-- The icon ships inside the package. PackageIconUrl (which pointed at imgur) is deprecated
-       by NuGet and is no longer rendered on nuget.org. -->
-  <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)..\..\assets\icon.png" Pack="true" PackagePath="\" Visible="false" />
-  </ItemGroup>
-
-  <PropertyGroup>
     <Description>Easiest way you'll ever write settings for your app. This library is built to be modular and one-liner exploiting the powerful serialization capabilities of Json.NET out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.</Description>
     <RootNamespace>Nucs.JsonSettings</RootNamespace>
     <PackageId>Nucs.JsonSettings</PackageId>
@@ -34,10 +22,5 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\..\README.md">
-      <Link>README.md</Link>
-    </None>
-  </ItemGroup>
 
 </Project>

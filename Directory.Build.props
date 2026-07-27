@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
 
   <!-- ====================================================================================
        Versioning — ONE place for every project in the repository.
@@ -70,6 +70,62 @@
     <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+
+  <!-- ====================================================================================
+       Package presentation.
+
+       `dotnet pack` used to emit two deprecation warnings on every run:
+
+         NU5125  the 'licenseUrl' element will be deprecated; use 'license'
+         NU5048  'PackageIconUrl'/'iconUrl' is deprecated; use 'PackageIcon'/'icon'
+
+       Both are more than cosmetic. nuget.org stopped rendering iconUrl, so the packages
+       showed the default placeholder image, and licenseUrl pointed at a GitHub blob URL
+       that no tooling can parse into a license identity, so `dotnet list package` with
+       transitive output and every license-compliance scanner saw "unknown". The LICENSE
+       in this repository is MIT, so the SPDX expression states that in the form tools read.
+
+       The README was also declared but never shipped: JsonSettings.csproj had a
+       <None Include="..\..\README.md"> with only a <Link>, which puts the file in the IDE
+       solution tree and nowhere else. Packing it is what makes the nuget.org landing page
+       show anything other than the one-line <Description>.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)assets\icon.png" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+  <!-- ====================================================================================
+       Symbols and Source Link.
+
+       Both shipped projects carried
+       <AllowedOutputExtensionsInPackageBuildOutputFolder>...;.pdb</...>, which drops the
+       .pdb next to the .dll inside lib/. That does make stepping possible, but it inflates
+       every consumer's restore with debug data they did not ask for; across five targets
+       it roughly doubled the package, and it is not what any debugger looks for.
+
+       A .snupkg is the supported channel: nuget.org serves it from its symbol server, so
+       Visual Studio and Rider fetch symbols on demand rather than everyone paying for them
+       up front. Combined with Source Link the pdb also records where the sources live, so
+       stepping into the library resolves to the exact commit on GitHub.
+
+       ContinuousIntegrationBuild is scoped to CI on purpose: it normalises source paths to
+       deterministic ones, which is what makes a rebuild of the same commit produce a
+       byte-identical assembly, but it also makes local debugging harder to no benefit.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <PropertyGroup>

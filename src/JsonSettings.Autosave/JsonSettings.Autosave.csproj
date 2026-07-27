@@ -1,20 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 	  <Summary>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageLicenseUrl>https://github.com/Nucs/JsonSettings/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageIcon>icon.png</PackageIcon>
-  </PropertyGroup>
-
-  <!-- The icon ships inside the package. PackageIconUrl (which pointed at imgur) is deprecated
-       by NuGet and is no longer rendered on nuget.org. -->
-  <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)..\..\assets\icon.png" Pack="true" PackagePath="\" Visible="false" />
-  </ItemGroup>
-
-  <PropertyGroup>
     <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Description>
     <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>
