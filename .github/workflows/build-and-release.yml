@@ -172,7 +172,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # pattern + merge-multiple so both platforms' results land in one tree.
+    # pattern + merge-multiple so both platforms' results land in one tree. continue-on-error
+    # is kept HERE and only here, because "the artifact does not exist" is a legitimate
+    # outcome: a build that failed to compile never reached its test step. Everything
+    # downstream is guarded on whether anything was actually downloaded, so it does not have
+    # to swallow its own failures too.
     - name: Download Coverage Reports
       uses: actions/download-artifact@v4
       continue-on-error: true
@@ -187,9 +191,28 @@ jobs:
         pattern: test-results-*
         merge-multiple: true
 
+    # Distinguishes "there is nothing to report" from "reporting is broken". Every step in
+    # this job used to carry continue-on-error: true, which meant the job could not fail -
+    # so a reporting pipeline that silently stopped working looked exactly like a healthy
+    # one. Nothing below swallows failures any more; instead the steps are skipped outright
+    # when there is genuinely no input, which is the only case that was ever being excused.
+    - name: Look for reportable input
+      id: inputs
+      shell: bash
+      run: |
+        set -euo pipefail
+        trx=$(find . -name '*.trx' | wc -l)
+        cov=$(find . -name '*.cobertura.xml' | wc -l)
+        echo "Found $trx trx file(s) and $cov coverage file(s)."
+        echo "trx=$trx" >> $GITHUB_OUTPUT
+        echo "coverage=$cov" >> $GITHUB_OUTPUT
+        if [ "$trx" -eq 0 ] && [ "$cov" -eq 0 ]; then
+          echo "::notice::No test or coverage artifacts. The build did not reach its test step; nothing to report."
+        fi
+
     - name: Combine Coverage Reports
+      if: steps.inputs.outputs.coverage != '0'
       uses: danielpalme/ReportGenerator-GitHub-Action@5.3.11
-      continue-on-error: true
       with:
         reports: "**/*.cobertura.xml"
         targetdir: "${{ github.workspace }}"
@@ -199,8 +222,8 @@ jobs:
         tag: "${{ github.run_number }}_${{ github.run_id }}"
 
     - name: Publish Code Coverage Report
+      if: steps.inputs.outputs.coverage != '0'
       uses: irongut/CodeCoverageSummary@v1.3.0
-      continue-on-error: true
       with:
         filename: "Cobertura.xml"
         badge: true
@@ -218,17 +241,21 @@ jobs:
     # now excludes every case where they cannot work, they are allowed to fail when they do
     # run - a 403 or a malformed report is a real problem worth surfacing.
     - name: Add Coverage PR Comment
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      if: >-
+        steps.inputs.outputs.coverage != '0'
+        && github.event_name == 'pull_request'
+        && github.event.pull_request.head.repo.full_name == github.repository
       uses: marocchino/sticky-pull-request-comment@v2
-      continue-on-error: true
       with:
         recreate: true
         path: code-coverage-results.md
 
     - name: Publish Test Results
-      if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      if: >-
+        always()
+        && steps.inputs.outputs.trx != '0'
+        && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
       uses: EnricoMi/publish-unit-test-result-action@v2
-      continue-on-error: true
       with:
         files: "**/*.trx"
 
