@@ -3,36 +3,76 @@ name: Build and Release
 on:
   push:
     branches: [ "master" ]
-    tags: [ "v*", "testpublish/*" ]
+    tags:
+      - "v*"             # real release: pack, publish to nuget.org, create a GitHub release
+      - "testpublish/*"  # dry run: pack and verify, publish nothing
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
-permissions: write-all
+# Least privilege by default; jobs opt in to what they need. This was `permissions: write-all`,
+# which handed every job in the file - including ones that only read - the ability to push code,
+# publish releases and rewrite issues.
+permissions:
+  contents: read
+
+# A second push to the same branch makes the first run's results irrelevant. Tags are excluded
+# from cancellation: a release run must never be killed halfway between pushing a package to
+# nuget.org and creating the release that documents it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
+  # ---------------------------------------------------------------------------------------
+  # Build + test. Runs on every push, pull request and tag.
+  #
+  # windows-latest is required, not preferred: two of the five test target frameworks are
+  # net472 and net48, and .NET Framework assemblies need a .NET Framework runtime to execute.
+  # A Linux runner can compile them but cannot run them, which would silently reduce the
+  # matrix to the three .NET targets - including dropping net472, the only target that
+  # exercises the netstandard2.0 asset that most consumers actually receive.
+  # ---------------------------------------------------------------------------------------
   build:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
-    
+    - uses: actions/checkout@v4
+
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
+        # global.json pins the SDK floor at 10.0.100 (the minimum that can build net10.0).
+        # 6.0.x and 8.0.x are installed alongside so their targeting packs are present.
         dotnet-version: |
           6.0.x
           8.0.x
+          10.0.x
 
-    - name: Restore dependencies
+    - name: Restore
       run: dotnet restore JsonSettings.sln
-      
+
     - name: Build
       run: dotnet build JsonSettings.sln --configuration Release --no-restore
-      
+
+    # Warnings are already errors for anything outside the allowlist in
+    # Directory.Build.targets. This catches the other half: new instances of the codes that
+    # ARE allowlisted, which the compiler will happily let through forever. See
+    # .github/warning-baseline.json.
+    - name: Check warning baseline
+      shell: pwsh
+      run: ./.github/check-warning-baseline.ps1
+
     - name: Test
       run: dotnet test JsonSettings.sln --configuration Release --no-build --verbosity normal --logger trx --collect:"XPlat Code Coverage"
-      
+
     - name: Upload Coverage Reports
       uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: coverage-reports
         path: |
@@ -44,27 +84,42 @@ jobs:
       if: always()
       with:
         name: test-results
-        path: ${{ github.workspace }}/**/TestResults/**/*
+        path: ${{ github.workspace }}/**/TestResults/**/*.trx
         retention-days: 5
 
+  # ---------------------------------------------------------------------------------------
+  # Coverage and test reporting.
+  #
+  # `if: always()` at the JOB level, not just on the steps inside it: the previous version
+  # only had it on the publish step, so a failing test run - the exact case where you most
+  # want the report - skipped the whole job and published nothing.
+  # ---------------------------------------------------------------------------------------
   report:
     needs: build
+    if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Download Coverage Reports
       uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: coverage-reports
-        
+
     - name: Download Test Results
       uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: test-results
 
     - name: Combine Coverage Reports
-      uses: danielpalme/ReportGenerator-GitHub-Action@5.2.4
+      uses: danielpalme/ReportGenerator-GitHub-Action@5.3.11
+      continue-on-error: true
       with:
         reports: "**/*.cobertura.xml"
         targetdir: "${{ github.workspace }}"
@@ -75,6 +130,7 @@ jobs:
 
     - name: Publish Code Coverage Report
       uses: irongut/CodeCoverageSummary@v1.3.0
+      continue-on-error: true
       with:
         filename: "Cobertura.xml"
         badge: true
@@ -86,123 +142,301 @@ jobs:
         output: both
         thresholds: "10 30"
 
+    # Both of the following need a WRITE token. A pull_request event from a fork gets a
+    # read-only one no matter what `permissions:` says, so they are skipped there rather than
+    # left to fail the job with a 403 that looks like a broken build.
     - name: Add Coverage PR Comment
       uses: marocchino/sticky-pull-request-comment@v2
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      continue-on-error: true
       with:
         recreate: true
         path: code-coverage-results.md
 
     - name: Publish Test Results
-      uses: EnricoMi/publish-unit-test-result-action@v2.16.1
-      if: always()
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      continue-on-error: true
       with:
         files: "**/*.trx"
 
-  publish:
+  # ---------------------------------------------------------------------------------------
+  # Release gate. Establishes ONE version for every downstream job to use.
+  #
+  # This replaces a `publish` job that consisted of a six-cell framework x runtime matrix
+  # which checked out, installed the SDK, computed a version and then had no further steps at
+  # all - six no-op jobs whose only effect was to gate create-release, itself a job that
+  # generated release notes and never created a release.
+  # ---------------------------------------------------------------------------------------
+  validate-release:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/testpublish/')
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        framework: ['net48', 'net6.0-windows', 'net8.0-windows']
-        runtime: ['win-x64', 'win-x86']
-    
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      is_prerelease: ${{ steps.version.outputs.IS_PRERELEASE }}
+      is_publishable: ${{ steps.version.outputs.IS_PUBLISHABLE }}
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+    - uses: actions/checkout@v4
       with:
-        dotnet-version: |
-          6.0.x
-          8.0.x
+        # Required by get-release-notes.ps1 and by the ancestry check below. The default
+        # depth of 1 has no tags and no history, under which both silently do nothing useful.
+        fetch-depth: 0
 
-    - name: Extract Version
-      id: get_version
+    - name: Extract and validate version
+      id: version
       shell: bash
       run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
-        # Remove everything after hyphen for AssemblyVersion
-        ASSEMBLY_VERSION=${VERSION%%-*}
-        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-        echo "ASSEMBLY_VERSION=$ASSEMBLY_VERSION" >> $GITHUB_OUTPUT
+        set -euo pipefail
 
-  create-release:
-    needs: publish
-    if: startsWith(github.ref, 'refs/tags/v')
+        REF="${GITHUB_REF#refs/tags/}"
+        if [[ "$REF" == testpublish/* ]]; then
+          VERSION="${REF#testpublish/}"
+          PUBLISHABLE=false
+        else
+          VERSION="${REF#v}"
+          PUBLISHABLE=true
+        fi
+
+        # Reject anything the version scheme cannot express before it reaches `dotnet pack`,
+        # where a malformed value surfaces as an obscure NuGet error at the end of a long job.
+        if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9A-Za-z.-]+)?$ ]]; then
+          echo "::error::Tag '$REF' does not yield a valid version (got '$VERSION'). Expected v<major>.<minor>.<patch>[.<build>][-<prerelease>]."
+          exit 1
+        fi
+
+        # A prerelease is a version with a suffix. Deriving it from the version rather than
+        # regex-matching the ref for '-alpha|-beta|-prerelease' means -rc.1, -preview.2 and
+        # any other suffix are handled too; the old check treated those as full releases.
+        if [[ "$VERSION" == *-* ]]; then IS_PRERELEASE=true; else IS_PRERELEASE=false; fi
+
+        echo "VERSION=$VERSION"               >> $GITHUB_OUTPUT
+        echo "IS_PRERELEASE=$IS_PRERELEASE"   >> $GITHUB_OUTPUT
+        echo "IS_PUBLISHABLE=$PUBLISHABLE"    >> $GITHUB_OUTPUT
+        echo "Releasing $VERSION (prerelease: $IS_PRERELEASE, publishable: $PUBLISHABLE)"
+
+    - name: Verify the tag is on master
+      if: steps.version.outputs.IS_PUBLISHABLE == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+          echo "Tagged commit is reachable from origin/master."
+        else
+          echo "::error::Tag ${GITHUB_REF#refs/tags/} is not on master. Releases must be tagged from master."
+          exit 1
+        fi
+
+  # ---------------------------------------------------------------------------------------
+  # Pack, verify, and hand the artifacts to the jobs that publish them.
+  #
+  # Packing happens ONCE, here, and every downstream job consumes the same artifact. The
+  # previous version rebuilt and repacked inside the push job, which is how the release and
+  # the published package could in principle disagree.
+  # ---------------------------------------------------------------------------------------
+  pack:
+    needs: validate-release
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - name: Generate Release Notes
-      id: release-notes
-      shell: pwsh
-      run: |
-        $notes = ./.github/get-release-notes.ps1 -CurrentTag $env:GITHUB_REF
-        $notes = $notes -replace "'", "''"
-        echo "RELEASE_NOTES<<EOF" >> $env:GITHUB_OUTPUT
-        echo "$notes" >> $env:GITHUB_OUTPUT
-        echo "EOF" >> $env:GITHUB_OUTPUT
-
-    - name: Check if Prerelease
-      id: check_prerelease
-      shell: pwsh
-      run: |
-        $isPrerelease = $env:GITHUB_REF -match '.*(-alpha|-beta|-prerelease).*'
-        "IS_PRERELEASE=$isPrerelease" >> $env:GITHUB_OUTPUT
-
-  publish-nuget:
-    needs: create-release
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v3
-    
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: |
           6.0.x
           8.0.x
+          10.0.x
 
-    - name: Extract Version
-      id: get_version
+    # One property. Directory.Build.props derives VersionPrefix from it and the SDK derives
+    # AssemblyVersion, FileVersion, InformationalVersion and PackageVersion from that, with a
+    # prerelease suffix stripped from the assembly identity. The previous version passed
+    # -p:AssemblyVersion=${{ ... ASSEMBLY_VERSION }} referring to an output that job never
+    # set, so it always expanded to an empty string.
+    - name: Pack
       shell: pwsh
       run: |
-        $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
-        "VERSION=$version" >> $env:GITHUB_OUTPUT
+        $version = "${{ needs.validate-release.outputs.version }}"
+        $output = Join-Path $env:GITHUB_WORKSPACE 'artifacts/nuget'
+        New-Item -ItemType Directory -Force -Path $output | Out-Null
 
-    - name: Check if Prerelease
-      id: check_prerelease
-      shell: pwsh
-      run: |
-        $isPrerelease = $env:GITHUB_REF -match '.*(-alpha|-beta|-prerelease).*'
-        "IS_PRERELEASE=$isPrerelease" >> $env:GITHUB_OUTPUT
-
-    - name: Build & Pack (Release)
-      if: steps.check_prerelease.outputs.IS_PRERELEASE != 'True'
-      run: |
-        $outputPath = Join-Path $env:GITHUB_WORKSPACE "artifacts/nuget"
-        dotnet build $env:GITHUB_WORKSPACE/src/JsonSettings/JsonSettings.csproj --configuration Release -p:Version=${{ steps.get_version.outputs.VERSION }} -p:AssemblyVersion=${{ steps.get_version.outputs.ASSEMBLY_VERSION }}
-        dotnet pack $env:GITHUB_WORKSPACE/src/JsonSettings/JsonSettings.csproj --configuration Release --output $outputPath --no-build -p:Version=${{ steps.get_version.outputs.VERSION }} -p:AssemblyVersion=${{ steps.get_version.outputs.ASSEMBLY_VERSION }}
-        dir $outputPath
-
-    - name: Build & Pack (Prerelease)
-      if: steps.check_prerelease.outputs.IS_PRERELEASE == 'True'
-      run: |
-        $outputPath = Join-Path $env:GITHUB_WORKSPACE "artifacts/nuget"
-        dotnet build $env:GITHUB_WORKSPACE/JsonSettings/JsonSettings.csproj --configuration Release -p:Version=${{ steps.get_version.outputs.VERSION }} -p:AssemblyVersion=${{ steps.get_version.outputs.ASSEMBLY_VERSION }}
-        dotnet pack $env:GITHUB_WORKSPACE/JsonSettings/JsonSettings.csproj --configuration Release --output $outputPath --no-build -p:Version=${{ steps.get_version.outputs.VERSION }} -p:AssemblyVersion=${{ steps.get_version.outputs.ASSEMBLY_VERSION }}
-        dir $outputPath
-
-    - name: Push to NuGet
-      run: |
-        $outputPath = Join-Path $env:GITHUB_WORKSPACE "artifacts/nuget"
-        $package = Get-ChildItem $outputPath -Filter *.nupkg | Select-Object -First 1
-        if ($package) {
-            dotnet nuget push $package.FullName --api-key ${{ secrets.NUGETAPIKEY }} --source https://api.nuget.org/v3/index.json
-        } else {
-            Write-Error "No .nupkg file found in $outputPath"
-            exit 1
+        foreach ($project in @(
+            'src/JsonSettings/JsonSettings.csproj',
+            'src/JsonSettings.Autosave/JsonSettings.Autosave.csproj')) {
+          Write-Host "::group::pack $project"
+          # No --no-build: pack builds it, so the packed binaries are guaranteed to be the
+          # ones stamped with this version rather than whatever a previous step left on disk.
+          dotnet pack $project --configuration Release --output $output -p:Version=$version
+          if ($LASTEXITCODE -ne 0) { throw "pack failed for $project" }
+          Write-Host '::endgroup::'
         }
+
+        Get-ChildItem $output | Format-Table Name, Length
+
+    # The check that would have caught the release-blocking defect this pipeline shipped
+    # with: both csprojs hardcoded <PackageVersion>2.0.2</PackageVersion>, so -p:Version was
+    # silently ignored and `dotnet pack` produced 2.0.2 no matter what tag was pushed. Pack
+    # succeeds in that state - the only visible symptom is the filename, and nothing looked.
+    - name: Verify packages match the tag
+      shell: pwsh
+      run: |
+        $version = "${{ needs.validate-release.outputs.version }}"
+        $output = Join-Path $env:GITHUB_WORKSPACE 'artifacts/nuget'
+        $expected = @("Nucs.JsonSettings.$version.nupkg", "Nucs.JsonSettings.Autosave.$version.nupkg")
+
+        $actual = @(Get-ChildItem $output -Filter *.nupkg | Select-Object -ExpandProperty Name)
+        $failed = $false
+
+        foreach ($name in $expected) {
+          if ($actual -contains $name) {
+            Write-Host "  ok      $name"
+          } else {
+            Write-Host "::error::Expected $name but pack did not produce it."
+            $failed = $true
+          }
+        }
+
+        # Also catch the reverse: a stray extra package would mean the push loop below
+        # publishes something nobody asked for.
+        foreach ($name in $actual) {
+          if ($expected -notcontains $name) {
+            Write-Host "::error::Unexpected package $name - pack produced something not in the expected set."
+            $failed = $true
+          }
+        }
+
+        if ($failed) {
+          Write-Host "Produced: $($actual -join ', ')"
+          exit 1
+        }
+        Write-Host "Both packages carry version $version."
+
+    - name: Upload packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: |
+          artifacts/nuget/*.nupkg
+          artifacts/nuget/*.snupkg
+        retention-days: 5
+
+  # ---------------------------------------------------------------------------------------
+  # GitHub release. Only for v* tags - a testpublish/* tag stops after pack.
+  # ---------------------------------------------------------------------------------------
+  create-release:
+    needs: [ validate-release, pack ]
+    if: needs.validate-release.outputs.is_publishable == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0   # get-release-notes.ps1 needs history and tags; see that script.
+
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages
+        path: artifacts
+
+    - name: Generate checksums
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd artifacts
+        for f in *.nupkg *.snupkg; do
+          [ -e "$f" ] || continue
+          sha256sum "$f" | cut -d' ' -f1 > "$f.sha256"
+          echo "$f: $(cat "$f.sha256")"
+        done
+
+    - name: Compose release notes
+      id: notes
+      shell: pwsh
+      run: |
+        $version = "${{ needs.validate-release.outputs.version }}"
+        $commits = ./.github/get-release-notes.ps1 -CurrentTag $env:GITHUB_REF
+
+        # Written to a FILE and handed to the release action via body_path. The previous
+        # version pushed the notes through a $GITHUB_OUTPUT heredoc delimited by a bare EOF,
+        # which any commit subject consisting of "EOF" would have terminated early, and
+        # applied `-replace "'", "''"` - SQL-style quote doubling that does nothing here
+        # except corrupt apostrophes in commit messages.
+        @(
+          "## Nucs.JsonSettings v$version"
+          ""
+          "### Install"
+          ""
+          '```'
+          "dotnet add package Nucs.JsonSettings --version $version"
+          "dotnet add package Nucs.JsonSettings.Autosave --version $version"
+          '```'
+          ""
+          "Targets netstandard2.0, net48, net6.0, net8.0 and net10.0."
+          ""
+          "### Changes"
+          ""
+          $commits
+        ) | Set-Content -Path RELEASE_BODY.md -Encoding utf8
+
+        Write-Host "Composed RELEASE_BODY.md ($((Get-Content RELEASE_BODY.md).Count) lines)"
+
+    - name: Create release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          artifacts/*.nupkg
+          artifacts/*.snupkg
+          artifacts/*.sha256
+        body_path: RELEASE_BODY.md
+        prerelease: ${{ needs.validate-release.outputs.is_prerelease }}
+        draft: false
+
+  # ---------------------------------------------------------------------------------------
+  # nuget.org. Last job in the chain, so a failure anywhere above stops the one action in
+  # this pipeline that cannot be undone: a published package version is permanent.
+  # ---------------------------------------------------------------------------------------
+  publish-nuget:
+    needs: [ validate-release, pack, create-release ]
+    if: needs.validate-release.outputs.is_publishable == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages
+        path: artifacts
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    # Loops over every package. The previous version ran
+    #   Get-ChildItem $out -Filter *.nupkg | Select-Object -First 1
+    # once per package, against a shared output directory - and "first" sorts by name, so
+    # Nucs.JsonSettings.<v>.nupkg won both times (a digit sorts before a letter). The step
+    # named "Push JsonSettings.Autosave to NuGet" pushed the core package a second time,
+    # nuget.org answered 409, the job failed, and Autosave was never published at all.
+    #
+    # --skip-duplicate makes a re-run after a partial failure idempotent instead of fatal.
+    # Pushing the .nupkg also uploads the adjacent .snupkg, so symbols need no separate step.
+    - name: Push to NuGet
+      shell: bash
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+        packages=(artifacts/*.nupkg)
+        if [ ${#packages[@]} -eq 0 ]; then
+          echo "::error::No .nupkg found in artifacts/."
+          exit 1
+        fi
+        for package in "${packages[@]}"; do
+          echo "::group::push $package"
+          dotnet nuget push "$package" \
+            --api-key "${{ secrets.NUGETAPIKEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+          echo "::endgroup::"
+        done
