@@ -25,13 +25,12 @@
     <IsPackable>false</IsPackable>
 	<OutputType>Exe</OutputType>
 	<UseWindowsForms>true</UseWindowsForms>
-	<TargetFrameworks>net6.0-windows;net8.0-windows</TargetFrameworks>
+	<TargetFrameworks>net6.0-windows;net8.0-windows;net10.0-windows</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Castle.Core" Version="5.1.1" />
-    <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>

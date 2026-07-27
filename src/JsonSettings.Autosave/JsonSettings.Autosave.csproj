@@ -26,7 +26,7 @@
     <NeutralLanguage />
     <SignAssembly>false</SignAssembly>
     <Copyright>Eli Belash @ 2023</Copyright>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>
     <PackageId>Nucs.JsonSettings.Autosave</PackageId>
     <PackageVersion>2.0.2</PackageVersion>
@@ -56,7 +56,6 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Castle.Core" Version="5.1.1" />
-    <PackageReference Include="System.Security.SecureString" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>
