@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0</TargetFrameworks>
+        <!-- Runnable frameworks only. netstandard2.0 is not a runtime: VSTest reports
+             "No suitable test runtime provider was found for any source in this run" and
+             `dotnet test` exits 1 even when every other target passes. -->
+        <TargetFrameworks>net48;net6.0;net8.0</TargetFrameworks>
         <ImplicitUsings>disable</ImplicitUsings>
         <RootNamespace>Nucs.JsonSettings.Tests</RootNamespace>
         <IsPackable>false</IsPackable>
@@ -17,7 +20,7 @@
         <PackageReference Include="FluentAssertions" Version="4.19.4" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'net48'">
+    <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
         <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     </ItemGroup>
 
