@@ -1,7 +1,7 @@
 # <img src="assets/icon.png" width="25" style="margin: 5px 0px 0px 10px"/> JsonSettings
 [![Nuget version](https://img.shields.io/nuget/vpre/Nucs.JsonSettings.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![Nuget downloads](https://osscdn.nucs.workers.dev/jsonsettings-downloads-ujVrxmtCZN.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
-[![GitHub license](https://osscdn.nucs.workers.dev/jsonsettings-license-yaUkzolvyW.svg)](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/github/license/Nucs/JsonSettings.svg)](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
 
 This library aims to simplify the process of creating configuration for your C# app/service 
 by utilizing the serialization capabilities of [Json.NET](https://www.newtonsoft.com/json/help/html/SerializationGuide.htm)
