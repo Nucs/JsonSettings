@@ -1,43 +1,91 @@
-# Example: .\get-release-notes.ps1 "refs/tags/v2.1.0.10-beta"  "refs/tags/v2.1.0.0"
+<#
+.SYNOPSIS
+    Prints the commit log between the previous release tag and the given one, as markdown.
+
+.DESCRIPTION
+    Requires the FULL history and tags to be present. actions/checkout defaults to
+    fetch-depth 1 with no tags, and under that default `git describe` finds nothing, the
+    script falls back to "every commit reachable from the tag", and a shallow clone makes
+    that exactly one commit - so the release notes silently come out as a single line
+    describing the tagged commit and nothing else. The caller must pass fetch-depth: 0.
+
+.PARAMETER CurrentTag
+    The tag being released. Accepts either a bare tag or a ref (refs/tags/v2.1.0).
+
+.PARAMETER PreviousTag
+    Optional. The tag to compare against. Defaults to the nearest tag before CurrentTag.
+
+.EXAMPLE
+    ./.github/get-release-notes.ps1 -CurrentTag refs/tags/v2.1.0
+    ./.github/get-release-notes.ps1 -CurrentTag v2.1.0 -PreviousTag v2.0.1
+#>
+[CmdletBinding()]
 param (
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$CurrentTag,
-    
-    [Parameter(Mandatory=$false)]
+
+    [Parameter(Mandatory = $false)]
     [string]$PreviousTag
 )
 
-# Use provided previous tag or get the previous release tag
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# Accept a ref or a bare tag. GITHUB_REF arrives as refs/tags/v2.1.0.
+$CurrentTag = $CurrentTag -replace '^refs/tags/', ''
+
 if (-not $PreviousTag) {
-    $PreviousTag = git describe --tags --abbrev=0 "$CurrentTag^" 2>$null
-}
+    # 2>$null so "no names found" is not treated as script failure under $ErrorActionPreference=Stop.
+    $PreviousTag = (git describe --tags --abbrev=0 "$CurrentTag^" 2>$null | Select-Object -First 1)
 
-if (-not $PreviousTag -or $LASTEXITCODE -ne 0) {
-    # If no previous tag exists or provided, get all commits
-    $range = $CurrentTag
-} else {
-    $range = "$PreviousTag..$CurrentTag"
-}
-
-# Get commit messages between tags
-# Include both direct commits and merge commits, but format them differently
-$commits = git log --format="%H %P %s" $range | ForEach-Object {
-    $parts = $_ -split ' ', 3  # Split into hash, parent hashes, and subject
-    $hash = $parts[0]
-    $parents = $parts[1]
-    $subject = $parts[2]
-    
-    # If commit has multiple parents, it's a merge commit
-    if ($parents -match ' ') {
-        # Only include if it looks like a PR merge
-        if ($subject -match '^Merge pull request') {
-            "- $subject"
-        }
-    } else {
-        # Regular commit
-        "- $subject"
+    # $LASTEXITCODE is only meaningful HERE, immediately after the git call. The previous
+    # version tested it even when -PreviousTag had been supplied and git had never run, so the
+    # branch was decided by whatever command happened to have run last in the session.
+    if ($LASTEXITCODE -ne 0) {
+        $PreviousTag = $null
     }
 }
 
-# Output the commits
-$commits -join "`n"
+if ([string]::IsNullOrWhiteSpace($PreviousTag)) {
+    # First release, or the previous tag is unreachable. Everything reachable from the tag.
+    $range = $CurrentTag
+    Write-Verbose "No previous tag found; describing all commits reachable from $CurrentTag."
+} else {
+    $range = "$PreviousTag..$CurrentTag"
+    Write-Verbose "Describing $range."
+}
+
+$log = git log --format='%H%x1f%P%x1f%s' $range 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "git log $range failed. The tag may not exist locally - a shallow checkout (fetch-depth 1) cannot see it."
+    exit 1
+}
+
+$lines = @()
+foreach ($entry in $log) {
+    if ([string]::IsNullOrWhiteSpace($entry)) { continue }
+
+    # Split on unit separator, not spaces: a subject contains spaces and the old -split ' ', 3
+    # quietly mangled any commit whose subject started with something that looked like a hash.
+    $parts = $entry -split "`u{001f}"
+    if ($parts.Count -lt 3) { continue }
+
+    $parents = $parts[1]
+    $subject = $parts[2]
+
+    if ($parents -match ' ') {
+        # Merge commit. Only PR merges say anything a reader wants; branch-integration merges
+        # duplicate the commits they bring in, which are listed individually anyway.
+        if ($subject -match '^Merge pull request') {
+            $lines += "- $subject"
+        }
+    } else {
+        $lines += "- $subject"
+    }
+}
+
+if ($lines.Count -eq 0) {
+    $lines += "- No changes recorded between $range."
+}
+
+$lines -join "`n"
