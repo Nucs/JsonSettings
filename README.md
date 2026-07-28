@@ -22,6 +22,12 @@ Both packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`
 The `netstandard2.0` asset covers everything without an exact match, including
 `net472`+, `netcoreapp3.1`, `net5.0`, `net7.0`, `net9.0`, Unity and Xamarin.
 
+> **Native AOT / trimming:** neither package is AOT-compatible or trim-safe. Under
+> `PublishTrimmed` or `PublishAot` a settings file can be silently written back as `{}`
+> with no exception. `Nucs.JsonSettings.Autosave` cannot work under Native AOT at all.
+> See [docs/AOT.md](https://github.com/Nucs/JsonSettings/blob/master/docs/AOT.md) for the
+> measurements, the causes and the workarounds.
+
 ## Table of Contents
 - [Features Overview](#features-overview)
 - [The Basics](#the-basics)
@@ -37,6 +43,7 @@ The `netstandard2.0` asset covers everything without an exact match, including
 - [Changing JsonSerializerSettings](#changing-jsonserializersettings)
 - [Converters](#converters)
 - [Modulation Api](#modulation-api)
+- [Native AOT and Trimming](https://github.com/Nucs/JsonSettings/blob/master/docs/AOT.md)
 - [License](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
 
 
