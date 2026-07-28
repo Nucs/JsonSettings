@@ -97,6 +97,21 @@ jobs:
     - name: Build
       run: dotnet build JsonSettings.sln --configuration Release --no-restore
 
+    # Strong naming is one property in Directory.Build.props, and losing it is invisible: the
+    # file names do not change, every test still passes, `dotnet pack` still succeeds, and the
+    # only symptom is PublicKeyToken=null in an identity string nothing prints. A consumer whose
+    # own assembly is signed then cannot reference the package at all - which they discover, not
+    # us. So the property is asserted on the built output rather than assumed from the setting.
+    #
+    # -MinimumAssemblies 10 is the real assertion: 2 shipped projects x 5 target frameworks. A
+    # gate that passes because it found nothing to check is the failure mode being avoided here.
+    - name: Verify assemblies are strong-named
+      shell: pwsh
+      run: >-
+        ./.github/check-strong-name.ps1
+        -Path 'src/JsonSettings/bin/Release','src/JsonSettings.Autosave/bin/Release'
+        -MinimumAssemblies 10
+
     # Warnings are already errors for anything outside the allowlist in
     # Directory.Build.targets. This catches the other half: new instances of the codes that
     # ARE allowlisted, which the compiler will happily let through forever. See
@@ -442,6 +457,18 @@ jobs:
         }
         Write-Host "Both packages carry version $version."
 
+    # The release gate. Reads every lib/**/*.dll out of the .nupkg files themselves rather than
+    # trusting the bin/ directories they were built from, because what ships is the package - a
+    # correct build packaged from a stale output directory is exactly the mistake that would
+    # otherwise reach nuget.org, where a published version is permanent and cannot be replaced.
+    #
+    # Placed BEFORE the upload on purpose: failing here means the artifact never exists, so
+    # create-release and publish-nuget have nothing to consume and both stop, rather than each
+    # needing to remember to re-check.
+    - name: Verify packaged assemblies are strong-named
+      shell: pwsh
+      run: ./.github/check-strong-name.ps1 -Path 'artifacts/nuget' -MinimumAssemblies 10
+
     - name: Upload packages
       uses: actions/upload-artifact@v4
       with:
@@ -533,6 +560,9 @@ jobs:
     if: needs.validate-release.outputs.is_publishable == 'true'
     runs-on: ubuntu-latest
     steps:
+    # Needed only so the gate below has Open.snk and Directory.Build.props to check against.
+    - uses: actions/checkout@v4
+
     - name: Download packages
       uses: actions/download-artifact@v4
       with:
@@ -543,6 +573,15 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
+
+    # The same check pack already ran, deliberately repeated on the bytes about to be pushed.
+    # This is not redundancy for its own sake: between the two runs the packages were uploaded as
+    # an artifact, kept, and downloaded again on a different runner and a different OS, and this
+    # is the last moment before the one step in this pipeline that cannot be undone. Re-verifying
+    # what is in your hand costs seconds; a wrong package on nuget.org is permanent.
+    - name: Verify packages are strong-named before publishing
+      shell: pwsh
+      run: ./.github/check-strong-name.ps1 -Path 'artifacts' -MinimumAssemblies 10
 
     # Loops over every package. The previous version ran
     #   Get-ChildItem $out -Filter *.nupkg | Select-Object -First 1

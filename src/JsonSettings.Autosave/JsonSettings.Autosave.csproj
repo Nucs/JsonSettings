@@ -21,4 +21,11 @@
     <ProjectReference Include="..\JsonSettings\JsonSettings.csproj" />
   </ItemGroup>
 
+  <!-- See the note on the same item group in JsonSettings.csproj: declared as an item so the
+       public key comes from $(PublicKey) in Directory.Build.props rather than being pasted
+       here as a literal. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="JsonSettings.Tests" />
+  </ItemGroup>
+
 </Project>

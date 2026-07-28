@@ -31,5 +31,18 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <!-- Friend assemblies. These were plain [assembly: InternalsVisibleTo("...")] attributes in
+       Properties/AssemblyInfo.cs, which strong-naming turns into a hard CS1726 - a signed
+       assembly may only befriend an assembly it names by public key. Declared as items rather
+       than re-written as attributes with a 320-character literal pasted into each file: the SDK
+       appends `, PublicKey=$(PublicKey)` from Directory.Build.props, so the key is written once
+       for the repository and cannot drift between the two projects that grant friendship.
+
+       Both targets are signed with that same key, which is what makes the reference resolve;
+       StrongNameTests proves it resolves rather than assuming it. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="JsonSettings.Tests" />
+    <InternalsVisibleTo Include="JsonSettings.Autosave" />
+  </ItemGroup>
 
 </Project>

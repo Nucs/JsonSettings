@@ -48,6 +48,82 @@
   </PropertyGroup>
 
   <!-- ====================================================================================
+       Strong-name signing — ONE place for every project in the repository.
+
+       WHAT THE KEY IS. `Open.snk` at the repo root is Microsoft's *published* open-source
+       strong-name key: 596 bytes, sha256
+       b897629e0b20090c9219ac80392c037fa4cfcc2bdc21d3c45d9bf74b8df0f671, byte-for-byte
+       identical to dotnet/arcade's `src/Microsoft.DotNet.Arcade.Sdk/tools/snk/Open.snk`.
+       Its public key token `cc7b13ffcd2ddd51` is the one carried by `netstandard`,
+       `System.Memory`, `System.Buffers` and `System.Text.Json` — Microsoft strong-names
+       those with this key and publishes the PRIVATE half so that open-source builds can
+       produce strong-named output without access to its real signing infrastructure.
+       Committing it here is not a leaked secret; a key whose private half is published by
+       its owner has exactly one intended use, and this is it.
+
+       SO THIS IS IDENTITY, NOT AUTHENTICITY. An .snk is a bare RSA key pair: no
+       certificate, no subject, no issuer, no chain. It lets the loader tell this
+       `Nucs.JsonSettings` from someone else's and bind versions; it attests NOTHING about
+       origin, and because the private half is public, anyone can mint an assembly bearing
+       our identity. Real authenticity is Authenticode on the DLLs plus NuGet author
+       signing; both need a code-signing certificate, are entirely separate from this file,
+       and do not exist in this repository. See README -> "Strong naming".
+       => Do NOT read `InternalsVisibleTo` below as an access control. It is not one.
+
+       WHY WE SIGN AT ALL, GIVEN THE ABOVE. A strong-named consumer cannot reference a
+       weak-named assembly. Shipping unsigned excluded this library outright from every
+       signed codebase — the .NET Framework line-of-business applications that are exactly
+       the audience for a settings file library. That is the whole reason, and it is a
+       packaging concern rather than a security one.
+
+       WHY THIS KEY AND NOT ONE OF OUR OWN. A self-minted key committed next to the source
+       would carry identical security (none) with worse provenance: readers would have to
+       work out whether the private half being in the tree was deliberate. A key whose
+       publication is documented by its owner cannot be mistaken for an accident. If this
+       project ever obtains a code-signing certificate, that is layered ON TOP of this and
+       does not replace it.
+
+       WHERE THE KEY IS ENFORCED. `Open.snk` decides what gets signed; the
+       $(PublicKey) literal below only names that same identity for anything that has to
+       write it down. They are two copies of one fact and could drift, so they are checked
+       against each other rather than trusted:
+         - tests/JsonSettings.Tests/StrongNameTests.cs asserts, at runtime and against the
+           built assemblies, that the token and full public key are these values and that
+           friend access actually resolves.
+         - .github/check-strong-name.ps1 asserts the same over every DLL in the built output
+           and, at release time, over every lib/ DLL inside the produced .nupkg.
+
+       Opt out per project with `<SignAssembly>false</SignAssembly>` — Directory.Build.props
+       is imported BEFORE the project body, so a project's own value wins. Nothing opts out
+       today: the test project MUST be signed for the friend references below to resolve,
+       and JsonSettings.Examples is signed only for uniformity.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <SignAssembly Condition="'$(SignAssembly)' == ''">true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Open.snk</AssemblyOriginatorKeyFile>
+
+    <!-- We hold the private half, so sign for real. Not delay-signed, which leaves the
+         signature blank and needs skip-verification registration on .NET Framework, and not
+         public-signed, an OSS-build shortcut that stamps the public key without ever
+         producing a valid signature. Both are stated rather than left to default because
+         both produce a file that LOOKS signed to a casual check. -->
+    <DelaySign>false</DelaySign>
+    <PublicSign>false</PublicSign>
+
+    <!-- $(PublicKey) is read by the SDK's GenerateAssemblyInfo targets: every
+         <InternalsVisibleTo Include="..."/> item that does not carry its own Key gets this
+         one appended as `, PublicKey=...`. That is what keeps this 320-character literal
+         written down ONCE for the whole repository instead of once per friend declaration.
+
+         It has to be written down at all because strong-naming makes a keyless
+         `InternalsVisibleTo` a hard CS1726, and there is no MSBuild function that derives a
+         public key from an .snk. Supported by the 6.0, 8.0 and 10.0 SDKs alike, so a
+         contributor who has not upgraded still gets keyed friend attributes. -->
+    <PublicKey>00240000048000009400000006020000002400005253413100040000010001004b86c4cb78549b34bab61a3b1800e23bfeb5b3ec390074041536a7e3cbd97f5f04cf0f857155a8928eaa29ebfd11cfbbad3ba70efea7bda3226c6a8d370a4cd303f714486b6ebc225985a638471e6ef571cc92a4613c00b8fa65d61ccee0cbe5f36330c9a01f4183559f1bef24cc2917c6d913e3a541333a1d05d9bed22b38cb</PublicKey>
+    <StrongNamePublicKeyToken>cc7b13ffcd2ddd51</StrongNamePublicKeyToken>
+  </PropertyGroup>
+
+  <!-- ====================================================================================
        Shared package identity.
 
        These were duplicated verbatim across JsonSettings.csproj and
@@ -69,7 +145,6 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
   <!-- ====================================================================================
@@ -210,6 +285,19 @@ Bug fixes
   executable path cannot be determined, as under single-file publish.
 
 Targets and packaging
+- Both packages are now strong-named, with PublicKeyToken=cc7b13ffcd2ddd51. Everything
+  published before this shipped unsigned, which meant a strong-named assembly could not
+  reference this library at all - a strong-named consumer cannot reference a weak-named
+  dependency, and there was no workaround short of repackaging the DLL. The key is
+  Microsoft's published open-source key, the same one netstandard, System.Memory and
+  System.Buffers carry; its private half is published by design, so this is assembly
+  IDENTITY and not a security property. It does not attest that a file came from this
+  project, and InternalsVisibleTo is not an access control. Verify origin with the
+  SHA-256 checksums published on each GitHub release.
+  UPGRADING: gaining a strong name changes the assembly identity. A bindingRedirect
+  written against the old unsigned identity will not match the new one and should be
+  removed rather than edited, and anything that hardcodes a full assembly display name
+  needs the token added. Recompiling is otherwise enough. See docs/SIGNING.md.
 - Multi-targeting: netstandard2.0, net48, net6.0, net8.0 and net10.0 for both
   Nucs.JsonSettings and Nucs.JsonSettings.Autosave (Autosave previously shipped
   netstandard2.0 only).
