@@ -1,17 +1,31 @@
-# Native AOT and Trimming
+﻿# Native AOT and Trimming
 
-**Status as of 2.1.0: neither package is AOT-compatible, and neither is trim-safe.**
+**Status as of 2.2.0: neither package is trim-safe. The hard AOT blocker in Autosave is gone.**
 
 | Package | `PublishAot=true` | `PublishTrimmed=true` |
 |---|---|---|
 | `Nucs.JsonSettings` | Broken by default. Works if the consumer preserves metadata. Fixable in this repo. | Same. |
-| `Nucs.JsonSettings.Autosave` | **Permanently incompatible.** Cannot be fixed without replacing `Castle.Core`. | Works once metadata is preserved. |
+| `Nucs.JsonSettings.Autosave` | No longer blocked by its own proxying. Inherits the core package's metadata problem. | Works once metadata is preserved. |
 
-Neither project sets `<IsAotCompatible>`, and that is currently correct — setting it would
-assert a guarantee this code cannot keep.
+Neither project sets `<IsAotCompatible>`, and that is still correct — Newtonsoft.Json's
+unannotated reflection means neither package can keep that guarantee yet.
 
 This document records what was measured, why it fails, and what fixing it would cost, so the
 question does not have to be re-litigated from scratch.
+
+> **What changed in 2.2.0.** Blocker 1 below — `Castle.DynamicProxy` and its hard dependency
+> on `System.Reflection.Emit` — was removed by replacing DynamicProxy with compile-time IL
+> weaving. The section is kept rather than deleted because the reasoning is what justifies
+> the replacement, and because the same trap catches every other runtime-proxy library.
+>
+> **Scope of that claim.** What is verified is that the mechanism is gone: the shipped
+> `JsonSettings.Autosave` assembly no longer references `Castle.*` at all (asserted by
+> `AutosaveWeavingSupportTests.AutosaveAssembly_DoesNotReferenceCastle`), the advice is
+> injected into consumer setters at build time, and autosave works end to end through a real
+> `.nupkg` in a separate consuming project. What has **not** been re-run is the 15-probe
+> `PublishAot` harness below; rows 1-3 of the results table therefore still describe 2.1.0.
+> Blockers 2 and 3 are untouched by this change, so the `{ "Section": {} }` failure below is
+> still live.
 
 ---
 
@@ -96,9 +110,11 @@ library's public generic entry points is not speculation; it is measured to work
 
 ---
 
-## Blocker 1 — Castle DynamicProxy is Reflection.Emit
+## Blocker 1 — Castle DynamicProxy is Reflection.Emit — RESOLVED in 2.2.0
 
-All three autosave entry points fail identically, and keep failing with every assembly fully
+**This section describes 2.1.0. See [the resolution](#how-blocker-1-was-resolved) below.**
+
+All three autosave entry points failed identically, and kept failing with every assembly fully
 rooted:
 
 ```
@@ -115,11 +131,43 @@ cannot work under NativeAOT while DynamicProxy is the proxying mechanism.** It c
 of the 181 baseline trim warnings, 11 of them `IL3050` (`RequiresDynamicCode`).
 
 The affected API is `EnableAutosave()`, `EnableIAutosave<T,I>()` and the
-`NotifiyingJsonSettings` autosave path. `SettingsBag.EnableAutosave()` is unaffected — it is
-dictionary-backed, not proxy-backed, and passes under AOT.
+`NotifiyingJsonSettings` autosave path. `SettingsBag.EnableAutosave()` was unaffected — it is
+dictionary-backed, not proxy-backed, and passed under AOT.
 
-Today the failure surfaces as a `TypeInitializationException` thrown from a Castle static
-constructor, which points at Castle rather than at the real cause.
+### How Blocker 1 was resolved
+
+`Castle.Core` was replaced with [AspectInjector](https://github.com/pamidur/aspect-injector),
+which rewrites the settings class's setters during the build instead of synthesising a proxy
+type at runtime. The `[Autosave]` attribute is an aspect; the woven call lands in the
+assembly that declares the class, which is the consumer's.
+
+Three properties of that approach matter here:
+
+- **Nothing is generated at runtime**, so `RuntimeFeature.IsDynamicCodeSupported == false` is
+  no longer a problem rather than a fatal one.
+- **The weaving happens in the consumer's assembly.** AspectInjector ships `buildTransitive/`
+  targets, so its build logic reaches a project that picks it up indirectly through this
+  package. Verified by packing real `.nupkg`s into a local feed and consuming them from a
+  separate project, where a class with plain non-virtual properties autosaved correctly.
+- **There is no proxy, so there is no second object.** `EnableAutosave()` returns the instance
+  it was given. That removes a whole failure class that had nothing to do with AOT: under
+  Castle, a reference captured before the call kept pointing at an object that did not
+  autosave.
+
+It also lifted the restrictions the proxy imposed — properties no longer need to be `virtual`,
+and `sealed` classes are supported. The cost is one new requirement: the class must be marked
+`[Autosave]`, and doing so is now checked at runtime so a missing attribute throws instead of
+silently never saving.
+
+**Rough edge worth knowing about.** Weaving rewrites the assembly after the compiler has
+signed it, and AspectInjector 2.9.0 retired its re-signing feature, so a strong-named
+assembly comes out of the weave with an invalid signature (measured: clean A/B on a signed
+probe, `sn -vf` reports "is valid" unwoven and "Strong name validation failed" woven). This
+repository signs every assembly, so the package ships MSBuild targets that re-sign after the
+weave and warn (`NJS1001`) when `sn.exe` is unavailable. Those targets also re-stamp
+AspectInjector's incremental marker: re-signing moves the assembly's timestamp past the
+marker, and without the re-stamp the *next* build weaves the already-woven assembly again,
+stacking a second copy of the advice and saving twice per assignment.
 
 ## Blocker 2 — Newtonsoft.Json is unannotated
 
@@ -204,8 +252,9 @@ so the consumer gets a build-time warning rather than a runtime surprise.
 
 If you must ship trimmed or AOT with 2.1.0:
 
-1. **Do not use `Nucs.JsonSettings.Autosave` under NativeAOT.** It cannot work. Use
-   `SettingsBag.EnableAutosave()`, or call `Save()` explicitly.
+1. **`Nucs.JsonSettings.Autosave` is no longer a hard blocker** as of 2.2.0 — mark your
+   settings class `[Autosave]` and the interception is compiled in rather than emitted.
+   `SettingsBag.EnableAutosave()` remains dictionary-backed and unaffected.
 2. **Preserve your settings types and every type reachable from them.** Either annotate your
    own call sites, or add a descriptor:
 
@@ -249,8 +298,10 @@ case; does not solve nested graphs.
   Newtonsoft is the serializer.
 
 **Option B — actual full AOT support.** Replace Newtonsoft with `System.Text.Json` source
-generators, and DynamicProxy with a compile-time source generator. This is a rewrite of both
-packages' cores and a breaking API change: `JsonSerializerSettings`, `IContractResolver`,
+generators. (The DynamicProxy half of this option was done in 2.2.0 with IL weaving, which
+turned out to be far cheaper than the source generator sketched here and, unlike a generated
+subclass, also covers non-virtual and sealed classes.) The remaining serializer work is a
+rewrite of the core package and a breaking API change: `JsonSerializerSettings`, `IContractResolver`,
 `TypeNameHandling` and `JsonConvert.PopulateObject` semantics are all part of the documented
 public surface and all disappear. It also forfeits the `netstandard2.0` and `net48` targets
 for the generated path.

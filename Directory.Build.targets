@@ -86,4 +86,19 @@
 
   </PropertyGroup>
 
+  <!-- ====================================================================================
+       Apply the packaged re-signing targets to this repository's own projects too.
+
+       src/JsonSettings.Autosave declares the aspect and tests/JsonSettings.Tests consumes it,
+       so both are rewritten by AspectInjector after CoreCompile and both lose the strong-name
+       signature the compiler applied. Consumers get this file from the nupkg's build/ and
+       buildTransitive/ folders; our own build has no nupkg to get it from, so it is imported
+       directly. One copy, both paths.
+
+       Importing it unconditionally into every project is safe: every target inside is either
+       conditioned on signing being active or hooked to AfterTargets="AspectInjector_InjectAspects",
+       and MSBuild ignores AfterTargets naming a target that a given project never defines.
+       ==================================================================================== -->
+  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.Autosave\build\Nucs.JsonSettings.Autosave.targets" />
+
 </Project>

@@ -231,7 +231,7 @@
        NuGetAudit is on by default, but its default MODE is 'direct': only packages this
        repository names itself are checked, and anything they drag in is not. That is the
        same blind spot Dependabot has, because Dependabot reads manifests too. A
-       vulnerability reaching us through Castle.Core or the test SDK would be invisible to
+       vulnerability reaching us through AspectInjector or the test SDK would be invisible to
        both.
 
        'all' audits the whole restored graph, transitive included, and 'low' means nothing

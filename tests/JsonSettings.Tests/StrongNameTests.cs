@@ -50,7 +50,7 @@ namespace Nucs.JsonSettings.Tests {
         // global:: is required, not stylistic: this namespace is Nucs.JsonSettings.Tests, and the
         // test project has its own Nucs.JsonSettings.Tests.Autosave folder, which an unqualified
         // `Autosave.` binds to first.
-        private static Assembly AutosaveAssembly => typeof(global::Nucs.JsonSettings.Autosave.TypeValidation<>).Assembly;
+        private static Assembly AutosaveAssembly => typeof(global::Nucs.JsonSettings.Autosave.TypeValidation).Assembly;
 
         private static IEnumerable<Assembly> ShippedAssemblies {
             get {
@@ -138,7 +138,7 @@ namespace Nucs.JsonSettings.Tests {
 
             typeof(global::Nucs.JsonSettings.Inline.Paths).IsVisible.Should()
                 .BeFalse("Paths is internal to JsonSettings; reaching it here is friend access, not a public API");
-            typeof(global::Nucs.JsonSettings.Autosave.TypeValidation<>).IsVisible.Should()
+            typeof(global::Nucs.JsonSettings.Autosave.TypeValidation).IsVisible.Should()
                 .BeFalse("TypeValidation is internal to JsonSettings.Autosave");
         }
 

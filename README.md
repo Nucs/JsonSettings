@@ -1,4 +1,4 @@
-# <img src="assets/icon.png" width="25" style="margin: 5px 0px 0px 10px"/> JsonSettings
+﻿# <img src="assets/icon.png" width="25" style="margin: 5px 0px 0px 10px"/> JsonSettings
 [![Nuget version](https://img.shields.io/nuget/vpre/Nucs.JsonSettings.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![Nuget downloads](https://osscdn.nucs.workers.dev/jsonsettings-downloads-ujVrxmtCZN.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![GitHub license](https://img.shields.io/github/license/Nucs/JsonSettings.svg)](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
@@ -22,9 +22,12 @@ Both packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`
 The `netstandard2.0` asset covers everything without an exact match, including
 `net472`+, `netcoreapp3.1`, `net5.0`, `net7.0`, `net9.0`, Unity and Xamarin.
 
-> **Native AOT / trimming:** neither package is AOT-compatible or trim-safe. Under
-> `PublishTrimmed` or `PublishAot` a settings file can be silently written back as `{}`
-> with no exception. `Nucs.JsonSettings.Autosave` cannot work under Native AOT at all.
+> **Native AOT / trimming:** neither package is trim-safe yet. Under `PublishTrimmed` or
+> `PublishAot` a settings file can still be silently written back as `{}` with no exception,
+> because Newtonsoft.Json's reflection is invisible to the trimmer.
+> `Nucs.JsonSettings.Autosave` no longer blocks AOT on its own: it is built on compile-time
+> IL weaving and emits nothing at runtime, where it previously used `Castle.DynamicProxy`
+> and threw `PlatformNotSupportedException`.
 > See [docs/AOT.md](https://github.com/Nucs/JsonSettings/blob/master/docs/AOT.md) for the
 > measurements, the causes and the workarounds.
 
@@ -82,7 +85,7 @@ Features Overview
  - Modularity allowing easy extension and high control over behavior on a per-object level  <span style='font-size:11px; padding-left: 3px' >[read more](#modulation-api)</span>
  - Autosaving on changes  <span style='font-size:11px; padding-left: 3px' >[read more](#autosave)</span>
    - Via `INotificationChanged`/`INotificationCollectionChanged` allowing WPF binding (with interval throttling support to avoid cpu overload)  <span style='font-size:11px; padding-left: 3px' >[read more](#inotificationchanged-and-wpf-support)</span>
-   - Via `Castle.DynamicProxy` generated wrapper  <span style='font-size:11px; padding-left: 3px' >[read more](#proxification)</span>
+   - Via compile-time IL weaving of the property setters, marked with `[Autosave]`  <span style='font-size:11px; padding-left: 3px' >[read more](#autosave)</span>
  - Versioning control  <span style='font-size:11px; padding-left: 3px' >[read more](#versioning)</span>
    - Offers protection mechanisms such as renaming file and loading default
    - By changing version, it allows to introduce any kind of changes to the settings class
@@ -171,7 +174,7 @@ SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
 * **Hardcoded Settings with Autosave**
     * Automatic save will occur when changes detected on virtual properties
     * All properties have to be virtual
-    * Requires package `nucs.JsonSettings.Autosave` that uses `Castle.Core`.
+    * Requires package `nucs.JsonSettings.Autosave` and an `[Autosave]` attribute on the class.
 ```C#
 Settings x  = JsonSettings.Load<Settings>().EnableAutosave(); //call after loading
 //or:
@@ -255,20 +258,56 @@ Special thanks to [Rijndael256](https://github.com/2Toad/Rijndael256) for their 
 
 Autosave
 ---
-Autosaving detects changes in all virtual properties by creating a proxy wrapper using Castle.Core. <br/>
-The requirement for the class to be autosaved is for all public properties have to be virtual and the class to be non-sealed.
-Any properties that are not marked virtual will not work properly (not just won't autosave), therefore an `JsonSettingsException` is thrown if during proxification a non-virtual property is detected.
+Autosaving appends a save to the end of every property setter of a class marked `[Autosave]`.
+This happens at compile time, via IL weaving ([AspectInjector](https://github.com/pamidur/aspect-injector)),
+in the assembly that declares the class. Nothing is generated at runtime.
+
+```C#
+[Autosave]
+public class MySettings : JsonSettings {
+    public override string FileName { get; set; } = "config.json";
+    public string Name { get; set; }        // no 'virtual' required
+    public int    Count { get; set; }
+}
+
+var settings = JsonSettings.Load<MySettings>("config.json").EnableAutosave();
+settings.Name = "changed";   // saved
+```
+
+#### What changed in 2.2.0
+Autosave used to build a runtime proxy with `Castle.Core`, which forced three restrictions
+that are now gone:
+
+| Before (Castle.DynamicProxy) | Now (compile-time weaving) |
+|---|---|
+| Every public property had to be `virtual` | Ordinary properties work; `virtual` is irrelevant |
+| The class could not be `sealed` | `sealed` classes work |
+| `EnableAutosave()` returned a **different** object, so a reference captured beforehand silently did not autosave | Returns the same instance; every reference to it autosaves |
+| Impossible under Native AOT (`System.Reflection.Emit`) | No runtime codegen at all |
+
+In exchange there is one new requirement: the class must carry `[Autosave]`. Calling
+`EnableAutosave()` on a class without it throws `JsonSettingsException` rather than
+silently doing nothing.
+
+`[Autosave]` is **not inherited**. A setter is woven where it is declared, so every class in
+a settings hierarchy that declares properties you want saved needs its own attribute.
 
 #### Attributes
-Properties can be marked with `IgnoreAutosaveAttribute`  (`IgnoreJsonAttribute` will also work) to be excluded from the monitored properties for changes.<br/>
-All proxy wrapper classes generated with `ProxyGeneratedAttribute`.
+Properties can be marked with `IgnoreAutosaveAttribute` (`JsonIgnoreAttribute` will also work)
+to be excluded from the monitored properties for changes.
 
 #### Requirements
-- All public properties must be virtual
 - Install `nucs.JsonSettings.Autosave` nuget package
+- Mark the settings class `[Autosave]`
 - Call `mySettings.EnableAutosave()` extension after calling `Load`
 
-//TODO: example
+#### Strong-named consumers
+IL weaving rewrites the assembly after the compiler has signed it, and AspectInjector 2.9.0
+[retired its re-signing feature](https://github.com/pamidur/aspect-injector/releases/tag/2.9.0).
+The package therefore ships MSBuild targets that re-sign the assembly with your own
+`$(AssemblyOriginatorKeyFile)` after the weave. If `sn.exe` cannot be found the build warns
+(`NJS1001`) rather than failing; opt out entirely with
+`<NucsAutosaveResignAfterWeaving>false</NucsAutosaveResignAfterWeaving>`.
 
 #### Suspend Autosave
 In some scenarios, there might be multiple close changes to the configuration object. Normally that would trigger multiple save calls.
@@ -282,19 +321,22 @@ WPF Support with INotificationChanged/INotificationCollectionChanged
 ---
 Any settings class can turn into a ViewModel with full autosave support making window settings and state persistence much simpler.
 
-When your settings class inherits `INotifyPropertyChanged`, upon calling `EnableAutosave`, 
-a different interceptor with `NotificationBinder` will be attached to the generated proxy object that'll listen to the settings class's:
+When your settings class inherits `INotifyPropertyChanged`, upon calling `EnableAutosave`,
+a `NotificationBinder` is attached to the settings object that'll listen to the settings class's:
 - `event PropertyChanged` calls
 - All properties that implement `INotifyPropertyChanged` will bind to their `event PropertyChanged`
 - All properties that implement `INotificationCollectionChanged` such as `ObservableCollection<T>`  will bind to their `event CollectionChanged`
 - All virtual properties that do not answer to the criteria above.
 
 So evidently, objects inside ObservableCollection or other nested properties that are not in the settings class are not monitored for changes.<br/><br/>
-Any properties that are not marked virtual will not work properly (not just won't autosave), therefore a `JsonSettingsException` is thrown if during proxification if a non-virtual property is detected.
+Saving on a plain property write is handled by the woven setter, so a hand-written setter that
+raises `OnPropertyChanged` and an auto-implemented one behave identically. The
+`NotificationBinder` is what re-binds nested `INotifyPropertyChanged` /
+`INotifyCollectionChanged` objects when the property holding them is replaced.
 
 #### Requirements
-- Settings class inherit `INotifyPropertyChanged`
-- All public properties must be virtual
+- Settings class inherit `INotifyPropertyChanged` (e.g. by deriving `NotifiyingJsonSettings`)
+- Mark the settings class `[Autosave]`
 - Install `nucs.JsonSettings.Autosave` nuget package
 - Call `mySettings.EnableAutosave()` extension after calling `Load`
 

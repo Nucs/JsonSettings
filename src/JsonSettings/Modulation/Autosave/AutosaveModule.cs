@@ -1,10 +1,41 @@
-﻿using Nucs.JsonSettings.Modulation;
+﻿using System.Collections.Generic;
+using Nucs.JsonSettings.Modulation;
 
 namespace Nucs.JsonSettings.Autosave {
     public class AutosaveModule : Module {
         internal static readonly string[] _frameworkParameters = {nameof(JsonSettings.FileName), nameof(JsonSettings.Modulation)};
         internal static readonly int _frameworkParametersLength = _frameworkParameters.Length;
-        
+
+        /// <summary>
+        ///     The property names a write to which commits a save, resolved once when autosave is
+        ///     enabled.
+        /// </summary>
+        /// <remarks>
+        ///     This used to be computed in the interceptor's constructor, which only existed
+        ///     because a proxy existed. Weaving has no interceptor to hang it on, and the woven
+        ///     advice must not pay for reflection on every single property write, so the set is
+        ///     resolved once here and consulted as a hash lookup thereafter.
+        ///
+        ///     Null means "autosave was attached without a property filter" -- nothing is
+        ///     monitored -- rather than "everything is monitored", so a module that somehow
+        ///     reaches the advice half-initialized stays silent instead of saving on every write.
+        /// </remarks>
+        private HashSet<string>? _monitoredProperties;
+
+        /// <summary>
+        ///     Records which properties this module saves on. Called by EnableAutosave.
+        /// </summary>
+        internal void SetMonitoredProperties(HashSet<string> monitored) {
+            _monitoredProperties = monitored;
+        }
+
+        /// <summary>
+        ///     Whether a write to <paramref name="propertyName"/> should commit a save.
+        /// </summary>
+        public bool IsMonitored(string propertyName) {
+            return _monitoredProperties != null && _monitoredProperties.Contains(propertyName);
+        }
+
         /// <summary>
         ///     When true, changes will not cause updates.
         /// </summary>

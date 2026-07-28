@@ -29,6 +29,7 @@ namespace Nucs.JsonSettings.Examples {
         }
     }
 
+    [Autosave]
     public class NotifyingSettings : NotifiyingJsonSettings {
         public override string FileName { get; set; } = "some.default.just.in.case.jsn";
         private string _street = "Sesamee Street 123";

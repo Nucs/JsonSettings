@@ -1,0 +1,122 @@
+﻿<Project>
+
+  <!-- ====================================================================================
+       Restore the strong-name signature that IL weaving invalidates.
+
+       WHY THIS FILE EXISTS. AspectInjector rewrites the compiled assembly after CoreCompile.
+       The compiler has already signed that assembly by then, so any post-compile edit leaves
+       the signature describing bytes that no longer exist. AspectInjector used to re-sign the
+       result itself; 2.9.0 removed the feature outright:
+
+           "Breaking change: resigning assemblies feature is retired as it no longer
+            supported by MS"
+           see https://github.com/pamidur/aspect-injector/releases/tag/2.9.0
+
+       Measured on a clean A/B of a two-project probe (net8.0, full SignAssembly):
+
+           AspectInjector_Enabled=false   sn -vf App.dll -> "is valid"
+           AspectInjector_Enabled=true    sn -vf App.dll -> "Strong name validation failed."
+
+       Both the aspect-declaring assembly and every consuming assembly are affected. The
+       aspect-declaring one cannot opt out of weaving to dodge this, because AspectInjector
+       injects the aspect's global singleton field during that pass; building it with
+       AspectInjector_Enabled=false fails the consumer with
+       "Aspect doesn't have global singleton injected".
+
+       Downgrading is not an escape either. 2.8.2 still re-signs, but it does so via the
+       GetFrameworkSdkPath task, which hard-fails under `dotnet build`:
+       "error MSB4803: The task GetFrameworkSdkPath is not supported on the .NET Core version
+       of MSBuild" — which is precisely why the feature was retired.
+
+       HOW BAD IS AN INVALID SIGNATURE. Usually inert, never correct. .NET 5+ does not verify
+       strong-name signatures at load time at all, and .NET Framework has bypassed
+       verification for full-trust assemblies since 3.5 SP1. It still matters for `sn -vf` in
+       a compliance gate, for the GAC, and for anything that verifies deliberately — and this
+       repository strong-names on purpose (see Directory.Build.props), so shipping a package
+       that silently invalidates a consumer's signature is not acceptable.
+
+       WHAT THIS DOES. After the weave, if the project is really signing (not delay-signing,
+       not public-signing) it re-signs the intermediate assembly with the same key the
+       compiler used. If sn.exe cannot be found it warns rather than failing the build: the
+       consumer's build is not the place to hard-stop over a signature that the runtime is
+       not going to check.
+
+       Opt out with <NucsAutosaveResignAfterWeaving>false</NucsAutosaveResignAfterWeaving>.
+       ==================================================================================== -->
+
+  <PropertyGroup>
+    <NucsAutosaveResignAfterWeaving Condition="'$(NucsAutosaveResignAfterWeaving)' == ''">true</NucsAutosaveResignAfterWeaving>
+
+    <!-- Delay-signed and public-signed assemblies never carried a valid signature to begin
+         with, so there is nothing to restore and re-signing them would be wrong. -->
+    <_NucsAutosaveShouldResign>false</_NucsAutosaveShouldResign>
+    <_NucsAutosaveShouldResign Condition="'$(NucsAutosaveResignAfterWeaving)' == 'true'
+                                          and '$(SignAssembly)' == 'true'
+                                          and '$(DelaySign)' != 'true'
+                                          and '$(PublicSign)' != 'true'
+                                          and '$(AssemblyOriginatorKeyFile)' != ''
+                                          and '$(AspectInjector_Enabled)' != 'false'">true</_NucsAutosaveShouldResign>
+  </PropertyGroup>
+
+  <!-- sn.exe ships with the .NET Framework SDK and is Windows-only. The glob is evaluated
+       once per project evaluation and is narrow enough not to be a measurable cost. -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' and '$(_NucsAutosaveShouldResign)' == 'true'">
+    <_NucsSnCandidate Include="$([System.Environment]::GetFolderPath(SpecialFolder.ProgramFilesX86))\Microsoft SDKs\Windows\v*\bin\NETFX * Tools\x64\sn.exe" />
+    <_NucsSnCandidate Include="$([System.Environment]::GetFolderPath(SpecialFolder.ProgramFilesX86))\Microsoft SDKs\Windows\v*\bin\NETFX * Tools\sn.exe" />
+  </ItemGroup>
+
+  <!-- Target batching: with Outputs referencing the item, this body runs once per candidate
+       and the property is left holding the last one. MSBuild has no "take one item" idiom
+       that reads better than this. -->
+  <Target Name="NucsAutosave_LocateSn" Outputs="%(_NucsSnCandidate.Identity)">
+    <PropertyGroup>
+      <_NucsSnExe>%(_NucsSnCandidate.FullPath)</_NucsSnExe>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="NucsAutosave_ResignAfterWeaving"
+          AfterTargets="AspectInjector_InjectAspects"
+          DependsOnTargets="NucsAutosave_LocateSn"
+          Condition="'$(_NucsAutosaveShouldResign)' == 'true'">
+
+    <Exec Condition="'$(_NucsSnExe)' != ''"
+          Command="&quot;$(_NucsSnExe)&quot; -q -R &quot;@(IntermediateAssembly->'%(FullPath)')&quot; &quot;$(AssemblyOriginatorKeyFile)&quot;"
+          StandardOutputImportance="low"
+          ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="_NucsSnExitCode" />
+    </Exec>
+
+    <!-- CRITICAL, and the reason this is not just an Exec.
+
+         AspectInjector's weave target is incremental on
+             Inputs  = the intermediate assembly
+             Outputs = <intermediate assembly>.aspectsinjected
+         and it stamps that marker with the assembly's modified time, so the two come out
+         equal and the next build correctly skips the weave.
+
+         sn -R rewrites the assembly in place, which moves its timestamp PAST the marker.
+         Without the re-stamp below, the following build therefore decides the assembly is
+         newer than the marker and weaves it a second time, on top of the advice already
+         there. Build a third time and it is woven again. The symptom is not a build error
+         but a settings file written N times per assignment, where N is the number of builds
+         since the last clean, which is exactly the kind of defect that survives a green test
+         run on a fresh clone and appears only on a developer's machine.
+
+         Re-stamping to "now" (rather than to the assembly's time) keeps the marker at least
+         as new as the assembly, which is what the up-to-date check wants. A source change
+         still moves the assembly past the marker on the next build and weaving runs again,
+         as it should. -->
+    <Touch Condition="'$(_NucsSnExe)' != '' and '$(_NucsSnExitCode)' == '0'"
+           Files="@(IntermediateAssembly->'%(FullPath).aspectsinjected')"
+           AlwaysCreate="true" />
+
+    <Warning Condition="'$(_NucsSnExe)' == ''"
+             Code="NJS1001"
+             Text="Nucs.JsonSettings.Autosave: this project is strong-named and its assembly was rewritten by AspectInjector, which invalidates the signature. sn.exe was not found, so the signature could not be restored. Install the .NET Framework SDK, or set &lt;NucsAutosaveResignAfterWeaving&gt;false&lt;/NucsAutosaveResignAfterWeaving&gt; to silence this. The assembly still loads and runs -- .NET 5+ does not verify strong names -- but it will fail an explicit `sn -vf` check." />
+
+    <Warning Condition="'$(_NucsSnExe)' != '' and '$(_NucsSnExitCode)' != '0'"
+             Code="NJS1002"
+             Text="Nucs.JsonSettings.Autosave: sn.exe -R failed with exit code $(_NucsSnExitCode); the strong-name signature invalidated by IL weaving was not restored." />
+  </Target>
+
+</Project>

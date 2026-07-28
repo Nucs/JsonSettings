@@ -48,12 +48,24 @@ namespace Nucs.JsonSettings.Autosave {
             }
         }
 
+        /// <summary>
+        ///     Rebinds nested change notifications when a monitored property is replaced.
+        /// </summary>
+        /// <remarks>
+        ///     This deliberately does NOT save. Under the Castle proxy the settings' own
+        ///     PropertyChanged was the only signal that a hand-written setter had run, so this
+        ///     handler had to commit the write itself. The woven advice now runs at the end of
+        ///     every setter -- hand-written and auto-implemented alike -- so saving here as well
+        ///     would commit twice for a single assignment.
+        ///
+        ///     What remains is the part the setter cannot do: swapping the CollectionChanged /
+        ///     PropertyChanged subscriptions from the old nested object to the new one, so that
+        ///     mutating a freshly assigned collection still saves.
+        /// </remarks>
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e) {
             if (_monitoredPropertiesTable.TryGetValue(e.PropertyName, out (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue) propInfo)) {
                 var newValue = propInfo.GetMethod.Invoke(_settings, null);
                 if (propInfo.CurrentValue != newValue) {
-                    //save and persist the new value
-                    SaveOnChange(sender, e);
                     _monitoredPropertiesTable[e.PropertyName] = (propInfo.Property, propInfo.GetMethod, propInfo.SetMethod, newValue);
 
                     if (newValue != null) {
