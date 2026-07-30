@@ -274,6 +274,15 @@ Breaking changes
   against the old unsigned identity will not match the new one and should be removed rather
   than edited, and anything that hardcodes a full assembly display name needs the token added.
   Recompiling is otherwise enough. See docs/SIGNING.md.
+- Autosave now requires an [Autosave] attribute on the settings class. Nucs.JsonSettings.Autosave
+  no longer proxies with Castle.DynamicProxy; it rewrites the property setters at compile time
+  with AspectInjector. An existing EnableAutosave()/EnableIAutosave() call now throws until the
+  class is marked [Autosave] - the missing attribute is checked at runtime rather than silently
+  never saving. In exchange the old proxy restrictions are gone: properties no longer need to be
+  virtual, sealed classes are supported, and EnableAutosave() returns the very instance it was
+  given rather than a proxy, so a reference captured before the call autosaves too. SettingsBag is
+  unaffected - its autosave is dictionary-backed, not woven. MIGRATION: add [Autosave] to the
+  class; opt a property out with [IgnoreAutosave]. See docs/AOT.md.
 
 New features
 - Encryption accepts binary secrets, not only a text password:
@@ -283,6 +292,25 @@ New features
     for callers who already hold key material.
   Each has value, Func&lt;byte[]&gt; and Func&lt;T,byte[]&gt; overloads. The on-disk format is
   unchanged and the text-password path is byte-for-byte compatible with every earlier version.
+
+Autosave (see the breaking-change note above for the [Autosave] requirement)
+- Native AOT compatible. AspectInjector emits nothing at runtime, so EnableAutosave() works under
+  Native AOT, where the Castle.DynamicProxy path threw PlatformNotSupportedException and no
+  annotation could fix it. Nucs.JsonSettings.Autosave no longer depends on Castle.Core.
+- The package re-signs the woven assembly after the weave (shipped build/ and buildTransitive/
+  targets), because weaving invalidates the strong-name signature the compiler applied and
+  AspectInjector 2.9.0 retired its own re-signing. If sn.exe is unavailable the build warns
+  (NJS1001) rather than failing; the assembly still loads on .NET 5+. See docs/SIGNING.md.
+- Fixed: a load after EnableAutosave() wrote the object back to disk once per populated property,
+  persisting a half-loaded object mid-load. Load, LoadDefault and versioning reloads no longer
+  count as user writes, and the framework-written IVersionable.Version is no longer monitored.
+- Fixed: nested SuspendAutosave is reference-counted - an inner scope's Dispose no longer ends the
+  outer scope early and commits the save it was batching.
+- Fixed: [IgnoreAutosave] is honoured for inline-initialised INotify* collections, which the
+  binder previously subscribed and saved on regardless of the attribute.
+- Fixed (SettingsBag/DynamicSettingsBag): a write made inside AfterSave no longer recurses to a
+  stack overflow, and EnableAutosave() reached through a JsonSettings-typed reference now behaves
+  the same as through a SettingsBag-typed one instead of throwing.
 
 Bug fixes (regressions introduced in 2.1.0)
 - A custom module inside the encryption layer is readable again. 2.1.0's wrong-password UTF-8
