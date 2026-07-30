@@ -58,6 +58,16 @@ namespace Nucs.JsonSettings.Autosave {
             if (settings == null)
                 throw new ArgumentNullException(nameof(settings));
 
+            //SettingsBag has its own dictionary-backed autosave and is not woven. Its instance
+            //EnableAutosave() hides this extension when called on a SettingsBag-typed reference, but
+            //a JsonSettings-typed one resolves to the extension instead -- so without this the same
+            //object would autosave through one reference and throw "not marked [Autosave]" through
+            //another. Route it to the bag's own autosave so both behave identically.
+            if (settings is SettingsBag bag) {
+                bag.EnableAutosave();
+                return settings;
+            }
+
             //the concrete type, not TSettings: the caller may well hold a base-typed reference.
             var type = settings.GetType();
             TypeValidation.ValidateWoven(type);

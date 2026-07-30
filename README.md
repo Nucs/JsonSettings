@@ -375,7 +375,25 @@ SettingsBag internally stores a key-value dictionary.
 Any type of Value can be passed as long as Json.NET knows how to serialize it. <br/>
 SettingsBag has built-in feature for autosaving that can be enabled by calling EnableAutosave without WPF binding support. <br/>
 
-//TODO: add example
+```C#
+var bag = JsonSettings.Load<SettingsBag>("bag.json").EnableAutosave();
+bag["Name"] = "value";           // saved
+bag.Remove("Name");              // saved
+dynamic d = bag.AsDynamic();
+d.Other = 42;                    // saved (routes through the bag)
+```
+
+This is a **separate** autosave from the `[Autosave]` weaving used for typed classes — it is
+dictionary-backed, needs no attribute, and is what `SettingsBag.EnableAutosave()` (the instance
+method) turns on. It shares the same `AutosaveModule`, so it inherits the same guarantees:
+`SuspendAutosave()` (including nesting), reentrancy safety (writing the bag inside an `AfterSave`
+handler does not recurse), and `Remove`/`RemoveWhere` autosave like an index write.
+
+Notes:
+- Calling the `EnableAutosave()` extension on a `JsonSettings`-typed reference to a bag routes to
+  the bag's own autosave, so it behaves the same as calling the instance method.
+- `AsDynamic()` returns a disposable wrapper; using it after `Dispose()` throws
+  `ObjectDisposedException`.
 
 Changing JsonSerializerSettings
 ---

@@ -8,12 +8,17 @@ namespace Nucs.JsonSettings {
     public sealed class DynamicSettingsBag : DynamicObject, IDisposable {
         private SettingsBag _bag { get; set; }
 
+        //Resolves the wrapped bag, or throws a diagnosable ObjectDisposedException. Dispose nulls
+        //_bag, so accessing a disposed wrapper used to surface as a bare NullReferenceException
+        //from inside a dynamic member/index binding, which points nowhere useful.
+        private SettingsBag Bag => _bag ?? throw new ObjectDisposedException(nameof(DynamicSettingsBag));
+
         /// <summary>
         ///     Casts back a from <see cref="DynamicSettingsBag"/> to <see cref="SettingsBag"/>.
         /// </summary>
         /// <returns></returns>
         public SettingsBag AsBag() {
-            return _bag;
+            return Bag;
         }
 
         public DynamicSettingsBag(SettingsBag bag) {
@@ -27,13 +32,13 @@ namespace Nucs.JsonSettings {
 
         // Get the property value.
         public override bool TryGetMember(GetMemberBinder binder, out object result) {
-            result = _bag[binder.Name];
+            result = Bag[binder.Name];
             return true;
         }
 
         // Set the property value.
         public override bool TrySetMember(SetMemberBinder binder, object value) {
-            _bag[binder.Name] = value;
+            Bag[binder.Name] = value;
             return true;
         }
 
@@ -42,8 +47,8 @@ namespace Nucs.JsonSettings {
             var index = indexes[0] as string;
             if (string.IsNullOrEmpty(index))
                 return false;
-            _bag[index] = value;
-            
+            Bag[index] = value;
+
             return true;
         }
 
@@ -54,7 +59,7 @@ namespace Nucs.JsonSettings {
                 result = null;
                 return false;
             }
-            result = _bag[index];
+            result = Bag[index];
             return true;
         }
     }
