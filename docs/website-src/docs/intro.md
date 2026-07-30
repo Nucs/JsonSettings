@@ -28,8 +28,10 @@ Both packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`
 - Modularity allowing easy extension and high control over behavior on a per-object level &mdash;
   see the [Modulation API](modulation-api.md).
 - Autosaving on changes &mdash; see [Autosave](autosave.md).
-  - Via `INotifyPropertyChanged`/`INotifyCollectionChanged` allowing WPF binding.
-  - Via `Castle.DynamicProxy` generated wrapper.
+  - Compile-time IL weaving of property setters marked `[Autosave]`; no proxy, Native-AOT-safe.
+- WPF binding &mdash; make settings observable (`INotifyPropertyChanged`), raise change
+  notifications from setters, and autosave on nested `INotifyCollectionChanged` changes; see
+  [Notifications &amp; WPF](notifications.md).
 - Versioning control &mdash; see [Versioning](versioning.md).
   - Offers protection mechanisms such as renaming the file and loading defaults.
   - By changing version, it allows introducing any kind of change to the settings class.

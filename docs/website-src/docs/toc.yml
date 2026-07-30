@@ -16,6 +16,8 @@
     href: encryption.md
   - name: Autosave
     href: autosave.md
+  - name: Notifications & WPF
+    href: notifications.md
 - name: Serialization
   items:
   - name: JsonSerializerSettings

@@ -460,8 +460,9 @@ public class WindowSettings : NotifiyingJsonSettings {
   base, `[NotifyChangesMixin]` injects `INotifyPropertyChanged` for you (per-instance; best for a single
   class — a hierarchy should use `NotifiyingJsonSettings` + `[NotifyChanges]`).
 
-See the [Autosave documentation](docs/website-src/docs/autosave.md) for the guard details and a
-comparison with Fody `PropertyChanged`, CommunityToolkit.Mvvm and ReactiveUI.
+See the [Notifications & WPF guide](docs/website-src/docs/notifications.md) for the guard details, the
+mixin, nested-collection autosave, threading, and a comparison with Fody `PropertyChanged`,
+CommunityToolkit.Mvvm and ReactiveUI.
 
 Throttled Save
 ---
