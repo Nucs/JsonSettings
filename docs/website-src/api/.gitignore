@@ -1,0 +1,8 @@
+###############
+#  temp file  #
+###############
+# Generated API metadata. DocFX regenerates these from the source assemblies on every
+# build (see the `metadata` section of docfx.json), so they are never committed. index.md
+# and overwrites/ are authored by hand and therefore not ignored.
+*.yml
+.manifest
