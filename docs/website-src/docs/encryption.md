@@ -110,6 +110,11 @@ var o = JsonSettings.Configure<CasualExampleSettings>(fileName)
                     .LoadNow();
 ```
 
+A file that is not valid base64 (truncated, or edited by hand) is treated as a damaged file, exactly
+like a short encrypted one: it surfaces as a catchable `JsonSettingsException`, and a
+[`RecoveryModule`](recovery.md) absorbs it &mdash; rather than a raw `FormatException` escaping the
+decode stage ahead of the recovery hook.
+
 ## Wrong passwords, authentication and file format
 
 - With the default `AesCbc`, a wrong password is reported as a wrong password. Decryption verifies the

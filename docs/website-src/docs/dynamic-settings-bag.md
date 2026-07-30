@@ -38,6 +38,22 @@ if ((int?)dyn.someotherkey == 1)
 var missing = (int?)dyn.doesNotExist; // null, not 0
 ```
 
+## Typed retrieval with `Get<T>`
+
+`Get<T>(key, @default)` reads a value and converts it to `T`. Because Json.NET deserializes a JSON
+integer back as `long`, a value stored as `int` is a boxed `long` once reloaded; `Get<int>` bridges
+that width through `Convert.ChangeType` instead of throwing. A missing key &mdash; or a stored
+`null` &mdash; returns the `@default` you pass (or `default(T)`):
+
+```csharp
+settings["count"] = 3;
+settings.Save();
+settings = JsonSettings.Load<SettingsBag>("config.json");
+
+int count   = settings.Get<int>("count");      // 3, even though it reloaded as Int64
+int retries = settings.Get<int>("retries", 5); // 5 — key absent, so the default is used
+```
+
 ## The dynamic view
 
 `AsDynamic()` returns a `dynamic` wrapper (`DynamicSettingsBag`) so you can use member syntax

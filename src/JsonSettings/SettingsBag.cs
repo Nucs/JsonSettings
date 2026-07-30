@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using Nucs.JsonSettings.Autosave;
@@ -15,7 +14,6 @@ namespace Nucs.JsonSettings {
     /// <remarks>SettingsBag is threadsafe by using <see cref="ConcurrentDictionary{TKey,TValue}"/>.</remarks>
     public sealed class SettingsBag : JsonSettings {
         private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
-        private readonly SafeDictionary<string, PropertyInfo> PropertyData = new SafeDictionary<string, PropertyInfo>();
         private AutosaveModule? _autosaveModule; //TODO: this potentially can support WPF binding
         private bool _autosave;
 
@@ -70,12 +68,6 @@ namespace Nucs.JsonSettings {
 
         public SettingsBag(string fileName) {
             FileName = fileName;
-            if (this.GetType() != typeof(SettingsBag))
-                foreach (var pi in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
-                    if ((pi.CanRead && pi.CanWrite) == false)
-                        continue;
-                    PropertyData.Add(pi.Name, pi);
-                }
         }
 
         public object? this[string key] {
@@ -84,32 +76,35 @@ namespace Nucs.JsonSettings {
         }
 
         /// <summary>
-        ///     Gets the value corresponding to the given <paramref name="key"/> or returns <c>default(T)</c>
+        ///     Gets the value for <paramref name="key"/>, converting it to <typeparamref name="T"/>, or
+        ///     returns <paramref name="default"/> when the key is missing or its value is <c>null</c>.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
-        /// <param name="default"></param>
-        /// <returns></returns>
+        /// <remarks>
+        ///     A value stored under one numeric width comes back under another after a round-trip --
+        ///     Newtonsoft deserializes a JSON integer as <see cref="long"/>, so a value set as
+        ///     <see cref="int"/> is a boxed <c>long</c> once reloaded. A hard <c>(T)</c> unbox threw
+        ///     <see cref="InvalidCastException"/> on that, and a <c>null</c> value threw
+        ///     <see cref="NullReferenceException"/>. This coerces through <see cref="Convert.ChangeType(object,System.Type)"/>
+        ///     after the exact/assignable fast path, and treats a null the same as a missing key.
+        /// </remarks>
         public T? Get<T>(string key, T @default = default(T)) {
-            if (PropertyData.TryGetValue(key, out var prop))
-                return (T) prop.GetValue(this, null);
+            if (!_data.TryGetValue(key, out var value) || value == null)
+                return @default;
 
-            if (_data.TryGetValue(key, out var value))
-                return (T) value;
+            //Exact type, an assignable reference, or T == object: hand it back untouched.
+            if (value is T typed)
+                return typed;
 
-            return default;
+            //Bridge numeric (and other IConvertible) width mismatches, e.g. the Int64 a JSON integer
+            //deserializes back into for a Get<int>. Nullable is unwrapped so Get<int?> resolves too.
+            var target = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+            return (T) Convert.ChangeType(value, target);
         }
 
         /// <summary>
         ///     Sets or adds a value.
         /// </summary>
         public void Set(string key, object value) {
-            if (PropertyData.TryGetValue(key, out var prop)) {
-                prop.SetValue(this, value);
-                TrySave();
-                return;
-            }
-
             _data[key] = value;
             TrySave();
         }
