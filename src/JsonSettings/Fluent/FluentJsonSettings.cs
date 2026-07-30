@@ -117,6 +117,77 @@ namespace Nucs.JsonSettings.Fluent {
             return _instance.WithModule<T>(new RijndaelModule((Func<SecureString>) (() => password?.Invoke(_instance)!)));
         }
 
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> using a binary password. The bytes are stretched
+        ///     into a key with the same PBKDF2 construction as a text password, so this is salted and
+        ///     iterated - but it is a DIFFERENT credential from the text password whose UTF-8 encoding
+        ///     equals these bytes. To use bytes verbatim as the key instead, see
+        ///     <see cref="WithEncryptionRawKey{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="password">The binary password.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, byte[] password) where T : JsonSettings {
+            return _instance.WithModule<T>(new RijndaelModule(password));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> using a binary password resolved on demand.
+        ///     See <see cref="WithEncryption{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="password">A fetcher for the binary password.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, Func<byte[]> password) where T : JsonSettings {
+            return _instance.WithModule<T>(new RijndaelModule(password));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> using a binary password resolved from the instance
+        ///     on demand. See <see cref="WithEncryption{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="password">A fetcher for the binary password, given the instance.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, Func<T, byte[]> password) where T : JsonSettings {
+            return _instance.WithModule<T>(new RijndaelModule((Func<byte[]>) (() => password?.Invoke(_instance)!)));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> using <paramref name="key"/> verbatim as the AES
+        ///     key, with no key derivation. The key must be 16, 24 or 32 bytes (AES-128/192/256). For
+        ///     callers that already hold key material; the caller owns the key's quality, since PBKDF2
+        ///     stretching is skipped.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="key">The raw AES key, 16/24/32 bytes.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryptionRawKey<T>(this T _instance, byte[] key) where T : JsonSettings {
+            return _instance.WithModule<T>(RijndaelModule.FromRawKey(key));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> using a raw AES key resolved on demand.
+        ///     See <see cref="WithEncryptionRawKey{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="key">A fetcher for the raw AES key, 16/24/32 bytes.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryptionRawKey<T>(this T _instance, Func<byte[]> key) where T : JsonSettings {
+            return _instance.WithModule<T>(RijndaelModule.FromRawKey(key));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="RijndaelModule"/> using a raw AES key resolved from the instance on
+        ///     demand. See <see cref="WithEncryptionRawKey{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="key">A fetcher for the raw AES key, given the instance.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryptionRawKey<T>(this T _instance, Func<T, byte[]> key) where T : JsonSettings {
+            return _instance.WithModule<T>(RijndaelModule.FromRawKey((Func<byte[]>) (() => key?.Invoke(_instance)!)));
+        }
+
         public static T WithBase64<T>(this T _instance) where T : JsonSettings {
             return _instance.WithModule<T>(new Base64Module());
         }

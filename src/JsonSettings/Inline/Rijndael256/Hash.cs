@@ -28,7 +28,19 @@ namespace Rijndael256
             var hash = SHA512.Create().ComputeHash(Encoding.UTF8.GetBytes(data));
             return BitConverter.ToString(hash).Replace("-", "");
         }
-        
+
+        /// <summary>
+        /// Generates a raw SHA-512 hash from the specified <paramref name="data"/>. Used to seed the
+        /// salt for a byte[] password, where the string overload's hex-string form is not wanted.
+        /// </summary>
+        /// <param name="data">The data.</param>
+        /// <returns>The 64-byte hash.</returns>
+        public static byte[] Sha512(byte[] data)
+        {
+            using (var sha = SHA512.Create())
+                return sha.ComputeHash(data);
+        }
+
         /// <summary>
         /// Generates a PBKDF2 hash from the specified <paramref name="data"/>.
         /// </summary>

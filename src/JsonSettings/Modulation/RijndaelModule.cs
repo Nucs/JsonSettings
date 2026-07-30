@@ -9,11 +9,31 @@ namespace Nucs.JsonSettings.Modulation {
     /// <summary>
     ///     This module encrypts the configuration with Rijndael Algorithm, aka AES256.
     /// </summary>
-    /// <remarks>This module uses internal class to perform the encryption and is not publicly exposed.<br></br>The password is stored as <see cref="SecureString"/> in memory.</remarks>
+    /// <remarks>
+    ///     This module uses an internal class to perform the encryption and is not publicly exposed.
+    ///     <br></br>
+    ///     The secret can be supplied three ways:
+    ///     <list type="bullet">
+    ///         <item>a text password (<see cref="string"/>/<see cref="SecureString"/>), stored as a
+    ///             <see cref="SecureString"/> and stretched into a key with PBKDF2;</item>
+    ///         <item>a binary password (<see cref="byte"/>[], via <see cref="RijndaelModule(byte[])"/>),
+    ///             stretched with the same PBKDF2 construction - a distinct credential from the text
+    ///             password with the same bytes;</item>
+    ///         <item>a raw AES key (<see cref="byte"/>[], via <see cref="FromRawKey(byte[])"/>), used
+    ///             verbatim with no derivation - it must be 16, 24 or 32 bytes.</item>
+    ///     </list>
+    ///     Exactly one source is active per module; the text path is unchanged and on-disk compatible
+    ///     with every earlier version.
+    /// </remarks>
     public class RijndaelModule : Module {
         public static readonly SecureString EmptyString = "".ToSecureString();
 
         private Func<SecureString>? _fetcher;
+
+        //Set instead of _fetcher when the credential is binary. Exactly one of the three sources is
+        //ever non-null; ResolveKey applies them in the order rawKey > passwordBytes > text password.
+        private readonly Func<byte[]>? _passwordBytesFetcher;
+        private readonly Func<byte[]>? _rawKeyFetcher;
 
         /// <summary>
         ///     The key-size for the AES encryption, by default <see cref="KeySize.Aes256"/>
@@ -43,6 +63,56 @@ namespace Nucs.JsonSettings.Modulation {
             };
         }
 
+        /// <summary>
+        ///     A binary password. Run through the same PBKDF2 derivation as a text password
+        ///     (see <see cref="Rijndael.GenerateKey(byte[],KeySize)"/>) - stretched and salted - but a
+        ///     DIFFERENT credential from the text password whose UTF-8 bytes happen to match.
+        /// </summary>
+        public RijndaelModule(byte[] password)
+            : this(CloneFetcher(password ?? throw new ArgumentNullException(nameof(password))), rawKey: false) { }
+
+        /// <summary>
+        ///     A binary password resolved on demand. See <see cref="RijndaelModule(byte[])"/>.
+        /// </summary>
+        public RijndaelModule(Func<byte[]> passwordFetcher)
+            : this(passwordFetcher ?? throw new ArgumentNullException(nameof(passwordFetcher)), rawKey: false) { }
+
+        //Shared target for the two binary constructions. A second parameter rather than a public
+        //RijndaelModule(byte[]) overload for the key, because that signature is already the binary
+        //PASSWORD - the raw key is reached through FromRawKey so intent is explicit at the call site.
+        private RijndaelModule(Func<byte[]> fetcher, bool rawKey) {
+            if (rawKey)
+                _rawKeyFetcher = fetcher;
+            else
+                _passwordBytesFetcher = fetcher;
+        }
+
+        /// <summary>
+        ///     Builds a module that uses <paramref name="key"/> verbatim as the AES key, with no key
+        ///     derivation. The key must be 16, 24 or 32 bytes (AES-128/192/256).
+        /// </summary>
+        public static RijndaelModule FromRawKey(byte[] key) {
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            ValidateRawKey(key);
+            return new RijndaelModule(CloneFetcher(key), rawKey: true);
+        }
+
+        /// <summary>
+        ///     Builds a module that uses the key returned by <paramref name="keyFetcher"/> verbatim,
+        ///     with no key derivation. The key must be 16, 24 or 32 bytes each time it is resolved.
+        /// </summary>
+        public static RijndaelModule FromRawKey(Func<byte[]> keyFetcher) {
+            if (keyFetcher == null) throw new ArgumentNullException(nameof(keyFetcher));
+            return new RijndaelModule(keyFetcher, rawKey: true);
+        }
+
+        //Copies the material once so a caller mutating (or clearing) its array afterwards cannot
+        //change the key this module resolves. The text path gets this for free via SecureString.
+        private static Func<byte[]> CloneFetcher(byte[] material) {
+            var copy = (byte[]) material.Clone();
+            return () => copy;
+        }
+
         public override void Attach(JsonSettings socket) {
             base.Attach(socket);
             socket.Encrypt += EncryptInternal;
@@ -61,7 +131,11 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         protected virtual void EncryptInternal(JsonSettings sender, ref byte[] data) {
-            data = Rijndael.Encrypt(data, Password.ToRawString(), Rng.GenerateRandomBytes(Rijndael.InitializationVectorSize), KeySize);
+            var iv = Rng.GenerateRandomBytes(Rijndael.InitializationVectorSize);
+            var key = ResolveKey();
+            data = key != null
+                ? Rijndael.Encrypt(data, key, iv)
+                : Rijndael.Encrypt(data, Password.ToRawString(), iv, KeySize);
         }
 
         protected virtual void DecryptInternal(JsonSettings sender, ref byte[] data) {
@@ -87,10 +161,35 @@ namespace Nucs.JsonSettings.Modulation {
             }
 
             try {
-                data = Rijndael.DecryptBytes(data, Password.ToRawString(), KeySize);
+                var key = ResolveKey();
+                data = key != null
+                    ? Rijndael.DecryptBytes(data, key)
+                    : Rijndael.DecryptBytes(data, Password.ToRawString(), KeySize);
             } catch (CryptographicException inner) {
                 throw new JsonSettingsException("Password appears to be invalid.", inner);
             }
+        }
+
+        /// <summary>
+        ///     Resolves the AES key when this module was given a binary password or raw key material;
+        ///     returns null when it holds a text password, for which the existing string path applies.
+        /// </summary>
+        protected virtual byte[]? ResolveKey() {
+            if (_rawKeyFetcher != null) {
+                var key = _rawKeyFetcher() ?? throw new ArgumentNullException(nameof(_rawKeyFetcher), "The raw-key fetcher returned null.");
+                ValidateRawKey(key);
+                return key;
+            }
+
+            if (_passwordBytesFetcher != null)
+                return Rijndael.GenerateKey(_passwordBytesFetcher() ?? Array.Empty<byte>(), KeySize);
+
+            return null;
+        }
+
+        private static void ValidateRawKey(byte[] key) {
+            if (key.Length != 16 && key.Length != 24 && key.Length != 32)
+                throw new ArgumentException($"A raw AES key must be 16, 24 or 32 bytes (AES-128/192/256); got {key.Length}.", nameof(key));
         }
 
         /// <summary>

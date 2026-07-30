@@ -247,6 +247,92 @@ namespace Rijndael256 {
         }
 
         /// <summary>
+        /// Generates a cryptographic key from a binary password, using the same PBKDF2 construction
+        /// as the string overload (salt derived from the password, SHA-1 PRF, HashIterations rounds).
+        /// </summary>
+        /// <param name="password">The password bytes.</param>
+        /// <param name="keySize">The cipher key size.</param>
+        /// <returns>The cryptographic key.</returns>
+        /// <remarks>
+        ///     This is a DIFFERENT credential space from <see cref="GenerateKey(string,KeySize)"/> and
+        ///     that is deliberate. The string overload seeds its salt from
+        ///     <c>Sha512(password + password.Length)</c> — the char count and a string concatenation,
+        ///     neither of which a raw byte[] carries — so there is no bytes-in that reproduces a given
+        ///     string's key. The salt here is seeded from the bytes followed by their length, which is
+        ///     the byte-domain analogue and is self-consistent: the same bytes always derive the same
+        ///     key. The PRF stays SHA-1 for the same file-format reason spelled out in Hash.Pbkdf2.
+        /// </remarks>
+        public static byte[] GenerateKey(byte[] password, KeySize keySize) {
+            if (password == null) throw new ArgumentNullException(nameof(password));
+
+            var lengthTag = BitConverter.GetBytes(password.Length);
+            var seedInput = new byte[password.Length + lengthTag.Length];
+            Buffer.BlockCopy(password, 0, seedInput, 0, password.Length);
+            Buffer.BlockCopy(lengthTag, 0, seedInput, password.Length, lengthTag.Length);
+
+            var salt = Hash.Pbkdf2(password, Hash.Sha512(seedInput), Rijndael256Settings.HashIterations);
+            return Hash.Pbkdf2(password, salt, Rijndael256Settings.HashIterations, (int) keySize / 8);
+        }
+
+        /// <summary>
+        /// Encrypts plaintext with a key used verbatim (no key derivation). The IV is prepended to the
+        /// ciphertext exactly as the password overloads do, so the two produce the same on-disk shape.
+        /// </summary>
+        /// <param name="plaintext">The plaintext to encrypt.</param>
+        /// <param name="key">The AES key. Must be 16, 24 or 32 bytes.</param>
+        /// <param name="iv">The initialization vector. Must be 128-bits.</param>
+        /// <returns>The ciphertext (IV + cipher).</returns>
+        public static byte[] Encrypt(byte[] plaintext, byte[] key, byte[] iv) {
+            if (iv.Length != InitializationVectorSize) throw new ArgumentOutOfRangeException(nameof(iv), "AES requires an Initialization Vector of 128-bits.");
+
+            byte[] ciphertext;
+            using (var ms = new MemoryStream()) {
+                // Insert IV at beginning of ciphertext
+                ms.Write(iv, 0, iv.Length);
+
+                using (var cs = new CryptoStream(ms, CreateEncryptor(key, iv), CryptoStreamMode.Write)) {
+                    cs.Write(plaintext, 0, plaintext.Length);
+                    cs.FlushFinalBlock();
+                }
+
+                ciphertext = ms.ToArray();
+            }
+
+            // IV + Cipher
+            return ciphertext;
+        }
+
+        /// <summary>
+        /// Decrypts ciphertext with a key used verbatim (no key derivation).
+        /// </summary>
+        /// <param name="ciphertext">The ciphertext to decrypt (IV + cipher).</param>
+        /// <param name="key">The AES key the ciphertext was created with.</param>
+        /// <returns>The plaintext bytes.</returns>
+        public static byte[] DecryptBytes(byte[] ciphertext, byte[] key) {
+            byte[] ReadAllBytes(Stream instream) {
+                if (instream is MemoryStream)
+                    return ((MemoryStream) instream).ToArray();
+
+                using (var memoryStream = new MemoryStream()) {
+                    instream.CopyTo(memoryStream);
+                    return memoryStream.ToArray();
+                }
+            }
+
+            using (var ms = new MemoryStream(ciphertext)) {
+                // Extract the IV from the ciphertext; see the password DecryptBytes overload for why
+                // the length is checked rather than discarded.
+                var iv = new byte[InitializationVectorSize];
+                if (ms.Read(iv, 0, iv.Length) != iv.Length)
+                    throw new EndOfStreamException($"Ciphertext is {ciphertext.Length} bytes, shorter than its {iv.Length}-byte initialization vector.");
+
+                using (var cs = new CryptoStream(ms, CreateDecryptor(key, iv), CryptoStreamMode.Read)) {
+                    return ReadAllBytes(cs);
+                }
+            }
+        }
+
+        /// <summary>
         /// Creates a symmetric Rijndael encryptor.
         /// </summary>
         /// <param name="password">The password to encrypt the plaintext with.</param>
@@ -277,6 +363,25 @@ namespace Rijndael256 {
             using var aes = Aes.Create();
             aes.Mode = BlockCipherMode;
             return aes.CreateDecryptor(GenerateKey(password, keySize), iv);
+        }
+
+        /// <summary>
+        /// Creates a symmetric encryptor from a key used verbatim. The key length selects the AES
+        /// variant (16/24/32 bytes -> AES-128/192/256), so no <see cref="KeySize"/> is taken here.
+        /// </summary>
+        public static ICryptoTransform CreateEncryptor(byte[] key, byte[] iv) {
+            using var aes = Aes.Create();
+            aes.Mode = BlockCipherMode;
+            return aes.CreateEncryptor(key, iv);
+        }
+
+        /// <summary>
+        /// Creates a symmetric decryptor from a key used verbatim.
+        /// </summary>
+        public static ICryptoTransform CreateDecryptor(byte[] key, byte[] iv) {
+            using var aes = Aes.Create();
+            aes.Mode = BlockCipherMode;
+            return aes.CreateDecryptor(key, iv);
         }
     }
 }

@@ -153,6 +153,7 @@ dyn.Save(); /* or */ Settings.Save();
 * **Encrypted settings**
     * Uses AES/Rijndael
     * Can be applied to any settings class because it is a module.
+    * The secret can be a text password, a binary password, or a raw AES key.
 ```C#
 MySettings Settings = JsonSettings.Load<MySettings>("config.json", q=>q.WithEncryption("mysecretpassword"));
 SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json", q=>q.WithEncryption("mysecretpassword"));
@@ -166,6 +167,24 @@ SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
                      .WithEncryption("mysecretpassword")
                //or: .WithModule<RijndaelModule>("pass");
                      .LoadNow();
+```
+The secret can also be supplied as bytes. A `byte[]` **password** is stretched into the key with
+the same PBKDF2 derivation as a text password (salted and iterated); a **raw key** is used verbatim
+and must be 16, 24 or 32 bytes (AES-128/192/256):
+```C#
+// binary password - PBKDF2-derived, like a text password but with arbitrary bytes.
+// Note: NOT the same credential as the text password whose UTF-8 bytes equal these.
+byte[] password = Encoding.UTF8.GetBytes("mysecretpassword");
+var a = JsonSettings.Configure<MySettings>("config.json").WithEncryption(password).LoadNow();
+
+// raw AES key - used as-is, no derivation. You own the key's quality.
+byte[] key = RandomNumberGenerator.GetBytes(32); // or from an env var / HSM / another KDF
+var b = JsonSettings.Configure<MySettings>("config.json").WithEncryptionRawKey(key).LoadNow();
+
+// both accept a fetcher, incl. one that receives the instance:
+var c = JsonSettings.Configure<MySettings>("config.json")
+                    .WithEncryptionRawKey(() => LoadKeyFromVault())
+                    .LoadNow();
 ```
 
 * **Hardcoded Settings with Autosave**
@@ -249,7 +268,36 @@ Encryption
 The encryption used is AES256, the parsed json is decoded to UTF8 bytes, converted to encrypted bytes and then to base64 string encoding.<br/>
 The decision to save it as base64 is to make it easily copiable as a string.
 
-//TODO: example
+The secret comes in three forms:
+
+| Call | Secret | How it becomes the key |
+|---|---|---|
+| `WithEncryption(string)` / `WithEncryption(SecureString)` | text password | PBKDF2 (salted, iterated) |
+| `WithEncryption(byte[])` | binary password | the same PBKDF2 derivation, over the raw bytes |
+| `WithEncryptionRawKey(byte[])` | raw AES key (16/24/32 bytes) | used verbatim, no derivation |
+
+Each also has `Func<...>` and `Func<T, ...>` overloads for resolving the secret lazily (e.g. from a
+vault or an environment variable).
+
+Notes:
+- A `byte[]` **password** is a *different credential* from the text password whose UTF-8 encoding
+  equals those bytes — the text derivation folds in the string's character length, which raw bytes
+  do not carry. Pick one form per file.
+- A **raw key** skips PBKDF2, so its strength is entirely the key you provide; supply high-entropy
+  key material (e.g. `RandomNumberGenerator.GetBytes(32)`), not a low-entropy value.
+- The on-disk format is identical across all three (a random IV followed by AES-CBC blocks), and the
+  text-password path is byte-for-byte compatible with every earlier version.
+
+```C#
+// text password (classic)
+JsonSettings.Configure<MySettings>("config.json").WithEncryption("mysecretpassword").LoadNow();
+
+// binary password (PBKDF2-derived)
+JsonSettings.Configure<MySettings>("config.json").WithEncryption(passwordBytes).LoadNow();
+
+// raw AES key (verbatim, 16/24/32 bytes)
+JsonSettings.Configure<MySettings>("config.json").WithEncryptionRawKey(key32).LoadNow();
+```
 
 Special thanks to [Rijndael256](https://github.com/2Toad/Rijndael256) for their AES encryption implementation. 
 
