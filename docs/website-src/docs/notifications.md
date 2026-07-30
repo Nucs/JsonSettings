@@ -266,6 +266,12 @@ s.Name = "x";   // -> one Save(), one PropertyChanged("Name")
   exactly once, and reassigning a nested `ObservableCollection` saves once *and* rebinds the new
   instance for future edits &mdash; `[NotifyChanges]` actually makes that rebinding *more* reliable,
   because it fires even for a plain auto-property collection you never wrote an `OnPropertyChanged` for.
+- **Different change semantics.** Autosave has no change-guard &mdash; it persists *every* monitored
+  write, including one that assigns the current value again. `[NotifyChanges]`'s `OnlyChanged` (the
+  default) is what de-dupes, so a no-op write can save without notifying.
+- **Suspension is save-only.** [`SuspendAutosave()`](autosave.md#suspend-autosave) batches saves but
+  does not suspend notifications &mdash; each write still raises `PropertyChanged` immediately, so the
+  View stays live while the disk writes coalesce into one.
 - **Independent opt-outs.** `[IgnoreAutosave]` and `[IgnoreNotify]` are separate; see
   [Ignoring properties](#ignoring-properties).
 - **Loading and reloading.** The initial `Load()` does not notify (it runs before you subscribe). A
