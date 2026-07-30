@@ -123,6 +123,50 @@ keyed, and that friend access actually resolves. It states the expected key as i
 rather than reading it from the build; a test that read the key from the same place the build
 does would agree with any key, including a replaced one.
 
+## Weaving re-signs the assembly (`Nucs.JsonSettings.Autosave`)
+
+`Nucs.JsonSettings.Autosave` autosaves by rewriting property setters at compile time with
+[AspectInjector](https://github.com/pamidur/aspect-injector) (this replaced `Castle.DynamicProxy`
+in 2.2.0; see [AOT.md](AOT.md)). That rewrite happens **after** `CoreCompile`, and the compiler
+has already strong-name-signed the assembly by then. Editing a signed assembly leaves the
+signature describing bytes that no longer exist, so a woven assembly fails verification. Measured
+on a clean A/B of a signed two-project probe:
+
+```
+AspectInjector_Enabled=false   sn -vf App.dll -> "Assembly is valid"
+AspectInjector_Enabled=true    sn -vf App.dll -> "Strong name validation failed."
+```
+
+AspectInjector used to re-sign the result itself; **2.9.0 retired that feature**
+([release notes](https://github.com/pamidur/aspect-injector/releases/tag/2.9.0):
+*"resigning assemblies feature is retired as it no longer supported by MS"*).
+
+So the package ships its own restore step. `build/Nucs.JsonSettings.Autosave.targets` runs after
+the weave and re-signs the assembly with the project's own `$(AssemblyOriginatorKeyFile)`, using
+the same `sn -R` the SDK would. It is shipped in **both** `build/` and `buildTransitive/`, because
+the weaving — and therefore the signature damage — happens in whichever assembly *declares* the
+settings class:
+
+- **This repository's own build** imports the file directly from `Directory.Build.targets`, which
+  is why `JsonSettings.Autosave.dll` passes `check-strong-name.ps1` despite being woven.
+- **A strong-named consumer** gets it transitively: their own assembly is woven where their
+  `[Autosave]` class is declared, and the packaged target re-signs it with their key. Verified end
+  to end by consuming the packed `.nupkg` from a separately-signed project and confirming
+  `sn -vf` reports the consumer assembly valid.
+
+Two things to know:
+
+- **If `sn.exe` is not found**, the build emits warning **`NJS1001`** rather than failing. The
+  assembly still loads and runs — .NET 5+ does not verify strong names at load — but it will fail
+  an explicit `sn -vf`. `sn.exe` ships with the .NET Framework SDK and is Windows-only.
+- **Opt out** with `<NucsAutosaveResignAfterWeaving>false</NucsAutosaveResignAfterWeaving>`. The
+  target already no-ops for delay-signed and public-signed builds, which never carried a valid
+  signature to restore.
+
+The "signature blob present and not all zeros" check in `check-strong-name.ps1` (third row of the
+table above) is what would catch a re-sign that silently failed: a re-signed assembly carries a
+real 128-byte signature, an unrestored one does not.
+
 ## Verifying it yourself
 
 Token of an installed package:

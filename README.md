@@ -172,8 +172,8 @@ SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
 ```
 
 * **Hardcoded Settings with Autosave**
-    * Automatic save will occur when changes detected on virtual properties
-    * All properties have to be virtual
+    * Automatic save will occur when any property changes
+    * Works on any property — `virtual` is not required (as of 2.2.0); opt a property out with `[IgnoreAutosave]`
     * Requires package `nucs.JsonSettings.Autosave` and an `[Autosave]` attribute on the class.
 ```C#
 Settings x  = JsonSettings.Load<Settings>().EnableAutosave(); //call after loading
@@ -338,7 +338,7 @@ a `NotificationBinder` is attached to the settings object that'll listen to the 
 - `event PropertyChanged` calls
 - All properties that implement `INotifyPropertyChanged` will bind to their `event PropertyChanged`
 - All properties that implement `INotificationCollectionChanged` such as `ObservableCollection<T>`  will bind to their `event CollectionChanged`
-- All virtual properties that do not answer to the criteria above.
+- All other properties save through their woven setter (`virtual` is not required as of 2.2.0).
 
 So evidently, objects inside ObservableCollection or other nested properties that are not in the settings class are not monitored for changes.<br/><br/>
 Saving on a plain property write is handled by the woven setter, so a hand-written setter that

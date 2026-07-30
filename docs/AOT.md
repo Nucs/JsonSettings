@@ -167,7 +167,9 @@ repository signs every assembly, so the package ships MSBuild targets that re-si
 weave and warn (`NJS1001`) when `sn.exe` is unavailable. Those targets also re-stamp
 AspectInjector's incremental marker: re-signing moves the assembly's timestamp past the
 marker, and without the re-stamp the *next* build weaves the already-woven assembly again,
-stacking a second copy of the advice and saving twice per assignment.
+stacking a second copy of the advice and saving twice per assignment. See
+[SIGNING.md](SIGNING.md#weaving-re-signs-the-assembly-nucsjsonsettingsautosave) for the
+consumer-facing side of this.
 
 ## Blocker 2 — Newtonsoft.Json is unannotated
 
@@ -202,11 +204,19 @@ analyzer reports 5 sites; once everything is reachable it reports 13:
 | `IL2067` | `JsonSettings.Construct(Type, object[])` |
 | `IL2072` | `JsonSettings.LoadDefault(object[])` |
 | `IL2072` | `JsonSettings.LoadDefault(Version, object[])` |
-| `IL2075` | `JsonSettingsAutosaveInterceptor..ctor(JsonSettings)` |
+| `IL2075` | `JsonSettingsAutosaveInterceptor..ctor(JsonSettings)` † |
 | `IL2075` ×2 | `NotificationBinder..ctor(NotifiyingJsonSettings)` |
-| `IL2090` | `TypeValidation<T>.ValidateAllVirtual()` |
+| `IL2090` | `TypeValidation<T>.ValidateAllVirtual()` † |
 | `IL2090` | `VersioningModule<T>.DefaultVersionCache<T>..cctor()` |
 | `IL3050` | `DynamicSettingsBag..ctor(SettingsBag)` |
+
+† These two sites are 2.1.0-specific and no longer exist in 2.2.0.
+`JsonSettingsAutosaveInterceptor` was deleted with the rest of the Castle machinery, and
+`TypeValidation<T>.ValidateAllVirtual()` became the non-generic `TypeValidation.ValidateWoven`,
+which reads a single attribute rather than walking properties. The reflective property walk it
+performed now lives in `AutosaveRuntime.ResolveMonitoredProperties`, invoked once from
+`EnableAutosave()` rather than on any write. The Autosave rows here therefore describe the
+Castle build; the core-package rows are unchanged. The counts below have not been re-measured.
 
 Note the totals move with reachability: **181 warnings out of the box, 311 fully rooted.**
 A warning count from a trimmed build is a floor, never a ceiling — code the trimmer already
@@ -290,8 +300,10 @@ case; does not solve nested graphs.
   overloads plus `Activation.*` on the parameter.
 - Mark the reflective surface `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` so the
   silent-`{}` case becomes a build warning instead of a runtime surprise.
-- Have `EnableAutosave()` throw a clear, early `PlatformNotSupportedException` naming AOT and
-  DynamicProxy, instead of surfacing a `TypeInitializationException` from a Castle cctor.
+- ~~Have `EnableAutosave()` throw a clear, early `PlatformNotSupportedException` naming AOT and
+  DynamicProxy~~ — **done differently in 2.2.0.** DynamicProxy is gone, so `EnableAutosave()`
+  no longer needs to throw under AOT; the `TypeInitializationException` from a Castle cctor it
+  used to surface simply cannot happen any more.
 - Set `<IsAotCompatible>true</IsAotCompatible>` on the `net8.0`+ targets only once the above
   is real, since it turns the analyzers on for the library itself.
 - Consumers still hand-preserve nested model types. The `{}` case does not go away while
