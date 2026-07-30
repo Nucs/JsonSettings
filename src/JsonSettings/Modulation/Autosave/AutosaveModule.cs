@@ -25,9 +25,30 @@ namespace Nucs.JsonSettings.Autosave {
         /// </remarks>
         internal static bool IsAutosaveOptedIn(PropertyInfo property) {
             return property.GetIndexParameters().Length == 0
+                   && !IsVersionableVersion(property)
                    && property.GetCustomAttribute<JsonIgnoreAttribute>(true) == null
                    && property.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null
                    && _frameworkParameters.All(f => f != property.Name);
+        }
+
+        /// <summary>
+        ///     The <see cref="IVersionable.Version"/> property on a versionable settings class.
+        /// </summary>
+        /// <remarks>
+        ///     Version is framework metadata managed by <c>VersioningModule</c>, not a user setting:
+        ///     the module writes it during load, recovery and default-loading (e.g.
+        ///     <c>tsender.Version = ExpectedVersion</c>). Monitoring it means a reload that
+        ///     normalises the version, or any framework version write while autosave is live,
+        ///     commits an autosave the user never asked for. It rides along in every ordinary save
+        ///     already, so excluding it from the *trigger* set loses nothing -- exactly the reason
+        ///     FileName and Modulation are excluded. The check is scoped to
+        ///     <see cref="IVersionable"/> so a user's own unrelated property named "Version" is
+        ///     unaffected.
+        /// </remarks>
+        private static bool IsVersionableVersion(PropertyInfo property) {
+            return property.Name == nameof(IVersionable.Version)
+                   && property.DeclaringType != null
+                   && typeof(IVersionable).IsAssignableFrom(property.DeclaringType);
         }
 
         /// <summary>
@@ -66,6 +87,15 @@ namespace Nucs.JsonSettings.Autosave {
         ///     the next save; it simply does not re-enter the writer that is already running.
         /// </remarks>
         internal bool IsSaving { get; set; }
+
+        /// <summary>
+        ///     True while the settings instance is being populated by a load. Deserialization sets
+        ///     every property through its (woven) setter, so without this a load performed after
+        ///     autosave was enabled -- <c>Load()</c>, <c>LoadDefault()</c>, a versioning reload --
+        ///     would commit one autosave per property and write the half-loaded object back to
+        ///     disk mid-load. The load path raises this around the populate step.
+        /// </summary>
+        internal bool IsLoading { get; set; }
 
         //Depth of nested SuspendAutosave scopes. Suspension must be reference-counted: an inner
         //scope disposing used to reset the state straight back to Running, so the OUTER scope

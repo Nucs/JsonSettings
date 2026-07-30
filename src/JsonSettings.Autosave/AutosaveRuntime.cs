@@ -41,6 +41,10 @@ namespace Nucs.JsonSettings.Autosave {
                 return; //re-entered from inside this module's own Save (e.g. an AfterSave handler
                         //that writes a monitored property); saving again would recurse forever
 
+            if (module.IsLoading)
+                return; //a load is populating this instance through the woven setters; those writes
+                        //come from disk, not from the user, and must not save back
+
             if (module.AutosavingState == AutosavingState.SuspendedChanged)
                 return; //a save is already owed; nothing further to record
 

@@ -320,6 +320,13 @@ to be excluded from the monitored properties for changes. This applies to collec
 - **A failing save surfaces at the assignment.** If the triggered `Save()` throws, the exception
   propagates out of the property assignment (the new value is already set in memory).
 - **Disposing the settings unbinds autosave**, including handlers attached to nested collections.
+- **Loading does not autosave.** `Load()`, `LoadDefault()` and a versioning reload populate the
+  object from disk through its setters; those writes are not user edits and do not save back
+  (autosave resumes normally afterward).
+- **`IVersionable.Version` is not monitored.** It is framework metadata managed by the versioning
+  module and rides along in every ordinary save, so changing it does not by itself autosave. (A
+  property named `Version` on a class that does *not* implement `IVersionable` is ordinary user
+  data and is monitored.)
 
 #### Requirements
 - Install `nucs.JsonSettings.Autosave` nuget package

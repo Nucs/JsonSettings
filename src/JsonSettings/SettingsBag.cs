@@ -123,7 +123,7 @@ namespace Nucs.JsonSettings {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TrySave() {
-            if (Autosave && _autosaveModule!.AutosavingState != AutosavingState.SuspendedChanged) {
+            if (Autosave && !_autosaveModule!.IsLoading && _autosaveModule.AutosavingState != AutosavingState.SuspendedChanged) {
                 if (_autosaveModule.UpdatesSuspended) {
                     _autosaveModule.AutosavingState = AutosavingState.SuspendedChanged;
                 } else if (!_autosaveModule.IsSaving) {
