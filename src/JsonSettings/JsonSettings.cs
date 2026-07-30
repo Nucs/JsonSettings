@@ -62,7 +62,26 @@ namespace Nucs.JsonSettings {
             ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
             NullValueHandling = NullValueHandling.Include,
             ContractResolver = new FileNameIgnoreResolver(),
-            TypeNameHandling = TypeNameHandling.Auto
+            TypeNameHandling = TypeNameHandling.Auto,
+            //Set explicitly rather than inherited. Json.NET 13 changed the default MaxDepth from null
+            //(unlimited) to 64; upgrading Newtonsoft.Json 12->13 in 2.1.0 therefore silently capped how
+            //deeply a settings object could be nested. The cap is asymmetric in the worst way - SAVING
+            //is not depth-limited - so an application could write a file it then failed to read back on
+            //next start, with nothing warning at the point the deep object was persisted. 2.0.x placed
+            //no limit at all.
+            //
+            //128 restores the capability for every realistic settings graph while staying a WORKING
+            //backstop against a pathological deeply-nested file, and "working" is the operative word and
+            //the reason it is not larger. This reader is recursive and, with TypeNameHandling.Auto on, it
+            //exhausts the thread's stack at roughly 0.42 levels per KB - measured at depth ~110 on a
+            //256KB stack, ~230 on 512KB, ~430 on a 1MB thread. A limit converts that uncatchable stack
+            //overflow into a catchable JsonSettingsException only if it fires BELOW the overflow depth;
+            //512 sits above it on every ordinary stack and so would never run. 128 clears any real
+            //settings graph (they are rarely more than a dozen deep) yet still fires before the stack
+            //goes on a 512KB-or-larger thread. A consumer who genuinely needs deeper can set this to null
+            //for the pre-2.1.0 unlimited behaviour; one hardening against hostile input on a small stack
+            //can lower it further.
+            MaxDepth = 128
         };
 
         #endregion

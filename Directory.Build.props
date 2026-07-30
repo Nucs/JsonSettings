@@ -43,8 +43,11 @@
     <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
 
     <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
-         builds from a source archive rather than a tag. -->
-    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.1.0</VersionPrefix>
+         builds from a source archive rather than a tag. Bumped to 2.1.1: this build restores
+         three behaviours 2.1.0 broke (a custom module inside encryption, RecoveryModule over a
+         short encrypted file, and the JsonSettingsException catch contract) and bounds the
+         inherited Newtonsoft-13 depth cap at a working 128. See docs/UPGRADE-2.0.x-to-2.1.0.md. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.1.1</VersionPrefix>
   </PropertyGroup>
 
   <!-- ====================================================================================
