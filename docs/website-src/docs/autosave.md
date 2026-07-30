@@ -193,6 +193,130 @@ settings.AutoProperty = "Hello";                          //Boom! saves.
 settings.IgnoredFromAutosaving = "Hello";                 //doesn't save ([IgnoreAutosave])
 ```
 
+## Producing notifications from setters &mdash; `[NotifyChanges]`
+
+The section above makes autosave *react* to `PropertyChanged`. The reverse &mdash; making a setter
+*raise* `PropertyChanged` so a WPF binding refreshes &mdash; is the `[NotifyChanges]` aspect. It closes
+the one gap the hand-written approach leaves: an **auto-property** autosaves but never notifies, so a
+binding to it goes stale unless you expand it into a manual `get/set` that calls `OnPropertyChanged()`.
+
+`[NotifyChanges]` weaves that call in for you, at compile time, alongside `[Autosave]`:
+
+```csharp
+[Autosave]        // save on change
+[NotifyChanges]   // and raise PropertyChanged on change
+public class WindowSettings : NotifiyingJsonSettings {
+    public override string FileName { get; set; } = "window.json";
+
+    public double Width  { get; set; }   // auto-property: binds two-way, saves, and notifies
+    public double Height { get; set; }
+    public string Title  { get; set; }
+}
+```
+
+Like `[Autosave]`, it is a compile-time aspect ([AspectInjector](https://github.com/pamidur/aspect-injector),
+no proxy, Native-AOT-safe), it is **not inherited** (mark every class in a hierarchy that declares
+notifiable properties), and it composes with `[Autosave]` on the same setter &mdash; one write saves
+once and notifies once.
+
+> [!IMPORTANT]
+> Put `[NotifyChanges]` on **auto-properties**. If you keep a hand-written setter that already calls
+> `OnPropertyChanged()`, the woven call raises a second time &mdash; the aspect exists precisely so you
+> don't hand-write those setters.
+
+### Where the event comes from
+
+`[NotifyChanges]` produces the notification but does not supply the event; the class must already own
+one:
+
+| Your class&hellip; | What raises the event |
+|---|---|
+| inherits `NotifiyingJsonSettings` | its `OnPropertyChanged` (the intended path) |
+| inherits an MVVM base (CommunityToolkit `ObservableObject`, Prism `BindableBase`, Caliburn `PropertyChangedBase`, &hellip;) | resolved by convention: `OnPropertyChanged` / `RaisePropertyChanged` / `NotifyOfPropertyChange` |
+| implements nothing | use `[NotifyChangesMixin]` (below), which injects the interface too |
+
+A class with neither a base nor a convention raiser is a harmless no-op: the setter runs, nothing is
+raised.
+
+### Change guards
+
+By default a setter notifies only when the value actually changes. `NotificationGuard` controls this,
+per class or per property (a property-level `[NotifyChanges]` overrides the class):
+
+| `NotificationGuard` | Notifies when |
+|---|---|
+| `OnlyChanged` *(default)* | the new value differs from the current one |
+| `SkipNullOrDefault` | the new value is not `null` / `default(T)` |
+| `Always` | every setter write, no filtering ("any setter access") |
+
+They combine (`[Flags]`): `OnlyChanged | SkipNullOrDefault` means "only on a change to a non-default
+value".
+
+```csharp
+[Autosave, NotifyChanges]  // class default: OnlyChanged
+public class SearchSettings : NotifiyingJsonSettings {
+    public override string FileName { get; set; } = "search.json";
+
+    public string Name { get; set; }                                   // OnlyChanged
+
+    [NotifyChanges(Guard = NotificationGuard.Always)]
+    public int Ticks { get; set; }                                     // every write
+
+    [NotifyChanges(Guard = NotificationGuard.OnlyChanged | NotificationGuard.SkipNullOrDefault)]
+    public string Filter { get; set; }                                 // changed AND non-null
+}
+```
+
+> [!NOTE]
+> `OnlyChanged` reads the property's getter before the assignment to compare old and new, so it relies
+> on the model being preserved under trimming/AOT &mdash; the same requirement the Newtonsoft serializer
+> already imposes. A write-only property has no getter and behaves as `Always`.
+
+### No base class &mdash; `[NotifyChangesMixin]`
+
+`[NotifyChangesMixin]` uses AspectInjector's *mixin* to **inject `INotifyPropertyChanged`** into a class
+that declares no notification base, and raises that injected event from every setter. The class becomes
+WPF-bindable with no base type and no boilerplate, `sealed` classes included:
+
+```csharp
+[Autosave]
+[NotifyChangesMixin]                       // implements INotifyPropertyChanged for you
+public sealed class AppSettings : JsonSettings {
+    public override string FileName { get; set; } = "app.json";
+    public string Name { get; set; }
+}
+
+var s = JsonSettings.Load<AppSettings>("app.json").EnableAutosave();
+((INotifyPropertyChanged) s).PropertyChanged += (_, e) => { /* e.PropertyName == "Name" */ };
+s.Name = "changed";                        // saved and notified
+```
+
+The aspect is **per-instance**, so each settings object has its own subscriber list. Use it for a
+**single** settings class; for a hierarchy prefer `NotifiyingJsonSettings` + `[NotifyChanges]`, because
+the interface can only be injected once and a derived setter cannot reach a base's injected event. Note
+too the boundary with the autosave binder above: `EnableAutosave()` only watches nested
+`ObservableCollection`s on a `NotifiyingJsonSettings`, so a mixin-only class saves on its own property
+writes but not when a nested collection is mutated in place &mdash; use the notifying base if you need
+that.
+
+### How it compares
+
+`[NotifyChanges]` / `[NotifyChangesMixin]` are deliberately small and settings-focused; they are not a
+general MVVM framework. Where they sit next to the usual `INotifyPropertyChanged` approaches:
+
+| Approach | Mechanism | Auto-property notify | Adds the interface | AOT / trim |
+|---|---|---|---|---|
+| Hand-written `OnPropertyChanged()` | source | no (one per setter) | you write it | yes |
+| **`[NotifyChanges]`** | IL weave (AspectInjector) | yes | no (needs a base/convention) | yes |
+| **`[NotifyChangesMixin]`** | IL weave + mixin | yes | yes | yes |
+| Fody `PropertyChanged` | IL weave (Fody) | yes | yes | weaver-dependent |
+| CommunityToolkit.Mvvm `[ObservableProperty]` | source generator | yes (partial field) | via `ObservableObject` | yes |
+| ReactiveUI `RaiseAndSetIfChanged` | runtime helper | no (explicit call) | via `ReactiveObject` | yes |
+
+The distinguishing point: these reuse the **same weaving pipeline as `[Autosave]`**, so one attribute
+set covers save *and* notify with no extra dependency, no source-generator partial-class requirement,
+and the same Native-AOT story. The strong-name re-signing described below covers them automatically.
+
 ## SettingsBag
 
 The dynamic [`SettingsBag`](dynamic-settings-bag.md) has its **own** dictionary-backed autosave &mdash;

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	  <Summary>An extension to JsonSettings that saves automatically when a property changes, using compile-time IL weaving. Native AOT compatible. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
+	  <Summary>An extension to JsonSettings that saves automatically when a property changes, using compile-time IL weaving. Native AOT compatible. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged. Can also raise INotifyPropertyChanged for WPF binding via [NotifyChanges]/[NotifyChangesMixin].</Summary>
     <Description>An extension to JsonSettings that saves automatically when a property changes. Mark your settings class [Autosave] and every setter commits a save - no proxy, no virtual requirement, and nothing generated at runtime, so it works under Native AOT.</Description>
     <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>

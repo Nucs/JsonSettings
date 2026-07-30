@@ -436,6 +436,33 @@ raises `OnPropertyChanged` and an auto-implemented one behave identically. The
 - Install `nucs.JsonSettings.Autosave` nuget package
 - Call `mySettings.EnableAutosave()` extension after calling `Load`
 
+#### Producing notifications for the View — `[NotifyChanges]`
+The above makes autosave *react* to `PropertyChanged`. To make a setter *raise* it — so a WPF binding
+refreshes — without hand-writing `OnPropertyChanged()` in every setter, including on **auto-properties**
+(which otherwise save but never notify), mark the class `[NotifyChanges]`:
+
+```C#
+[Autosave, NotifyChanges]
+public class WindowSettings : NotifiyingJsonSettings {
+    public override string FileName { get; set; } = "window.json";
+    public double Width { get; set; }   // binds two-way, saves, and notifies — no boilerplate
+    public string Title { get; set; }
+}
+```
+
+- Compile-time weave like `[Autosave]`, **not inherited**, and composes with it (one write saves and
+  notifies once). Put it on auto-properties — a hand-written setter that already calls
+  `OnPropertyChanged()` would notify twice.
+- `NotificationGuard` controls when it fires, per class or per property: `OnlyChanged` (default),
+  `SkipNullOrDefault`, `Always` — and they combine (`[Flags]`).
+- The class must own the event: `NotifiyingJsonSettings`, or an MVVM base recognised by convention
+  (`OnPropertyChanged` / `RaisePropertyChanged` / `NotifyOfPropertyChange`). For a class with **no**
+  base, `[NotifyChangesMixin]` injects `INotifyPropertyChanged` for you (per-instance; best for a single
+  class — a hierarchy should use `NotifiyingJsonSettings` + `[NotifyChanges]`).
+
+See the [Autosave documentation](docs/website-src/docs/autosave.md) for the guard details and a
+comparison with Fody `PropertyChanged`, CommunityToolkit.Mvvm and ReactiveUI.
+
 Throttled Save
 ---
 Upcoming feature...
