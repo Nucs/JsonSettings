@@ -1,0 +1,7 @@
+- name: Docs
+  href: docs/
+  homepage: docs/intro.md
+- name: API
+  href: api/
+- name: Source Code
+  href: https://github.com/Nucs/JsonSettings

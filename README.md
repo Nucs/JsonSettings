@@ -2,10 +2,13 @@
 [![Nuget version](https://img.shields.io/nuget/vpre/Nucs.JsonSettings.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![Nuget downloads](https://osscdn.nucs.workers.dev/jsonsettings-downloads-ujVrxmtCZN.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![GitHub license](https://img.shields.io/github/license/Nucs/JsonSettings.svg)](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-nucs.github.io%2FJsonSettings-2563eb)](https://nucs.github.io/JsonSettings)
 
 This library aims to simplify the process of creating configuration for your C# app/service 
 by utilizing the serialization capabilities of [Json.NET](https://www.newtonsoft.com/json/help/html/SerializationGuide.htm)
 to serialize nested (custom) objects, dictionaries and lists as simply as by creating a `POCO` and inheriting `JsonSettings` class.<br/>
+
+> 📖 **Full documentation & API reference:** [nucs.github.io/JsonSettings](https://nucs.github.io/JsonSettings)
 
 
 ### Installation
@@ -23,6 +26,7 @@ The `netstandard2.0` asset covers everything without an exact match, including
 `net472`+, `netcoreapp3.1`, `net5.0`, `net7.0`, `net9.0`, Unity and Xamarin.
 
 ## Table of Contents
+- [📖 Documentation Website](https://nucs.github.io/JsonSettings)
 - [Features Overview](#features-overview)
 - [The Basics](#the-basics)
 - [Modules](#recovery)

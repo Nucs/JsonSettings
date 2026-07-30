@@ -1,0 +1,26 @@
+- name: Home
+  href: ../index.md
+- name: Introduction
+  href: intro.md
+- name: The Basics
+  href: the-basics.md
+- name: Dynamic Settings Bag
+  href: dynamic-settings-bag.md
+- name: Modules
+  items:
+  - name: Recovery
+    href: recovery.md
+  - name: Versioning
+    href: versioning.md
+  - name: Encryption
+    href: encryption.md
+  - name: Autosave
+    href: autosave.md
+- name: Serialization
+  items:
+  - name: JsonSerializerSettings
+    href: serialization-settings.md
+  - name: Converters
+    href: converters.md
+- name: Modulation API
+  href: modulation-api.md

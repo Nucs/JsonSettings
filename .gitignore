@@ -289,3 +289,10 @@ __pycache__/
 
 nuget.exe
 .aider*
+
+# DocFX documentation site.
+# The static site is built by .github/workflows/docs.yml and published to GitHub Pages; it is never
+# committed. Generated API metadata (docs/website-src/api/*.yml) is also ignored — see
+# docs/website-src/api/.gitignore — since DocFX regenerates it from the assemblies on every build.
+docs/website/
+docs/website-src/_site/
