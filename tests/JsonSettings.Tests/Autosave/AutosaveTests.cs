@@ -15,18 +15,45 @@ namespace Nucs.JsonSettings.Tests.Autosave {
         public AutosaveTests() { }
 
 
+        /// <summary>
+        ///     Enabling autosave on a class that was never woven has to fail loudly.
+        /// </summary>
+        /// <remarks>
+        ///     This test used to assert that a class with no virtual properties was rejected,
+        ///     because a Castle class proxy silently ignored writes to non-virtual members. That
+        ///     restriction is gone (see NonVirtualSettings below, which now works), but the failure
+        ///     it protected against has an exact analogue: a class with no [Autosave] is never
+        ///     woven, so EnableAutosave would attach a module that nothing ever calls and every
+        ///     write would be silently dropped. Same silent-data-loss shape, so it still throws.
+        /// </remarks>
         [TestMethod]
-        public void ClassWithoutInterfacesOrVirtuals() {
+        public void ClassNotMarkedAutosave_Throws() {
             using var f = new TempFile();
             var o = JsonSettings.Load<InvalidSettings>(f.FileName);
-            new Action(() => o.EnableAutosave()).Should().Throw<JsonSettingsException>();
+            new Action(() => o.EnableAutosave()).Should().Throw<JsonSettingsException>()
+                                                .WithMessage("*is not marked with*");
         }
 
+        /// <summary>
+        ///     EnableAutosave returns the instance it was handed, not a proxy wrapping it.
+        /// </summary>
+        /// <remarks>
+        ///     This replaces an assertion that the returned object's namespace was
+        ///     "Castle.Proxies". That was the most consequential thing about the old
+        ///     implementation: the returned object was a DIFFERENT object, so any reference taken
+        ///     before EnableAutosave kept pointing at an instance that did not autosave, and
+        ///     non-virtual members read the proxy's own default-initialised fields rather than the
+        ///     loaded values. Weaving rewrites the setters in place, so there is exactly one object
+        ///     and that whole class of bug is gone.
+        /// </remarks>
         [TestMethod]
-        public void ClassWithInterfacesOrVirtuals() {
+        public void EnableAutosave_ReturnsTheSameInstance() {
             using var f = new TempFile();
-            var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-            o.GetType().Namespace.Should().Be("Castle.Proxies");
+            var loaded = JsonSettings.Load<Settings>(f.FileName);
+            var enabled = loaded.EnableAutosave();
+
+            ReferenceEquals(loaded, enabled).Should().BeTrue("weaving does not introduce a second object");
+            enabled.GetType().Should().Be<Settings>("no proxy type is generated");
         }
 
         [TestMethod]
@@ -168,6 +195,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             #endregion
         }
 
+        [Autosave]
         public class Settings : JsonSettings {
             #region Overrides of JsonSettings
 
@@ -187,6 +215,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             #endregion
         }
 
+        [Autosave]
         public class NonVirtualSettings : JsonSettings, ISettings {
             #region Overrides of JsonSettings
 
@@ -205,6 +234,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             #endregion
         }
 
+        [Autosave]
         public class InterfacedSettings : JsonSettings, ISettings {
             #region Overrides of JsonSettings
 

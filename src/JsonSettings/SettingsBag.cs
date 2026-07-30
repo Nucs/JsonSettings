@@ -123,11 +123,20 @@ namespace Nucs.JsonSettings {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TrySave() {
-            if (Autosave && _autosaveModule!.AutosavingState != AutosavingState.SuspendedChanged) {
+            if (Autosave && !_autosaveModule!.IsLoading && _autosaveModule.AutosavingState != AutosavingState.SuspendedChanged) {
                 if (_autosaveModule.UpdatesSuspended) {
                     _autosaveModule.AutosavingState = AutosavingState.SuspendedChanged;
-                } else
-                    Save();
+                } else if (!_autosaveModule.IsSaving) {
+                    //Same reentrancy guard the woven path uses: a write made from inside this Save
+                    //(e.g. an AfterSave handler that touches the bag) must not re-enter and recurse
+                    //until the stack overflows. The value is kept; it persists on the next save.
+                    _autosaveModule.IsSaving = true;
+                    try {
+                        Save();
+                    } finally {
+                        _autosaveModule.IsSaving = false;
+                    }
+                }
             }
         }
 

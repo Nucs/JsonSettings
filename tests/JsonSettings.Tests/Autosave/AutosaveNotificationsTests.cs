@@ -15,17 +15,21 @@ namespace Nucs.JsonSettings.Tests.Autosave {
         public AutosaveNotificationsTests() { }
 
         [TestMethod]
-        public void ClassWithoutInterfacesOrVirtuals() {
+        public void ClassNotMarkedAutosave_Throws() {
             using var f = new TempFile();
             var o = JsonSettings.Load<InvalidSettings>(f.FileName);
-            new Action(() => o.EnableAutosave()).Should().Throw<JsonSettingsException>();
+            new Action(() => o.EnableAutosave()).Should().Throw<JsonSettingsException>()
+                                                .WithMessage("*is not marked with*");
         }
 
         [TestMethod]
-        public void ClassWithInterfacesOrVirtuals() {
+        public void EnableAutosave_ReturnsTheSameInstance() {
             using var f = new TempFile();
-            var o = JsonSettings.Load<Settings>(f.FileName).EnableAutosave();
-            o.GetType().Namespace.Should().Be("Castle.Proxies");
+            var loaded = JsonSettings.Load<Settings>(f.FileName);
+            var enabled = loaded.EnableAutosave();
+
+            ReferenceEquals(loaded, enabled).Should().BeTrue("weaving does not introduce a second object");
+            enabled.GetType().Should().Be<Settings>("no proxy type is generated");
         }
 
         [TestMethod]
@@ -137,6 +141,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             #endregion
         }
 
+        [Autosave]
         public class Settings : NotifiyingJsonSettings {
             #region Overrides of JsonSettings
 
@@ -156,6 +161,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             #endregion
         }
 
+        [Autosave]
         public class InterfacedSettings : NotifiyingJsonSettings, ISettings {
             #region Overrides of JsonSettings
 
@@ -176,6 +182,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
         }
     }
 
+    [Autosave]
     public class ExampleNotifyingSettings : NotifiyingJsonSettings {
         public override string FileName { get; set; } = "some.default.just.in.case.jsn";
         private string _street = "Sesamee Street 123";

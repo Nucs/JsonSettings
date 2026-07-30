@@ -18,59 +18,83 @@ namespace Nucs.JsonSettings.Autosave {
         private readonly HashSet<string> _properties;
         private readonly ConcurrentDictionary<string, (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue)> _monitoredPropertiesTable;
 
+        //The nested notifiers this binder has subscribed to, tracked so Dispose can unsubscribe
+        //them. Without this, disposing the settings left these handlers live: mutating a
+        //collection that had been bound would still call SaveOnCollectionChanged and save through a
+        //disposed settings object, and the settings could never be collected.
+        private readonly List<INotifyCollectionChanged> _boundCollections = new List<INotifyCollectionChanged>();
+        private readonly List<INotifyPropertyChanged> _boundNotifiers = new List<INotifyPropertyChanged>();
+
         public NotificationBinder(NotifiyingJsonSettings settings) {
             _settings = settings;
 
-            //populate information
-            var monitoredProperties = _settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                               .Where(p => p.GetSetMethod()?.IsVirtual == true
-                                                           && p.GetCustomAttribute<JsonIgnoreAttribute>(true) == null
-                                                           && p.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null
-                                                           && AutosaveModule._frameworkParameters.All(f => f != p.Name))
-                                               .ToArray();
+            //Watch every opted-in, readable property whose value may be a nested notifier. This is
+            //broader than the save-on-assignment set (IsAutosaveMonitored): it deliberately keeps
+            //get-only collections, which have no setter but whose contents must still save. It is
+            //also narrower than the old field scan, which bound every private INotify* field
+            //regardless of the property's [IgnoreAutosave] -- the source of the bug where an ignored
+            //collection saved on mutation.
+            var bindableProperties = _settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                              .Where(AutosaveModule.IsNotificationBindable)
+                                              .ToArray();
 
             Dictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)> dictionary = new Dictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)>();
-            foreach (var property in monitoredProperties)
-                dictionary.Add(property.Name, (t: property, property.GetGetMethod(), property.GetSetMethod(), property.GetGetMethod().Invoke(_settings, null)));
+            foreach (var property in bindableProperties) {
+                var getter = property.GetGetMethod(true);
+                dictionary[property.Name] = (t: property, getter, property.GetSetMethod(true), getter.Invoke(_settings, null));
+            }
             _monitoredPropertiesTable = new ConcurrentDictionary<string, (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue)>(dictionary, StringComparer.Ordinal);
             _properties = new HashSet<string>(_monitoredPropertiesTable.Keys);
 
             //bind main event pipe
             _settings.PropertyChanged += OnPropertyChanged;
 
-            //bind all already set fields
-            foreach (var fieldInfo in settings.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)) {
-                if (fieldInfo.GetValue(settings) is INotifyCollectionChanged collectionNotifiyible) {
-                    collectionNotifiyible.CollectionChanged += SaveOnCollectionChanged;
-                } else if (fieldInfo.GetValue(settings) is INotifyPropertyChanged notifiyible) {
-                    notifiyible.PropertyChanged += SaveOnChange;
-                }
+            //bind the current value of each watched property
+            foreach (var entry in _monitoredPropertiesTable.Values)
+                Subscribe(entry.CurrentValue);
+        }
+
+        private void Subscribe(object value) {
+            if (value is INotifyCollectionChanged collectionNotifiyible) {
+                collectionNotifiyible.CollectionChanged += SaveOnCollectionChanged;
+                _boundCollections.Add(collectionNotifiyible);
+            } else if (value is INotifyPropertyChanged notifiyible) {
+                notifiyible.PropertyChanged += SaveOnChange;
+                _boundNotifiers.Add(notifiyible);
             }
         }
 
+        private void Unsubscribe(object value) {
+            if (value is INotifyCollectionChanged collectionNotifiyible) {
+                collectionNotifiyible.CollectionChanged -= SaveOnCollectionChanged;
+                _boundCollections.Remove(collectionNotifiyible);
+            } else if (value is INotifyPropertyChanged notifiyible) {
+                notifiyible.PropertyChanged -= SaveOnChange;
+                _boundNotifiers.Remove(notifiyible);
+            }
+        }
+
+        /// <summary>
+        ///     Rebinds nested change notifications when a monitored property is replaced.
+        /// </summary>
+        /// <remarks>
+        ///     This deliberately does NOT save. Under the Castle proxy the settings' own
+        ///     PropertyChanged was the only signal that a hand-written setter had run, so this
+        ///     handler had to commit the write itself. The woven advice now runs at the end of
+        ///     every setter -- hand-written and auto-implemented alike -- so saving here as well
+        ///     would commit twice for a single assignment.
+        ///
+        ///     What remains is the part the setter cannot do: swapping the CollectionChanged /
+        ///     PropertyChanged subscriptions from the old nested object to the new one, so that
+        ///     mutating a freshly assigned collection still saves.
+        /// </remarks>
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e) {
-            if (_monitoredPropertiesTable.TryGetValue(e.PropertyName, out (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue) propInfo)) {
+            if (e.PropertyName != null && _monitoredPropertiesTable.TryGetValue(e.PropertyName, out (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue) propInfo)) {
                 var newValue = propInfo.GetMethod.Invoke(_settings, null);
                 if (propInfo.CurrentValue != newValue) {
-                    //save and persist the new value
-                    SaveOnChange(sender, e);
                     _monitoredPropertiesTable[e.PropertyName] = (propInfo.Property, propInfo.GetMethod, propInfo.SetMethod, newValue);
-
-                    if (newValue != null) {
-                        //subscribe new object event
-                        if (newValue is INotifyCollectionChanged collectionNotifiyible) {
-                            collectionNotifiyible.CollectionChanged += SaveOnCollectionChanged;
-                        } else if (newValue is INotifyPropertyChanged notifiyible) {
-                            notifiyible.PropertyChanged += SaveOnChange;
-                        }
-                    }
-
-                    //unsubscribe old event
-                    if (propInfo.CurrentValue is INotifyCollectionChanged removeNotificationCollection) {
-                        removeNotificationCollection.CollectionChanged -= SaveOnCollectionChanged;
-                    } else if (propInfo.CurrentValue is INotifyPropertyChanged removeNotification) {
-                        removeNotification.PropertyChanged -= SaveOnChange;
-                    }
+                    Subscribe(newValue);
+                    Unsubscribe(propInfo.CurrentValue);
                 }
             }
         }
@@ -87,6 +111,16 @@ namespace Nucs.JsonSettings.Autosave {
 
         public void Dispose() {
             _settings.PropertyChanged -= OnPropertyChanged;
+
+            //unbind every nested notifier we subscribed to, so a collection held elsewhere cannot
+            //keep saving through -- or keep alive -- a disposed settings object.
+            foreach (var collection in _boundCollections.ToArray())
+                collection.CollectionChanged -= SaveOnCollectionChanged;
+            foreach (var notifier in _boundNotifiers.ToArray())
+                notifier.PropertyChanged -= SaveOnChange;
+            _boundCollections.Clear();
+            _boundNotifiers.Clear();
+
             _monitoredPropertiesTable.Clear();
         }
 

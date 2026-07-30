@@ -1,10 +1,162 @@
-﻿using Nucs.JsonSettings.Modulation;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Newtonsoft.Json;
+using Nucs.JsonSettings.Modulation;
+using Module = Nucs.JsonSettings.Modulation.Module;
 
 namespace Nucs.JsonSettings.Autosave {
     public class AutosaveModule : Module {
         internal static readonly string[] _frameworkParameters = {nameof(JsonSettings.FileName), nameof(JsonSettings.Modulation)};
         internal static readonly int _frameworkParametersLength = _frameworkParameters.Length;
-        
+
+        /// <summary>
+        ///     Whether a property is opted into autosave at all -- i.e. not excluded by
+        ///     <see cref="JsonIgnoreAttribute"/> or <see cref="IgnoreAutosaveAttribute"/> and not one
+        ///     of the framework's own properties (FileName, Modulation).
+        /// </summary>
+        /// <remarks>
+        ///     This is the one place the opt-out rule is written down. It used to be duplicated
+        ///     across the woven-path resolver in <c>AutosaveRuntime</c>, the old interceptor
+        ///     constructors, and <see cref="NotificationBinder"/>, and they had drifted -- most
+        ///     visibly, <see cref="NotificationBinder"/> also required <c>virtual</c> where the save
+        ///     path no longer did, and it ignored <see cref="IgnoreAutosaveAttribute"/> when binding
+        ///     collection fields, so an <c>[IgnoreAutosave]</c> collection still saved on mutation.
+        /// </remarks>
+        internal static bool IsAutosaveOptedIn(PropertyInfo property) {
+            return property.GetIndexParameters().Length == 0
+                   && !IsVersionableVersion(property)
+                   && property.GetCustomAttribute<JsonIgnoreAttribute>(true) == null
+                   && property.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null
+                   && _frameworkParameters.All(f => f != property.Name);
+        }
+
+        /// <summary>
+        ///     The <see cref="IVersionable.Version"/> property on a versionable settings class.
+        /// </summary>
+        /// <remarks>
+        ///     Version is framework metadata managed by <c>VersioningModule</c>, not a user setting:
+        ///     the module writes it during load, recovery and default-loading (e.g.
+        ///     <c>tsender.Version = ExpectedVersion</c>). Monitoring it means a reload that
+        ///     normalises the version, or any framework version write while autosave is live,
+        ///     commits an autosave the user never asked for. It rides along in every ordinary save
+        ///     already, so excluding it from the *trigger* set loses nothing -- exactly the reason
+        ///     FileName and Modulation are excluded. The check is scoped to
+        ///     <see cref="IVersionable"/> so a user's own unrelated property named "Version" is
+        ///     unaffected.
+        /// </remarks>
+        private static bool IsVersionableVersion(PropertyInfo property) {
+            return property.Name == nameof(IVersionable.Version)
+                   && property.DeclaringType != null
+                   && typeof(IVersionable).IsAssignableFrom(property.DeclaringType);
+        }
+
+        /// <summary>
+        ///     Whether a write to this property should commit a save. Requires a setter (public or
+        ///     not, so <c>{ get; private set; }</c> counts): only an assignable property has a woven
+        ///     setter for the advice to run in.
+        /// </summary>
+        internal static bool IsAutosaveMonitored(PropertyInfo property) {
+            return property.GetSetMethod(true) != null && IsAutosaveOptedIn(property);
+        }
+
+        /// <summary>
+        ///     Whether the current value of this property should be watched for nested
+        ///     <see cref="System.ComponentModel.INotifyPropertyChanged"/> /
+        ///     <see cref="System.Collections.Specialized.INotifyCollectionChanged"/> changes.
+        /// </summary>
+        /// <remarks>
+        ///     Deliberately does NOT require a setter, unlike <see cref="IsAutosaveMonitored"/>: a
+        ///     get-only <c>ObservableCollection</c> is the idiomatic way to expose a mutable list you
+        ///     never reassign, and its contents changing still has to save. Only a readable,
+        ///     opted-in property qualifies.
+        /// </remarks>
+        internal static bool IsNotificationBindable(PropertyInfo property) {
+            return property.GetGetMethod(true) != null && IsAutosaveOptedIn(property);
+        }
+
+        /// <summary>
+        ///     True while this module is committing an autosave, so that a write made from inside a
+        ///     save (typically an <c>AfterSave</c> handler that touches a monitored property) does
+        ///     not trigger another autosave and recurse until the stack overflows.
+        /// </summary>
+        /// <remarks>
+        ///     Without this, setting a monitored property from an <c>AfterSave</c> handler was
+        ///     unbounded recursion -- an uncatchable process crash rather than a bug you could
+        ///     debug. The value written from inside the save is still kept in memory and persists on
+        ///     the next save; it simply does not re-enter the writer that is already running.
+        /// </remarks>
+        internal bool IsSaving { get; set; }
+
+        /// <summary>
+        ///     True while the settings instance is being populated by a load. Deserialization sets
+        ///     every property through its (woven) setter, so without this a load performed after
+        ///     autosave was enabled -- <c>Load()</c>, <c>LoadDefault()</c>, a versioning reload --
+        ///     would commit one autosave per property and write the half-loaded object back to
+        ///     disk mid-load. The load path raises this around the populate step.
+        /// </summary>
+        internal bool IsLoading { get; set; }
+
+        //Depth of nested SuspendAutosave scopes. Suspension must be reference-counted: an inner
+        //scope disposing used to reset the state straight back to Running, so the OUTER scope
+        //stopped suspending halfway through and committed a save it was supposed to be batching.
+        private int _suspensionDepth;
+
+        /// <summary>
+        ///     Opens one level of suspension. Only the outermost transition (Running -> Suspended)
+        ///     changes the state; a nested Enter must not clobber a pending <see cref="AutosavingState.SuspendedChanged"/>.
+        /// </summary>
+        internal void EnterSuspension() {
+            _suspensionDepth++;
+            if (AutosavingState == AutosavingState.Running)
+                AutosavingState = AutosavingState.Suspended;
+        }
+
+        /// <summary>
+        ///     Closes one level of suspension. Returns true only when the outermost scope closes
+        ///     with a change owed, i.e. the caller should now commit the single batched save.
+        /// </summary>
+        internal bool ExitSuspension() {
+            if (_suspensionDepth > 0)
+                _suspensionDepth--;
+            if (_suspensionDepth > 0)
+                return false; //still nested; keep suspending
+
+            var owed = AutosavingState == AutosavingState.SuspendedChanged;
+            AutosavingState = AutosavingState.Running;
+            return owed;
+        }
+
+        /// <summary>
+        ///     The property names a write to which commits a save, resolved once when autosave is
+        ///     enabled.
+        /// </summary>
+        /// <remarks>
+        ///     This used to be computed in the interceptor's constructor, which only existed
+        ///     because a proxy existed. Weaving has no interceptor to hang it on, and the woven
+        ///     advice must not pay for reflection on every single property write, so the set is
+        ///     resolved once here and consulted as a hash lookup thereafter.
+        ///
+        ///     Null means "autosave was attached without a property filter" -- nothing is
+        ///     monitored -- rather than "everything is monitored", so a module that somehow
+        ///     reaches the advice half-initialized stays silent instead of saving on every write.
+        /// </remarks>
+        private HashSet<string>? _monitoredProperties;
+
+        /// <summary>
+        ///     Records which properties this module saves on. Called by EnableAutosave.
+        /// </summary>
+        internal void SetMonitoredProperties(HashSet<string> monitored) {
+            _monitoredProperties = monitored;
+        }
+
+        /// <summary>
+        ///     Whether a write to <paramref name="propertyName"/> should commit a save.
+        /// </summary>
+        public bool IsMonitored(string propertyName) {
+            return _monitoredProperties != null && _monitoredProperties.Contains(propertyName);
+        }
+
         /// <summary>
         ///     When true, changes will not cause updates.
         /// </summary>

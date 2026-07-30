@@ -12,6 +12,7 @@ using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
 
 namespace Nucs.JsonSettings.Examples {
+    [Autosave]
     public class VersioningSettings : JsonSettings, IVersionable {
         public override string FileName { get; set; } = "somename.jsn";
         public virtual Version Version { get; set; } = new Version(1, 0, 0, 6);

@@ -273,7 +273,20 @@ namespace Nucs.JsonSettings {
         }
 
         public virtual void LoadJson(string json, JsonSerializerSettings? settings = null) {
-            JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
+            //Populating sets every property through its (woven) setter. If autosave is enabled on
+            //this instance -- e.g. a Load()/LoadDefault() reload after EnableAutosave() -- each of
+            //those writes would otherwise commit an autosave and persist the half-loaded object.
+            //Suppress autosave for the duration of the populate; the writes come from disk, not the
+            //user. Modules are few and this is not a hot path, so the scan is cheap.
+            var autosave = Modulation?.GetModules<AutosaveModule>().FirstOrDefault();
+            if (autosave != null)
+                autosave.IsLoading = true;
+            try {
+                JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
+            } finally {
+                if (autosave != null)
+                    autosave.IsLoading = false;
+            }
         }
 
         public virtual string ToJson(JsonSerializerSettings? settings = null, Type? serializeAsType = null, Formatting? formatting = null) {

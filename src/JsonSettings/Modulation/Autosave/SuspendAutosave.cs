@@ -33,7 +33,7 @@ namespace Nucs.JsonSettings.Autosave {
         public SuspendAutosave(AutosaveModule module) {
             _module = module;
             _settings = module.TryGetSettings();
-            module.AutosavingState = AutosavingState.Suspended;
+            module.EnterSuspension();
         }
 
         public void Resume() {
@@ -41,7 +41,12 @@ namespace Nucs.JsonSettings.Autosave {
         }
 
         public void Dispose() {
-            if (_module.AutosavingState == AutosavingState.SuspendedChanged) {
+            //ExitSuspension returns true only when the OUTERMOST scope closes with a change owed,
+            //and it flips the state back to Running itself. Nesting is reference-counted there, so
+            //an inner using-block no longer ends the outer scope's suspension early. Calling this a
+            //second time (Resume then Dispose) is a no-op: depth is already zero and the state is
+            //Running, so nothing is owed.
+            if (_module.ExitSuspension()) {
                 if (_settings != null)
                     _settings.Save();
                 else
@@ -49,8 +54,6 @@ namespace Nucs.JsonSettings.Autosave {
                     //the socket in case it has been re-attached since.
                     _module.TryTriggerSave();
             }
-
-            _module.AutosavingState = AutosavingState.Running;
         }
     }
 }
