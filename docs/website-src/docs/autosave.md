@@ -12,15 +12,15 @@ Autosave lives in the separate `Nucs.JsonSettings.Autosave` package.
 
 - All public properties must be `virtual`.
 - Install the `Nucs.JsonSettings.Autosave` NuGet package.
-- Call `mySettings.EnableAutosave()` (or `EnableIAutosave<TInterface>()`) **after** calling `Load`.
+- Call `mySettings.EnableAutosave()` (or `EnableIAutosave<TSettings, TInterface>()`) **after** calling `Load`.
 
 ```csharp
 using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
 
 Settings x  = JsonSettings.Load<Settings>().EnableAutosave(); //call after loading
-//or return the proxy typed as an interface the class implements:
-ISettings y = JsonSettings.Load<Settings>().EnableIAutosave<ISettings>();
+//or return the proxy typed as an interface the class implements (settings type first, then the interface):
+ISettings y = JsonSettings.Load<Settings>().EnableIAutosave<Settings, ISettings>();
 
 x.Property = "value"; //Saved!
 ```
@@ -40,6 +40,10 @@ Sometimes several related changes happen close together, which would normally tr
 Create a `SuspendAutosave` scope to postpone saving until the scope is disposed (or `Resume` is
 called). If nothing changed within the scope, no save happens.
 
+> [!NOTE]
+> `SuspendAutosave()` resolves the object's `AutosaveModule`, so call `EnableAutosave()` on the
+> object first.
+
 ```csharp
 using (settings.SuspendAutosave()) {
     settings.A = 1;   // does not save yet
@@ -53,7 +57,8 @@ Any settings class can turn into a ViewModel with full autosave support, making 
 state persistence much simpler.
 
 When your settings class inherits `INotifyPropertyChanged` (the library ships
-`NotifiyingJsonSettings` as a convenient base), calling `EnableAutosave` attaches a different
+`NotifiyingJsonSettings`, in the `Nucs.JsonSettings.Examples` namespace, as a convenient base),
+calling `EnableAutosave` attaches a different
 interceptor backed by a `NotificationBinder`. It listens to:
 
 - the settings class's own `PropertyChanged` event;
@@ -69,6 +74,7 @@ themselves monitored for changes.
 using System.Collections.ObjectModel;
 using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
+using Nucs.JsonSettings.Examples; // NotifiyingJsonSettings lives in this namespace
 
 public class NotifyingSettings : NotifiyingJsonSettings {
     public override string FileName { get; set; } = "some.default.just.in.case.jsn";

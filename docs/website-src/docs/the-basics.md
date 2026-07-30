@@ -80,12 +80,12 @@ SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json", q => q.With
 //or
 MySettings Settings = JsonSettings.Configure<MySettings>("config.json")
                      .WithEncryption("mysecretpassword")
-               //or: .WithModule<RijndaelModule>("pass");
+               //or: .WithModule<MySettings, RijndaelModule>("pass");
                      .LoadNow();
 
 SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
                      .WithEncryption("mysecretpassword")
-               //or: .WithModule<RijndaelModule>("pass");
+               //or: .WithModule<SettingsBag, RijndaelModule>("pass");
                      .LoadNow();
 ```
 
@@ -100,7 +100,7 @@ See [Encryption](encryption.md) for password fetchers and combining with Base64.
 ```csharp
 Settings x  = JsonSettings.Load<Settings>().EnableAutosave(); //call after loading
 //or:
-ISettings x = JsonSettings.Load<Settings>().EnableIAutosave<ISettings>(); //Settings implements interface ISettings
+ISettings x = JsonSettings.Load<Settings>().EnableIAutosave<Settings, ISettings>(); //Settings implements interface ISettings
 
 x.Property = "value"; //Saved!
 ```

@@ -108,7 +108,8 @@ Save automatically on change (ships in `Nucs.JsonSettings.Autosave`). See [Autos
 | @Nucs.JsonSettings.Autosave.ProxyGeneratedAttribute | Marks proxy-generated classes. |
 | @Nucs.JsonSettings.Autosave.NotificationBinder | Binds `INotifyPropertyChanged`/`INotifyCollectionChanged` sources for WPF-style autosave. |
 
-`NotifiyingJsonSettings` is the convenient `INotifyPropertyChanged` base class for WPF-style settings.
+`NotifiyingJsonSettings` (in the `Nucs.JsonSettings.Examples` namespace) is the convenient
+`INotifyPropertyChanged` base class for WPF-style settings.
 
 ---
 

@@ -20,7 +20,7 @@ var settings = JsonSettings.Load<MySettings>("config.json", q => q.WithEncryptio
 // or, explicitly:
 var settings = JsonSettings.Configure<MySettings>("config.json")
                            .WithEncryption("mysecretpassword")
-                     //or: .WithModule<RijndaelModule>("pass");
+                     //or: .WithModule<MySettings, RijndaelModule>("pass");
                            .LoadNow();
 ```
 

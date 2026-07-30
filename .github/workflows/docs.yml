@@ -72,12 +72,14 @@ jobs:
           chmod +x scripts/generate-llms-txt.sh
           ./scripts/generate-llms-txt.sh ../website
 
-      # Pages-specific steps only on a real deploy. On a fork PR the token is read-only, so running
-      # these would fail with a 403 that looks like a broken build rather than the intended skip.
-      - name: Setup Pages
-        if: github.event_name != 'pull_request'
-        uses: actions/configure-pages@v5
-
+      # Upload the built site as the Pages artifact, only on a real deploy. On a PR the deploy job is
+      # skipped, so there is nothing to upload for.
+      #
+      # There is deliberately no actions/configure-pages step here: DocFX emits root-relative links,
+      # so the site needs no build-time base path, and Pages is enabled once via the repository
+      # setting noted at the top of this file. Skipping it keeps this job on contents:read only —
+      # configure-pages calls the Pages API and would need the write scope that just the deploy job
+      # holds. Uploading the artifact needs no Pages scope.
       - name: Upload artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
