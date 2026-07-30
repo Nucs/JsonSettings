@@ -51,8 +51,8 @@ dyn.Save();                 // same as settings.Save();
 
 ## Autosave
 
-`SettingsBag` has its own autosave implementation (it does not require a `virtual`-property proxy the
-way hardcoded classes do), so a plain `EnableAutosave()` is enough:
+`SettingsBag` has its own dictionary-backed autosave implementation (separate from the `[Autosave]`
+weaving hardcoded classes use), so a plain `EnableAutosave()` is enough:
 
 ```csharp
 var settings = JsonSettings.Load<SettingsBag>("config.json").EnableAutosave();
