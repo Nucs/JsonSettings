@@ -1,16 +1,16 @@
 # Encryption
 
 Encryption is applied as a [module](modulation-api.md), so it works with any settings class,
-hardcoded or [dynamic](dynamic-settings-bag.md). The serialized JSON is encoded to UTF-8 bytes,
-encrypted with AES-256 (Rijndael), and then written as a Base64 string. Base64 is used so the result
-is easy to copy around as text.
-
-Special thanks to [Rijndael256](https://github.com/2Toad/Rijndael256) for their AES implementation.
+hardcoded or [dynamic](dynamic-settings-bag.md). The serialized JSON is encoded to UTF-8 bytes and
+encrypted with a symmetric algorithm from the .NET base class library
+(`System.Security.Cryptography`) &mdash; no third-party cryptography is involved. By default the
+algorithm is **AES-256-CBC**, which is byte-for-byte compatible with every file this library has
+ever written.
 
 ## Attaching it
 
-The `WithEncryption` fluent extension attaches a `RijndaelModule`. The simplest form takes a password
-string:
+The `WithEncryption` fluent extension attaches an `EncryptionModule`. The simplest form takes a
+password string:
 
 ```csharp
 using Nucs.JsonSettings;
@@ -20,7 +20,7 @@ var settings = JsonSettings.Load<MySettings>("config.json", q => q.WithEncryptio
 // or, explicitly:
 var settings = JsonSettings.Configure<MySettings>("config.json")
                            .WithEncryption("mysecretpassword")
-                     //or: .WithModule<MySettings, RijndaelModule>("pass");
+                     //or: .WithModule<MySettings, EncryptionModule>("pass");
                            .LoadNow();
 ```
 
@@ -44,8 +44,8 @@ q.WithEncryption(set => set.SomeProperty);
 ```
 
 The secret can also be supplied as bytes. A `byte[]` **password** is stretched into the key with the
-same PBKDF2 derivation as a text password; a **raw key** is used verbatim and must be 16, 24 or 32
-bytes (AES-128/192/256):
+same PBKDF2 derivation as a text password; a **raw key** is used verbatim and must match the
+algorithm's key length (16/24/32 bytes for AES, 32 for ChaCha20-Poly1305):
 
 ```csharp
 // Binary password - PBKDF2-derived. NOTE: this is a DIFFERENT credential from the text password
@@ -54,7 +54,7 @@ bytes (AES-128/192/256):
 q.WithEncryption(passwordBytes);
 q.WithEncryption(() => GetPasswordBytesFromVault());
 
-// Raw AES key - used as-is, no derivation. You own the key's quality, so supply high-entropy
+// Raw key - used as-is, no derivation. You own the key's quality, so supply high-entropy
 // material (e.g. RandomNumberGenerator.GetBytes(32)), not a low-entropy value.
 q.WithEncryptionRawKey(key32);
 q.WithEncryptionRawKey(() => GetKeyFromVault());
@@ -70,6 +70,34 @@ var o = JsonSettings.Load<CasualExampleSettings>(fileName,
             new object[] { "SuperPassword" });
 ```
 
+## Choosing an algorithm
+
+The default is AES-256-CBC. To pick another algorithm, pass an `EncryptionAlgorithm` (and optionally a
+`KeySize`) to `WithEncryption`, `WithEncryption(byte[], ...)` or `WithEncryptionRawKey(byte[], ...)`:
+
+```csharp
+q.WithEncryption("password", EncryptionAlgorithm.AesGcm);
+q.WithEncryption("password", EncryptionAlgorithm.AesCbc, KeySize.Aes128);
+q.WithEncryptionRawKey(key32, EncryptionAlgorithm.ChaCha20Poly1305);
+```
+
+| `EncryptionAlgorithm` | Authenticated | Layout | Availability |
+|---|---|---|---|
+| `AesCbc` *(default)* | No (UTF-8 heuristic only) | `IV(16) ‖ ciphertext` | All targets |
+| `AesCbcHmac` | Yes (HMAC-SHA256, Encrypt-then-MAC) | `IV(16) ‖ ciphertext ‖ tag(32)` | All targets |
+| `AesGcm` | Yes (AEAD) | `nonce(12) ‖ ciphertext ‖ tag(16)` | .NET 6.0+ |
+| `AesCcm` | Yes (AEAD) | `nonce(12) ‖ ciphertext ‖ tag(16)` | .NET 6.0+, OS support |
+| `ChaCha20Poly1305` | Yes (AEAD) | `nonce(12) ‖ ciphertext ‖ tag(16)` | .NET 6.0+, OS support |
+
+The AEAD algorithms only exist in the BCL on .NET 6.0 and later; when the library is used from
+`netstandard2.0` or `net48` those enum members are not present, and `AesCbc`/`AesCbcHmac` are the
+options. `ChaCha20Poly1305` and `AesCcm` additionally require OS support.
+
+> [!IMPORTANT]
+> There is no algorithm marker in the file. As with the password and key size, a file must be read
+> back with the same `EncryptionAlgorithm` and `KeySize` it was written with. Only the default,
+> `AesCbc`, is guaranteed to read files from older versions of this library.
+
 ## Combining with Base64
 
 `WithBase64()` attaches a `Base64Module`. Because modules order themselves correctly on the
@@ -82,14 +110,18 @@ var o = JsonSettings.Configure<CasualExampleSettings>(fileName)
                     .LoadNow();
 ```
 
-## Wrong passwords and file format
+## Wrong passwords, authentication and file format
 
-- A wrong password is reported as a wrong password. Decryption verifies the padding **and** checks
-  that the decrypted payload is valid UTF-8, so a bad key surfaces as a decryption failure rather
-  than as a misleading "corrupt file" JSON error.
-- The on-disk format is stable. Files written by earlier versions stay readable; the cipher and key
-  derivation are unchanged.
-
-> [!WARNING]
-> The wrong-password check is a **diagnostic**, not an integrity guarantee. Encryption protects
-> confidentiality of the file's contents; it does not authenticate them.
+- With the default `AesCbc`, a wrong password is reported as a wrong password. Decryption verifies the
+  padding **and** checks that the decrypted payload is valid UTF-8, so a bad key surfaces as a
+  decryption failure rather than as a misleading "corrupt file" JSON error. This is a **diagnostic**,
+  not an integrity guarantee: AES-CBC does not authenticate its data.
+- The authenticated algorithms (`AesCbcHmac`, `AesGcm`, `AesCcm`, `ChaCha20Poly1305`) verify an
+  authentication tag when decrypting. A wrong key **or a tampered file** fails with a real integrity
+  error, not a heuristic. Choose one of these if you need to detect modification of the file, not only
+  keep its contents confidential.
+- The on-disk format of the default is stable. Files written by earlier versions stay readable; the
+  cipher, the IV layout and the PBKDF2-SHA1 key derivation are unchanged. The move onto
+  `System.Security.Cryptography` did not change any bytes &mdash; it is verified against a ciphertext
+  captured from a pre-migration build and against an independent, BCL-only reimplementation of the
+  format.

@@ -65,7 +65,7 @@ The per-object module system. See the [Modulation API](../docs/modulation-api.md
 | @Nucs.JsonSettings.Modulation.ModuleSocket | Holds the modules attached to a settings object (`JsonSettings.Modulation`). |
 | @Nucs.JsonSettings.Modulation.ISocket | The socket contract modules attach to. |
 | @Nucs.JsonSettings.Modulation.Base64Module | Encodes the payload as Base64. |
-| @Nucs.JsonSettings.Modulation.RijndaelModule | AES-256 encryption of the payload. See [Encryption](../docs/encryption.md). |
+| @Nucs.JsonSettings.Modulation.EncryptionModule | Symmetric encryption of the payload (AES-256-CBC by default; AES-GCM/CCM, ChaCha20-Poly1305, AES-CBC-HMAC). See [Encryption](../docs/encryption.md). |
 | @Nucs.JsonSettings.Modulation.ModularityException | Thrown on invalid module attachment/state. |
 
 ---

@@ -53,7 +53,7 @@ The published assemblies were also diffed member by member with `MetadataLoadCon
 **The public API.** Every public and protected member of both assemblies is identical to 2.0.2 —
 393 members on `Nucs.JsonSettings`, 18 on `Nucs.JsonSettings.Autosave`. Nothing added, removed or
 resignatured. The fixes here add no public surface: the moved UTF-8 check and the IV-length guard
-are `protected virtual` methods on `RijndaelModule`, and the depth default is a property value.
+are `protected virtual` methods on `EncryptionModule`, and the depth default is a property value.
 
 **The encrypted file format, in every direction.**
 
@@ -78,7 +78,7 @@ order; `Decrypt` is declared with a reverse insert so handlers run in reverse at
 are symmetric, so a module attached **before** `WithEncryption` wraps the plaintext and one attached
 **after** wraps the ciphertext.
 
-2.1.0 added a UTF-8 validity check on the bytes `RijndaelModule` hands back, as a tie-breaker for
+2.1.0 added a UTF-8 validity check on the bytes `EncryptionModule` hands back, as a tie-breaker for
 wrong-password detection. That check assumes the layer immediately inside the encryption is UTF-8
 JSON — true for the built-in modules, but never a stated part of the module contract.
 
@@ -101,7 +101,7 @@ written by 2.0.1 for both gzip and xor are embedded in `ModuleChainingTests` and
 **Fix.** The UTF-8 check runs on `AfterDecrypt` now, which `JsonSettings.Load` raises once the whole
 decrypt chain has run, so it inspects the *final* plaintext regardless of how many modules produced
 it. The wrong-password diagnostic still fires for the common encryption-only case (the plaintext
-there is the final plaintext); it no longer fires on a still-encoded intermediate. `RijndaelModule.cs`.
+there is the final plaintext); it no longer fires on a still-encoded intermediate. `EncryptionModule.cs`.
 
 ### 2. Recovery no longer saw a short encrypted file
 
@@ -125,7 +125,7 @@ damaged state a real deployment meets, and precisely what `RecoveryModule` exist
 `RecoveryAction.Throw` was affected too: it promised `JsonSettingsRecoveryException` and yielded
 `EndOfStreamException`.
 
-**Fix.** `RijndaelModule.DecryptInternal` now treats input shorter than one IV as an empty payload,
+**Fix.** `EncryptionModule.DecryptInternal` now treats input shorter than one IV as an empty payload,
 restoring the pre-2.1.0 path into recovery. This is **not** the silent-garbage case the IV check
 guards against: that needs a full IV *plus* ciphertext, which is at least 16 bytes and never reaches
 the guard. A short-but-nonempty file that does contain a complete IV still fails padding validation

@@ -71,7 +71,7 @@ dyn.Save(); /* or */ Settings.Save();
 
 ## Encrypted settings
 
-- Uses AES / Rijndael.
+- Uses AES via `System.Security.Cryptography` (the .NET BCL), AES-256-CBC by default; other algorithms are selectable.
 - Can be applied to any settings class, because it is a [module](modulation-api.md).
 
 ```csharp
@@ -80,12 +80,12 @@ SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json", q => q.With
 //or
 MySettings Settings = JsonSettings.Configure<MySettings>("config.json")
                      .WithEncryption("mysecretpassword")
-               //or: .WithModule<MySettings, RijndaelModule>("pass");
+               //or: .WithModule<MySettings, EncryptionModule>("pass");
                      .LoadNow();
 
 SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
                      .WithEncryption("mysecretpassword")
-               //or: .WithModule<SettingsBag, RijndaelModule>("pass");
+               //or: .WithModule<SettingsBag, EncryptionModule>("pass");
                      .LoadNow();
 ```
 

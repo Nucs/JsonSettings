@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Security;
-using System.Security.Cryptography;
-using Rijndael256;
-using Rijndael = Rijndael256.Rijndael;
 
 namespace Nucs.JsonSettings.Modulation {
 

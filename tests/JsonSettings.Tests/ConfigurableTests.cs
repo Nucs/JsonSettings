@@ -12,7 +12,7 @@ namespace Nucs.JsonSettings.Tests {
             using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
-            o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+            o.Modulation.Modules.Should().ContainItemsAssignableTo<EncryptionModule>();
             Assert.IsTrue(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
         }
 
@@ -21,7 +21,7 @@ namespace Nucs.JsonSettings.Tests {
             using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName);
-            o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+            o.Modulation.Modules.Should().ContainItemsAssignableTo<EncryptionModule>();
             Assert.IsTrue(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
         }
 
@@ -30,7 +30,7 @@ namespace Nucs.JsonSettings.Tests {
             using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
-            o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+            o.Modulation.Modules.Should().ContainItemsAssignableTo<EncryptionModule>();
             Assert.IsTrue(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
 
             o.SomeNumeralProperty = 1;
@@ -40,7 +40,7 @@ namespace Nucs.JsonSettings.Tests {
 
             //validate
             o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
-            o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+            o.Modulation.Modules.Should().ContainItemsAssignableTo<EncryptionModule>();
             o.SomeProperty.Should().Be("with some value");
             o.SomeNumeralProperty.Should().Be(1);
             o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");
@@ -51,7 +51,7 @@ namespace Nucs.JsonSettings.Tests {
             using var f = new TempFile();
             //used for autodelete file after test ends
             var o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName);
-            o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+            o.Modulation.Modules.Should().ContainItemsAssignableTo<EncryptionModule>();
             Assert.IsTrue(o.Modulation.Modules.Count == 1, "o.Modules.Count == 1");
             o.LoadNow();
             o.SomeNumeralProperty = 1;
@@ -61,7 +61,7 @@ namespace Nucs.JsonSettings.Tests {
 
             //validate
             o = JsonSettings.Configure<CasualConfiguredSettings>(f.FileName).LoadNow();
-            o.Modulation.Modules.Should().ContainItemsAssignableTo<RijndaelModule>();
+            o.Modulation.Modules.Should().ContainItemsAssignableTo<EncryptionModule>();
             o.SomeProperty.Should().Be("with some value");
             o.SomeNumeralProperty.Should().Be(1);
             o.SomeClassProperty.Should().BeOfType(typeof(SmallClass)).And.Match(obj => (obj as SmallClass).Name == "Small");

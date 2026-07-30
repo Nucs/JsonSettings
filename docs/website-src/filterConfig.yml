@@ -12,13 +12,11 @@ apiRules:
         uid: System.Runtime.CompilerServices.CompilerGeneratedAttribute
       type: Member
 
-  # Vendored third-party code that ships inside the assembly but is not part of the
-  # Nucs.JsonSettings public contract. The Rijndael256 AES implementation is credited in the
-  # README as an external library; ReflectionHelpers lives under a Microsoft.Xna.* namespace.
-  # RijndaelModule (the supported entry point) stays documented under Nucs.JsonSettings.Modulation.
-  - exclude:
-      uidRegex: ^Rijndael256
-      type: Namespace
+  # Internal helpers that ship inside the assembly but are not part of the Nucs.JsonSettings
+  # public contract; ReflectionHelpers lives under a Microsoft.Xna.* namespace. (The former
+  # third-party Rijndael256 namespace was removed when encryption moved onto
+  # System.Security.Cryptography. EncryptionModule under Nucs.JsonSettings.Modulation is now the
+  # supported entry point, and EncryptionAlgorithm/KeySize are documented public enums.)
   - exclude:
       uidRegex: ^Microsoft\.Xna
       type: Namespace

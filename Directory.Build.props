@@ -283,6 +283,13 @@ Breaking changes
   given rather than a proxy, so a reference captured before the call autosaves too. SettingsBag is
   unaffected - its autosave is dictionary-backed, not woven. MIGRATION: add [Autosave] to the
   class; opt a property out with [IgnoreAutosave]. See docs/AOT.md.
+- Encryption moved onto System.Security.Cryptography directly and the vendored third-party Rijndael256
+  helper was removed. RijndaelModule was renamed to EncryptionModule; RijndaelModule is kept as an
+  [Obsolete] shim that forwards to it, so existing code still compiles. The KeySize enum moved from the
+  Rijndael256 namespace to Nucs.JsonSettings - source-compatible through a `using Nucs.JsonSettings;`,
+  but a binary namespace change. The default algorithm, the PBKDF2-SHA1 key derivation and the on-disk
+  format are unchanged; files from every earlier version stay readable, verified against a pre-migration
+  ciphertext and an independent BCL-only reimplementation of the format.
 
 New features
 - Encryption accepts binary secrets, not only a text password:
@@ -292,6 +299,12 @@ New features
     for callers who already hold key material.
   Each has value, Func&lt;byte[]&gt; and Func&lt;T,byte[]&gt; overloads. The on-disk format is
   unchanged and the text-password path is byte-for-byte compatible with every earlier version.
+- Encryption can use algorithms beyond the default AES-256-CBC, all from System.Security.Cryptography:
+  authenticated AES-CBC-HMAC (every target framework), and the AEAD ciphers AES-GCM, AES-CCM and
+  ChaCha20-Poly1305 (.NET 6.0+). Select one by passing an EncryptionAlgorithm to WithEncryption,
+  WithEncryption(byte[]) or WithEncryptionRawKey. The authenticated algorithms reject a tampered file
+  outright rather than relying on the AES-CBC UTF-8 heuristic; the default stays AES-256-CBC, unchanged
+  on disk.
 
 Autosave (see the breaking-change note above for the [Autosave] requirement)
 - Native AOT compatible. AspectInjector emits nothing at runtime, so EnableAutosave() works under

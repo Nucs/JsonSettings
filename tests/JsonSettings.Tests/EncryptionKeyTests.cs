@@ -261,11 +261,11 @@ namespace Nucs.JsonSettings.Tests {
             using var f = new TempFile();
             var key = Key(32, 8);
 
-            var w = JsonSettings.Configure<Bag>(f).WithModule(RijndaelModule.FromRawKey(key)).LoadNow();
+            var w = JsonSettings.Configure<Bag>(f).WithModule(EncryptionModule.FromRawKey(key)).LoadNow();
             w.Value = "payload";
             w.Save();
 
-            var r = JsonSettings.Configure<Bag>(f).WithModule(RijndaelModule.FromRawKey(key)).LoadNow();
+            var r = JsonSettings.Configure<Bag>(f).WithModule(EncryptionModule.FromRawKey(key)).LoadNow();
             r.Value.Should().Be("payload");
         }
 

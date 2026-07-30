@@ -40,7 +40,7 @@ namespace Nucs.JsonSettings.Tests {
         public void SettingsBag_Passless() {
             using var f = new TempFile();
             var o = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
-            ((RijndaelModule) o.Modulation.Modules[0]).Password.Should().BeEquivalentTo(SecureStringExt.EmptyString);
+            ((EncryptionModule) o.Modulation.Modules[0]).Password.Should().BeEquivalentTo(SecureStringExt.EmptyString);
             o.Autosave = false;
             o["lol"] = "xoxo";
             o["loly"] = 2;

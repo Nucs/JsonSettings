@@ -158,21 +158,21 @@ if ((int?)dyn.key2==123)
 dyn.Save(); /* or */ Settings.Save();
 ```
 * **Encrypted settings**
-    * Uses AES/Rijndael
+    * Uses AES via `System.Security.Cryptography` (the .NET BCL); optional AES-GCM, AES-CCM, ChaCha20-Poly1305 or authenticated AES-CBC-HMAC.
     * Can be applied to any settings class because it is a module.
-    * The secret can be a text password, a binary password, or a raw AES key.
+    * The secret can be a text password, a binary password, or a raw key.
 ```C#
 MySettings Settings = JsonSettings.Load<MySettings>("config.json", q=>q.WithEncryption("mysecretpassword"));
 SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json", q=>q.WithEncryption("mysecretpassword"));
 //or
 MySettings Settings = JsonSettings.Configure<MySettings>("config.json")
                      .WithEncryption("mysecretpassword")
-               //or: .WithModule<RijndaelModule>("pass");
+               //or: .WithModule<EncryptionModule>("pass");
                      .LoadNow();
 
 SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
                      .WithEncryption("mysecretpassword")
-               //or: .WithModule<RijndaelModule>("pass");
+               //or: .WithModule<EncryptionModule>("pass");
                      .LoadNow();
 ```
 The secret can also be supplied as bytes. A `byte[]` **password** is stretched into the key with
@@ -272,8 +272,7 @@ static bool DefaultEqualPolicy(Version version, Version expectedVersion) {
 ```
 Encryption
 ---
-The encryption used is AES256, the parsed json is decoded to UTF8 bytes, converted to encrypted bytes and then to base64 string encoding.<br/>
-The decision to save it as base64 is to make it easily copiable as a string.
+The default is **AES-256-CBC** over the serialized JSON (UTF-8 bytes), using only `System.Security.Cryptography` (the .NET base class library) &mdash; no third-party cryptography. The file holds a random IV followed by the AES-CBC ciphertext. Add `WithBase64()` to additionally store the result as copy-pasteable base64 text.
 
 The secret comes in three forms:
 
@@ -302,11 +301,24 @@ JsonSettings.Configure<MySettings>("config.json").WithEncryption("mysecretpasswo
 // binary password (PBKDF2-derived)
 JsonSettings.Configure<MySettings>("config.json").WithEncryption(passwordBytes).LoadNow();
 
-// raw AES key (verbatim, 16/24/32 bytes)
+// raw key (verbatim, 16/24/32 bytes for AES)
 JsonSettings.Configure<MySettings>("config.json").WithEncryptionRawKey(key32).LoadNow();
 ```
 
-Special thanks to [Rijndael256](https://github.com/2Toad/Rijndael256) for their AES encryption implementation. 
+The default `AesCbc` is unauthenticated and on-disk compatible with every earlier version. Pass an
+`EncryptionAlgorithm` to choose another &mdash; including authenticated algorithms that detect a
+tampered file, not only keep it confidential:
+
+```C#
+// authenticated AEAD (.NET 6.0+)
+JsonSettings.Configure<MySettings>("config.json").WithEncryption("password", EncryptionAlgorithm.AesGcm).LoadNow();
+JsonSettings.Configure<MySettings>("config.json").WithEncryptionRawKey(key32, EncryptionAlgorithm.ChaCha20Poly1305).LoadNow();
+```
+
+`AesCbc` and `AesCbcHmac` are available on every target framework; `AesGcm`, `AesCcm` and
+`ChaCha20Poly1305` require .NET 6.0+. There is no algorithm marker in the file, so read it back with
+the same algorithm it was written with; only `AesCbc` reads files from older versions. Encryption runs
+entirely on `System.Security.Cryptography` &mdash; there is no third-party cryptographic dependency.
 
 Autosave
 ---
