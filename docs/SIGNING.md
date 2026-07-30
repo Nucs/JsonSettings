@@ -117,6 +117,13 @@ It runs three times in [`build-and-release.yml`](../.github/workflows/build-and-
 Each run asserts a minimum of **10** assemblies (2 packages × 5 target frameworks), so a package
 that silently lost a target framework fails too.
 
+The tag-driven half can be rehearsed without publishing anything: push a `testpublish/<version>`
+tag and the pipeline runs build, both test jobs, version validation and `pack` — up to and
+including check 2 on the real package bytes — then stops, with `create-release` and
+`publish-nuget` skipped (check 3 belongs to the skipped job, so a dry run exercises its gate
+logic only by path, not by execution). The tag can be deleted afterwards; the workflow run and
+its `nuget-packages` artifact remain as the record of what a release of that commit would ship.
+
 **Runtime** — [`StrongNameTests`](../tests/JsonSettings.Tests/StrongNameTests.cs) asserts the
 token and the full public key against the loaded assemblies, that the friend declarations are
 keyed, and that friend access actually resolves. It states the expected key as its own literal
