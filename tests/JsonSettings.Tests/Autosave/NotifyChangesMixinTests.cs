@@ -81,6 +81,20 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             raised.Should().ContainSingle().Which.Should().Be("Value");
         }
 
+        [TestMethod]
+        public void Mixin_IgnoreNotify_SuppressesNotification_ButStillAutosaves() {
+            using var f = new TempFile();
+            var o = JsonSettings.Load<MixinSettings>(f.FileName).EnableAutosave();
+            var saves = 0;
+            o.AfterSave += (s, d) => saves++;
+            var raised = Record(o);
+
+            o.Silent = "value";
+
+            raised.Should().BeEmpty("[IgnoreNotify] silences the injected event too");
+            saves.Should().Be(1, "but the property still autosaves");
+        }
+
         #region settings types
 
         [Autosave]
@@ -89,6 +103,9 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             public override string FileName { get; set; } = "mixin.jsn";
             public string Name { get; set; }
             public int Number { get; set; }
+
+            [IgnoreNotify]
+            public string Silent { get; set; }
 
             public MixinSettings() { }
             public MixinSettings(string fileName) : base(fileName) { }

@@ -455,6 +455,8 @@ public class WindowSettings : NotifiyingJsonSettings {
   `OnPropertyChanged()` would notify twice.
 - `NotificationGuard` controls when it fires, per class or per property: `OnlyChanged` (default),
   `SkipNullOrDefault`, `Always` — and they combine (`[Flags]`).
+- Silence a property with `[IgnoreNotify]` (independent of `[IgnoreAutosave]` — a property can save
+  without notifying, or the reverse); framework `FileName`/`Modulation`/`Version` never notify.
 - The class must own the event: `NotifiyingJsonSettings`, or an MVVM base recognised by convention
   (`OnPropertyChanged` / `RaisePropertyChanged` / `NotifyOfPropertyChange`). For a class with **no**
   base, `[NotifyChangesMixin]` injects `INotifyPropertyChanged` for you (per-instance; best for a single

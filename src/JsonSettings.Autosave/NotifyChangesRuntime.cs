@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 using Nucs.JsonSettings.Examples;
+using Nucs.JsonSettings.Modulation;
 
 namespace Nucs.JsonSettings.Autosave {
     /// <summary>
@@ -44,6 +45,9 @@ namespace Nucs.JsonSettings.Autosave {
         private static readonly ConcurrentDictionary<Type, MethodInfo?> _raiserCache =
             new ConcurrentDictionary<Type, MethodInfo?>();
 
+        private static readonly ConcurrentDictionary<(Type Type, string Property), bool> _ignoreCache =
+            new ConcurrentDictionary<(Type, string), bool>();
+
         //Ecosystem raiser conventions, most-specific first. Covers the common MVVM bases so a class
         //that already derives from one of them gets automatic notifications through [NotifyChanges]
         //without a JsonSettings-specific base:
@@ -66,6 +70,42 @@ namespace Nucs.JsonSettings.Autosave {
                 Guard = guard;
                 OldValue = oldValue;
             }
+        }
+
+        /// <summary>
+        ///     Whether a woven setter must stay silent: framework-managed properties, indexers, and
+        ///     anything the user marked <see cref="IgnoreNotifyAttribute"/>. Checked before
+        ///     <see cref="Prepare"/> so an ignored write pays for neither the guard nor the getter read.
+        /// </summary>
+        /// <remarks>
+        ///     Notification opt-out is deliberately <em>independent</em> of persistence opt-out: this
+        ///     does NOT consult <see cref="Newtonsoft.Json.JsonIgnoreAttribute"/> or
+        ///     <see cref="IgnoreAutosaveAttribute"/>. A property can be saved but silent
+        ///     (<c>[IgnoreNotify]</c>) or observable but never persisted (<c>[JsonIgnore]</c> /
+        ///     <c>[IgnoreAutosave]</c> with a setter). Only the framework's own writes are excluded,
+        ///     mirroring <see cref="AutosaveModule"/>: <see cref="JsonSettings.FileName"/> is assigned
+        ///     by <c>Save()</c> itself (so notifying on it would fire on every save),
+        ///     <see cref="JsonSettings.Modulation"/> is plumbing, and <see cref="IVersionable.Version"/>
+        ///     is written by the versioning module during load and recovery.
+        /// </remarks>
+        public static bool IsNotifyIgnored(Type type, string propertyName) {
+            return _ignoreCache.GetOrAdd((type, propertyName), static key => {
+                var (t, name) = key;
+
+                if (name == nameof(JsonSettings.FileName) || name == nameof(JsonSettings.Modulation))
+                    return true;
+                if (name == nameof(IVersionable.Version) && typeof(IVersionable).IsAssignableFrom(t))
+                    return true;
+
+                var property = GetProperty(t, name);
+                if (property == null)
+                    return false;
+
+                if (property.GetIndexParameters().Length != 0)
+                    return true; //an indexer: PropertyChanged has no single property name to carry
+
+                return property.GetCustomAttribute<IgnoreNotifyAttribute>(true) != null;
+            });
         }
 
         /// <summary>

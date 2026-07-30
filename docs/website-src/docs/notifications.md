@@ -201,6 +201,88 @@ Behaviour in detail:
 > config-shaped writes &mdash; this is immaterial, but it is why the guard, like the serializer, needs
 > the model preserved under trimming/AOT.
 
+## Ignoring properties
+
+`[NotifyChanges]` on a class weaves *every* setter, exactly as `[Autosave]` does. Silence one with
+`[IgnoreNotify]` &mdash; the notification counterpart to
+[`[IgnoreAutosave]`](autosave.md#what-is-monitored):
+
+```csharp
+[Autosave, NotifyChanges]
+public class Settings : NotifiyingJsonSettings {
+    public override string FileName { get; set; } = "s.json";
+
+    public string Name { get; set; }                 // saves and notifies
+
+    [IgnoreNotify]
+    public string LastSavedBy { get; set; }          // saves, but never notifies
+
+    [IgnoreAutosave]
+    public string SearchText { get; set; }           // notifies (UI state), but is never saved
+}
+```
+
+Persistence and notification opt-outs are **independent** &mdash; a property can do either, both, or
+neither:
+
+| Attribute(s) | Saves | Notifies |
+|---|---|---|
+| *(none)* | yes | yes |
+| `[IgnoreNotify]` | yes | no |
+| `[IgnoreAutosave]` | no | yes |
+| `[IgnoreNotify]` + `[IgnoreAutosave]` | no | no |
+| `[JsonIgnore]` | no (not serialised) | yes (if it has a setter) |
+
+That a `[JsonIgnore]` property still notifies is deliberate: a **computed** value is the classic
+`INotifyPropertyChanged` case. (A get-only computed property has no setter to weave, so raise it
+yourself from wherever its inputs change.)
+
+> [!NOTE]
+> **Framework properties are excluded automatically.** `FileName`, `Modulation` and
+> `IVersionable.Version` never notify and need no attribute. `FileName` matters especially because
+> `Save()` assigns it internally (`o.FileName = <resolved path>`), so without this exclusion every
+> autosave would raise a spurious `PropertyChanged("FileName")`. Indexers are excluded too &mdash;
+> there is no single property name for them to carry.
+
+## Composing with `[Autosave]`
+
+`[Autosave]` and `[NotifyChanges]` (or `[NotifyChangesMixin]`) are meant to be used together and weave
+the **same** setter. One assignment saves once and notifies once:
+
+```csharp
+[Autosave, NotifyChanges]
+public class Settings : NotifiyingJsonSettings {
+    public override string FileName { get; set; } = "s.json";
+    public string Name { get; set; }
+}
+
+var s = JsonSettings.Load<Settings>("s.json").EnableAutosave();
+s.Name = "x";   // -> one Save(), one PropertyChanged("Name")
+```
+
+- **No double save.** With a `NotifiyingJsonSettings` base, `EnableAutosave()` also attaches the
+  `NotificationBinder`, which listens to the object's own `PropertyChanged`. When `[NotifyChanges]`
+  raises it, the binder only **rebinds** nested collections; it does not save. So a scalar write saves
+  exactly once, and reassigning a nested `ObservableCollection` saves once *and* rebinds the new
+  instance for future edits &mdash; `[NotifyChanges]` actually makes that rebinding *more* reliable,
+  because it fires even for a plain auto-property collection you never wrote an `OnPropertyChanged` for.
+- **Independent opt-outs.** `[IgnoreAutosave]` and `[IgnoreNotify]` are separate; see
+  [Ignoring properties](#ignoring-properties).
+- **Loading and reloading.** The initial `Load()` does not notify (it runs before you subscribe). A
+  later versioning reload repopulates the object through its setters *after* subscribers exist, so it
+  *does* raise notifications &mdash; which is what you want, so the View refreshes to the reloaded
+  values. Autosave still does not save during that reload.
+
+> [!NOTE]
+> The **order** of the save and the notification for a single write is not guaranteed (both aspects
+> weave the setter at equal priority); only that each happens exactly once. Do not write a
+> `PropertyChanged` handler that assumes the file is already on disk.
+
+> [!WARNING]
+> Do not put **both** `[NotifyChanges]` and `[NotifyChangesMixin]` on one class &mdash; the mixin
+> already raises. And do not add `[NotifyChanges]` to a setter you *also* raise by hand; see the
+> [note above](#producing-notifications--notifychanges).
+
 ## No base class &mdash; `[NotifyChangesMixin]`
 
 `[NotifyChangesMixin]` uses AspectInjector's **mixin** to *inject* `INotifyPropertyChanged` into a
@@ -422,6 +504,8 @@ directly; the convention resolver bridges to their method *names* instead.
 | Property saves but the UI does not update | The setter notifies nothing. Add `[NotifyChanges]` (with a notifying base) or `[NotifyChangesMixin]`. |
 | `PropertyChanged` fires twice for one change | The setter is hand-written *and* `[NotifyChanges]` is applied. Make it an auto-property, or drop the attribute for that property. |
 | `[NotifyChanges]` seems to do nothing | No event owner. Derive `NotifiyingJsonSettings`, expose a convention raiser, or use `[NotifyChangesMixin]`. |
+| A property should save but stay silent (or notify but not save) | Use `[IgnoreNotify]` / `[IgnoreAutosave]` &mdash; they are independent. |
+| `FileName` fires notifications | It does not &mdash; `FileName`/`Modulation`/`Version` are framework-managed and excluded. |
 | Mixin class does not save on `collection.Add(...)` | `NotificationBinder` needs `NotifiyingJsonSettings`. Use the notifying base for nested-collection autosave. |
 | `EnableAutosave()` throws "not marked `[Autosave]`" | Autosave and notifications are separate. Add `[Autosave]` too (both are needed to save *and* notify). |
 | `NotSupportedException` mutating a bound collection | Cross-thread collection change. Marshal to the `Dispatcher`, or edit inside `SuspendAutosave` and assign on the UI thread. |
@@ -435,6 +519,8 @@ directly; the convention resolver bridges to their method *names* instead.
 - To **save** as well: add `[Autosave]` and call `EnableAutosave()` after `Load`.
 - To have autosave **react** to nested collection/property changes: derive `NotifiyingJsonSettings`.
 - `[NotifyChanges]` and `[Autosave]` are **not inherited** &mdash; mark every declaring class in a hierarchy.
+- Silence a property with `[IgnoreNotify]` (notifications) or `[IgnoreAutosave]` (saving); the two are
+  independent. Framework `FileName` / `Modulation` / `Version` never notify.
 
 ## See also
 

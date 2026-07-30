@@ -85,6 +85,8 @@ namespace Nucs.JsonSettings.Autosave {
                                    [Argument(Source.Name)] string propertyName,
                                    [Argument(Source.Arguments)] object[] arguments,
                                    [Argument(Source.Target)] Func<object[], object> target) {
+            if (NotifyChangesRuntime.IsNotifyIgnored(instance.GetType(), propertyName))
+                return target(arguments);
             var decision = NotifyChangesRuntime.Prepare(instance, propertyName);
             var result = target(arguments);
             if (NotifyChangesRuntime.ShouldRaise(decision, arguments))
