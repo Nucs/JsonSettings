@@ -341,6 +341,15 @@ Bug fixes (regressions introduced in 2.1.0)
   before a larger limit could fire. Set SerializationSettings.MaxDepth = null for the pre-2.1.0
   unlimited behaviour. See docs/UPGRADE-2.0.x-to-2.1.0.md.
 
+Testing
+- Cross-version file compatibility is now pinned by a full producer x consumer matrix. One JSON
+  fixture is captured per shipped target (net472 standing in for netstandard2.0, plus net48, net6.0,
+  net8.0 and net10.0) holding the exact bytes that framework serializes, and every target loads all
+  of them on every ordinary test run. A settings file written on .NET Framework is proven to read
+  back identically on modern .NET and the reverse, including the floating-point formatting that
+  differs between the two - net48 renders a round-trippable double with "R" while .NET Core renders
+  the shortest round-trippable string. Regenerate the fixtures with JSONSETTINGS_REGEN_CROSSVERSION=1.
+
 2.1.0
 
 Bug fixes

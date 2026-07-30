@@ -47,4 +47,14 @@
       <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
     </ItemGroup>
 
+    <!-- Cross-version compatibility fixtures: one JSON document per producer framework, each the exact
+         bytes that framework serializes CrossVersionPayload.Canonical() to. Embedded rather than copied
+         to output so CrossVersionCompatibilityTests reads them straight out of the test assembly,
+         independent of the test host's working directory or shadow-copying on any framework or OS. The
+         glob is empty until the fixtures are generated (JSONSETTINGS_REGEN_CROSSVERSION=1); see that
+         test for the one-liner. -->
+    <ItemGroup>
+      <EmbeddedResource Include="CrossVersion\Fixtures\*.json" />
+    </ItemGroup>
+
 </Project>

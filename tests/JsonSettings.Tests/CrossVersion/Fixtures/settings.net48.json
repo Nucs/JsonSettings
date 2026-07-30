@@ -1,0 +1,74 @@
+{
+  "Data": {
+    "Int32Min": -2147483648,
+    "Int32Max": 2147483647,
+    "Int64Min": -9223372036854775808,
+    "Int64Max": 9223372036854775807,
+    "UInt64Max": 18446744073709551615,
+    "Int16": -12345,
+    "Byte": 200,
+    "DoubleSimple": 0.1,
+    "DoubleThird": 0.33333333333333331,
+    "DoubleNegative": -98765.4321,
+    "DoubleSmallExponent": 1.5E-10,
+    "DoubleHuge": 1.7976931348623157E+308,
+    "SingleThird": 0.333333343,
+    "SingleSimple": 0.1,
+    "DecimalMax": 79228162514264337593543950335.0,
+    "DecimalPi": 3.1415926535897932384626433833,
+    "BoolTrue": true,
+    "BoolFalse": false,
+    "Ascii": "plain ascii value",
+    "WithEscapes": "tab\tquote\"backslash\\newline\ncarriage\r",
+    "Unicode": "héllo wörld 日本語 🎉 ‮reversed‬",
+    "Empty": "",
+    "NullString": null,
+    "DateUtc": "2020-01-02T03:04:05.678Z",
+    "DateUnspecified": "1999-12-31T23:59:58",
+    "DateOffset": "2021-06-07T08:09:10.111+02:00",
+    "Span": "1.02:03:04.0050000",
+    "SpanNegative": "-05:30:00",
+    "Guid": "11223344-5566-7788-99aa-bbccddeeff00",
+    "Mode": 40,
+    "NullableSet": 42,
+    "NullableNull": null,
+    "Strings": [
+      "alpha",
+      "béta",
+      ""
+    ],
+    "Ints": [
+      -1,
+      0,
+      1,
+      2147483647
+    ],
+    "Doubles": [
+      0.1,
+      0.33333333333333331,
+      -2.5
+    ],
+    "Map": {
+      "one": 1,
+      "two": 2,
+      "three": 3
+    },
+    "Child": {
+      "Label": "child",
+      "Order": 7,
+      "Weight": 0.14285714285714285
+    },
+    "Children": [
+      {
+        "Label": "first",
+        "Order": 1,
+        "Weight": 0.25
+      },
+      {
+        "Label": "second",
+        "Order": 2,
+        "Weight": 0.66666666666666663
+      }
+    ]
+  }
+}
