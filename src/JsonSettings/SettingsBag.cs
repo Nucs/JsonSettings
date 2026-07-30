@@ -84,7 +84,7 @@ namespace Nucs.JsonSettings {
         }
 
         /// <summary>
-        ///     Gets the value corresponding to the given <paramref name="key"/> or returns <see cref="default(T)"/>
+        ///     Gets the value corresponding to the given <paramref name="key"/> or returns <c>default(T)</c>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>

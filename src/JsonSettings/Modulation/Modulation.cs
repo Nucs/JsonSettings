@@ -92,7 +92,7 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         /// <summary>
-        ///     Will invoke attach to a freshly new object of type <see cref="T"/>.
+        ///     Will invoke attach to a freshly new object of type <typeparamref name="T"/>.
         /// </summary>
         /// <typeparam name="T">A module class</typeparam>
         /// <param name="args">The arguments that'll be passed to the constructor</param>
