@@ -246,6 +246,81 @@ namespace Nucs.JsonSettings.Tests.Autosave {
         }
 
         /// <summary>
+        ///     A non-virtual property written through a hand-authored setter autosaves.
+        /// </summary>
+        /// <remarks>
+        ///     <see cref="PlainNonVirtualClass_Autosaves"/> already covers non-virtual
+        ///     auto-properties; this covers the other half, a manual getter/setter that is not
+        ///     virtual, because that is the exact shape the old validation rejected outright and
+        ///     the shape a WPF-style property usually takes.
+        /// </remarks>
+        [TestMethod]
+        public void NonVirtualManualSetter_Autosaves() {
+            using var f = new TempFile();
+            var o = JsonSettings.Load<ManualSetterSettings>(f.FileName).EnableAutosave();
+            var saves = 0;
+            o.AfterSave += (s, d) => saves++;
+
+            o.Value = "manual";
+
+            saves.Should().Be(1, "a non-virtual hand-written setter is woven like any other");
+            JsonSettings.Load<ManualSetterSettings>(f.FileName).Value.Should().Be("manual");
+        }
+
+        /// <summary>
+        ///     A property assigned from inside the constructor must not fault.
+        /// </summary>
+        /// <remarks>
+        ///     Weaving rewrites setters, so a setter invoked during construction now runs the
+        ///     advice, which reads <c>settings.Modulation</c>. The base <see cref="JsonSettings"/>
+        ///     constructor assigns <c>Modulation</c> before any derived constructor body runs, so
+        ///     this is safe -- but "safe" here rests on that ordering, and this test is what pins
+        ///     it. (Auto-property initializers assign the backing field directly and never reach a
+        ///     setter, so the exposed case is a write in the constructor body, as here.) No module
+        ///     is attached during construction, so the write also must not save.
+        /// </remarks>
+        [TestMethod]
+        public void SetterInvokedDuringConstruction_DoesNotThrow() {
+            using var f = new TempFile();
+            var o = JsonSettings.Load<ConstructorWritesSettings>(f.FileName).EnableAutosave();
+
+            o.Name.Should().Be("assigned-in-constructor");
+
+            //the write that happened in the constructor predates the module, so nothing was saved
+            //by it; a write now does save.
+            var saves = 0;
+            o.AfterSave += (s, d) => saves++;
+            o.Name = "changed";
+            saves.Should().Be(1);
+        }
+
+        /// <summary>
+        ///     Enabling autosave twice on the same instance is a no-op, not a second module.
+        /// </summary>
+        /// <remarks>
+        ///     There is one object now, so a second <c>EnableAutosave()</c> must not stack a second
+        ///     <see cref="AutosaveModule"/> (and, on a notifying class, a second
+        ///     <c>NotificationBinder</c> subscription that never gets disposed). One write must
+        ///     still produce exactly one save.
+        /// </remarks>
+        [TestMethod]
+        public void EnableAutosave_IsIdempotent() {
+            using var f = new TempFile();
+            var o = JsonSettings.Load<PlainSettings>(f.FileName).EnableAutosave();
+            var modulesAfterFirst = o.Modulation.Modules.Count;
+
+            var again = o.EnableAutosave();
+
+            ReferenceEquals(o, again).Should().BeTrue();
+            o.Modulation.Modules.Count.Should().Be(modulesAfterFirst, "a second EnableAutosave must not attach another module");
+
+            var saves = 0;
+            o.AfterSave += (s, d) => saves++;
+            o.Name = "once";
+            saves.Should().Be(1, "one write commits exactly one save even after a repeated EnableAutosave");
+        }
+
+        /// <summary>
         ///     The shipped Autosave assembly must not depend on Castle.Core any more, and must
         ///     depend on the AspectInjector broker instead.
         /// </summary>
@@ -326,6 +401,37 @@ namespace Nucs.JsonSettings.Tests.Autosave {
 
             public PrivateSetterJsonPropertySettings() { }
             public PrivateSetterJsonPropertySettings(string fileName) : base(fileName) { }
+        }
+
+        [Autosave]
+        public class ManualSetterSettings : JsonSettings {
+            public override string FileName { get; set; } = "manual.jsn";
+
+            private string _value;
+
+            //non-virtual, hand-written getter/setter: the shape the old proxy could not touch.
+            public string Value {
+                get => _value;
+                set => _value = value;
+            }
+
+            public ManualSetterSettings() { }
+            public ManualSetterSettings(string fileName) : base(fileName) { }
+        }
+
+        [Autosave]
+        public class ConstructorWritesSettings : JsonSettings {
+            public override string FileName { get; set; } = "ctor.jsn";
+            public string Name { get; set; }
+
+            public ConstructorWritesSettings() {
+                //a write through the woven setter, during construction, before any module exists.
+                Name = "assigned-in-constructor";
+            }
+
+            public ConstructorWritesSettings(string fileName) : base(fileName) {
+                Name = "assigned-in-constructor";
+            }
         }
 
         public class BaseSettings : JsonSettings {

@@ -292,6 +292,18 @@ silently doing nothing.
 `[Autosave]` is **not inherited**. A setter is woven where it is declared, so every class in
 a settings hierarchy that declares properties you want saved needs its own attribute.
 
+Two smaller behavioural notes for anyone migrating from 2.1.0:
+
+- **`virtual` is no longer an opt-out.** Under the proxy, a non-virtual property was silently
+  skipped; some code relied on that to keep a property out of autosaving. Every setter is now
+  woven regardless of `virtual`, so a property that must **not** autosave has to say so with
+  `[IgnoreAutosave]` (or `[JsonIgnore]`).
+- **`EnableAutosave()` is idempotent.** Calling it twice on the same instance returns that
+  instance and does not attach a second autosave module.
+
+The Castle-era `JsonSettingsAutosaveExtensions.Options` field (a `Castle.DynamicProxy.ProxyGenerationOptions`)
+is removed, since the type it exposed no longer exists in the dependency graph.
+
 #### Attributes
 Properties can be marked with `IgnoreAutosaveAttribute` (`JsonIgnoreAttribute` will also work)
 to be excluded from the monitored properties for changes.

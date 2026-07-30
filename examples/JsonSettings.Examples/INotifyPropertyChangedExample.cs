@@ -36,7 +36,11 @@ namespace Nucs.JsonSettings.Examples {
         private ObservableCollection<object> _nonAutosavingProperty;
         private ObservableCollection<string> _residents = new ObservableCollection<string>();
 
-        /// will not autosave because property is not virtual
+        /// will not autosave because it is marked [IgnoreAutosave].
+        /// NOTE: as of 2.2.0 being non-virtual no longer opts a property out -- the setter is
+        /// woven regardless of virtual-ness. [IgnoreAutosave] (or [JsonIgnore]) is now the only
+        /// way to exclude a property.
+        [IgnoreAutosave]
         public ObservableCollection<object> NonAutosavingProperty {
             get => _nonAutosavingProperty;
             set {

@@ -62,6 +62,15 @@ namespace Nucs.JsonSettings.Autosave {
             var type = settings.GetType();
             TypeValidation.ValidateWoven(type);
 
+            //Idempotent. Under Castle every call returned a fresh proxy, so calling twice simply
+            //produced two proxies; here there is one instance and enabling twice would attach a
+            //second AutosaveModule to it. The woven advice only ever consults the first module, so
+            //the extra one would sit unused -- except on a NotifiyingJsonSettings, where it also
+            //spins up a second NotificationBinder that subscribes to PropertyChanged and is never
+            //disposed. Returning early keeps a repeated EnableAutosave() a harmless no-op.
+            if (settings.Modulation.IsAttachedOfType<AutosaveModule>())
+                return settings;
+
             var module = new AutosaveModule();
             module.SetMonitoredProperties(AutosaveRuntime.ResolveMonitoredProperties(type));
             if (settings is NotifiyingJsonSettings notifiying)
