@@ -131,6 +131,33 @@ namespace Nucs.JsonSettings.Tests {
             File.Exists(f.FileName.Replace(".json", ".0.json")).Should().BeTrue();
             Settings.Type.Should().Be("Hi");
         }
+
+        /// <summary>
+        ///     RecoveryModule.RenameAndLoadDefault shares the version-in-name rename logic with
+        ///     VersioningModule and carried the same defect: a file named e.g. "data.1.2.3.4.json"
+        ///     made the numeric capture empty and <c>int.Parse("")</c> threw a raw
+        ///     <see cref="FormatException"/> instead of the recovery completing as a
+        ///     <see cref="JsonSettingsException"/>-catchable operation.
+        /// </summary>
+        [TestMethod]
+        public void RenameAndLoadDefault_FileNameContainsVersionSegment_RecoversInsteadOfThrowing() {
+            var dir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "jsrec_" + Guid.NewGuid().ToString("N")));
+            try {
+                var path = Path.Combine(dir.FullName, "data.1.2.3.4.json");
+                File.WriteAllText(path, "{ this is not valid json");
+
+                RecoveryWithoutVersionSettings cfg = null;
+                new Action(() => {
+                    cfg = JsonSettings.Configure<RecoveryWithoutVersionSettings>(path)
+                                      .WithRecovery(RecoveryAction.RenameAndLoadDefault)
+                                      .LoadNow();
+                }).Should().NotThrow("a version segment in the file name must not crash the recovery rename parser");
+
+                cfg.Type.Should().Be("Hi");
+            } finally {
+                try { dir.Delete(true); } catch { /* best effort cleanup */ }
+            }
+        }
     }
 
     public class RecoverySettings : JsonSettings, IVersionable {

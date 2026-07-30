@@ -143,13 +143,19 @@ namespace Nucs.JsonSettings.Modulation {
 
                     //parse current name
                     var versionMatch = VersioningModule.VersionMatcher.Match(loadedPath);
-                    int fileVersion = versionMatch.Success ? int.Parse(versionMatch.Groups[2].Value) + 1 : 0;
+                    //Groups[2] is the "-<n>" archive counter and only participates when the name already
+                    //carries one; a bare "name.1.0.0.5.json" matches through the regex's lookahead branch
+                    //with Groups[2] empty, so guard on its Success rather than the match's. int.Parse("")
+                    //would otherwise throw a FormatException that escapes Load as a non-JsonSettingsException.
+                    int fileVersion = versionMatch.Success && versionMatch.Groups[2].Success ? int.Parse(versionMatch.Groups[2].Value) + 1 : 0;
                     var cleanName = loadedPath;
                     if (!string.IsNullOrEmpty(versionMatch.Groups[0].Value))
                         cleanName = cleanName.Replace(versionMatch.Groups[0].Value, "");
                     var lastIdx = cleanName.LastIndexOf('.');
                     if (lastIdx == -1)
-                        lastIdx = loadedPath.Length;
+                        //cleanName, not loadedPath: cleanName is the shorter, version-stripped string that
+                        //Insert below indexes into, so loadedPath.Length could point past its end.
+                        lastIdx = cleanName.Length;
 
                     //figure naming of existing and rename
                     string newFileName = cleanName;

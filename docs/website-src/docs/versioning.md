@@ -8,7 +8,7 @@ following `VersioningResultAction` values can be taken:
 |--------------------------|----------|
 | `DoNothing` | Keep the old version if Json.NET parsed it successfully. Otherwise [Recovery](recovery.md) handles the load failure. |
 | `Throw` | Throw an `InvalidVersionException` on loading. |
-| `RenameAndLoadDefault` | Append the version to the faulty file's name, load defaults, and save them to disk. e.g. `myfile.json` versioned `1.0.0.5` is renamed to `myfile.1.0.0.5.json`. |
+| `RenameAndLoadDefault` | Append the version and a collision counter to the faulty file's name, load defaults, and save them to disk. e.g. `myfile.json` versioned `1.0.0.5` is renamed to `myfile.1.0.0.5-0.json` (a second archive becomes `-1`, and so on). |
 | `LoadDefault` | Load default settings without touching the existing file until the next save. |
 | `LoadDefaultAndSave` | Load default settings and save them to disk immediately. |
 

@@ -231,7 +231,7 @@ On a scenario of exception/failure, one of the following actions can take place:
   Default settings will be loaded and saved to disk immediately.
 - **RecoveryAction.RenameAndLoadDefault**<br/>
   Will append the version to the end of the faulty file's name and load the default settings and save to disk.<br/>
-  i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5.json` if it fails on parsing and the new default settings will be saved as the original filename.
+  i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5-0.json` if it fails on parsing (the trailing `-0` is a collision counter — a second archive becomes `-1`, and so on) and the new default settings will be saved as the original filename.
 
 All recovery properties and methods are suited for inheritance so extending is quite easy.
 
@@ -251,7 +251,7 @@ a user-defined action can take place. Any of the following actions can be taken:
   Default settings will be loaded and saved to disk immediately.
 - **VersioningResultAction.RenameAndLoadDefault**<br/>
   Will append the version to the end of the faulty file's name and load the default settings and save to disk.<br/>
-  i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5.json` if it fails on parsing and the new default settings will be saved as the original filename.
+  i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5-0.json` if it fails on parsing (the trailing `-0` is a collision counter — a second archive becomes `-1`, and so on) and the new default settings will be saved as the original filename.
 
 There are two ways to specify which version to enforce.
 1. Pass the version when calling `WithVersioning`.

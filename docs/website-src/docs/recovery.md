@@ -6,7 +6,7 @@ file during loading. On failure, one of the following `RecoveryAction` values de
 | `RecoveryAction` | Behavior |
 |------------------|----------|
 | `Throw` | Throw a `JsonSettingsRecoveryException` with the real exception as its inner exception. |
-| `RenameAndLoadDefault` | Append the version to the faulty file's name, load defaults, and save them to disk. e.g. `myfile.json` versioned `1.0.0.5` is renamed to `myfile.1.0.0.5.json`, and a fresh default `myfile.json` is written. |
+| `RenameAndLoadDefault` | Append the version and a collision counter to the faulty file's name, load defaults, and save them to disk. e.g. `myfile.json` versioned `1.0.0.5` is renamed to `myfile.1.0.0.5-0.json`, and a fresh default `myfile.json` is written. (A non-versioned settings class uses just the counter, e.g. `myfile.0.json`.) |
 | `LoadDefault` | Load default settings without touching the existing file until the next save. |
 | `LoadDefaultAndSave` | Load default settings and save them to disk immediately. |
 
