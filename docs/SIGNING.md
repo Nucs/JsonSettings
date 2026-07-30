@@ -69,18 +69,18 @@ was no workaround available to those consumers short of repackaging the DLL them
 That is the entire reason. It is a packaging concern, not a security one, and it should not be
 described as a security improvement in release notes or anywhere else.
 
-## Upgrading from 2.0.x
+## Upgrading from an unsigned version (2.1.0 or earlier)
 
-Everything published before 2.1.0 shipped **unsigned** (`PublicKeyToken=null`; verified against
-`Nucs.JsonSettings` 2.0.1 and 2.0.2 on nuget.org). Gaining a strong name **changes the assembly
-identity**, which has two practical effects:
+Everything published up to and including 2.1.0 shipped **unsigned** (`PublicKeyToken=null`; verified
+against `Nucs.JsonSettings` 2.0.1, 2.0.2 and 2.1.0 on nuget.org). 2.2.0 is the first signed release.
+Gaining a strong name **changes the assembly identity**, which has two practical effects:
 
 - A `bindingRedirect` written against the old identity will not match the new one. Remove it
   rather than editing it — the redirect's `publicKeyToken="null"` is part of what it matches on.
 - Anything that hardcodes the full identity string (some plugin loaders, `Assembly.Load` with a
   display name, serialized `System.Type` names in old config files) needs the token added.
 
-Recompiling against 2.1.0 is otherwise sufficient; no source change is required.
+Recompiling against 2.2.0 is otherwise sufficient; no source change is required.
 
 ## How this is enforced
 
@@ -128,7 +128,7 @@ does would agree with any key, including a replaced one.
 Token of an installed package:
 
 ```powershell
-[System.Reflection.AssemblyName]::GetAssemblyName("$env:USERPROFILE\.nuget\packages\nucs.jsonsettings\2.1.0\lib\net8.0\JsonSettings.dll").GetPublicKeyToken() |
+[System.Reflection.AssemblyName]::GetAssemblyName("$env:USERPROFILE\.nuget\packages\nucs.jsonsettings\2.2.0\lib\net8.0\JsonSettings.dll").GetPublicKeyToken() |
     ForEach-Object { '{0:x2}' -f $_ }
 ```
 

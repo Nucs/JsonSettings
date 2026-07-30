@@ -43,11 +43,13 @@
     <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
 
     <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
-         builds from a source archive rather than a tag. Bumped to 2.1.1: this build restores
-         three behaviours 2.1.0 broke (a custom module inside encryption, RecoveryModule over a
-         short encrypted file, and the JsonSettingsException catch contract) and bounds the
-         inherited Newtonsoft-13 depth cap at a working 128. See docs/UPGRADE-2.0.x-to-2.1.0.md. -->
-    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.1.1</VersionPrefix>
+         builds from a source archive rather than a tag. 2.2.0 is the next release: it strong-names
+         both packages (a breaking assembly-identity change - see docs/SIGNING.md), adds binary
+         WithEncryption(byte[]) and WithEncryptionRawKey(byte[]), restores three behaviours 2.1.0
+         broke (a custom module inside encryption, RecoveryModule over a short encrypted file, and
+         the JsonSettingsException catch contract), and bounds the inherited Newtonsoft-13 depth cap
+         at a working 128. See PackageReleaseNotes below and docs/UPGRADE-2.0.x-to-2.1.0.md. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.2.0</VersionPrefix>
   </PropertyGroup>
 
   <!-- ====================================================================================
@@ -256,7 +258,49 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageReleaseNotes>2.1.0
+    <PackageReleaseNotes>2.2.0
+
+Breaking changes
+- Both packages are now strong-named, with PublicKeyToken=cc7b13ffcd2ddd51. Everything
+  published up to and including 2.1.0 shipped unsigned, which meant a strong-named assembly
+  could not reference this library at all - a strong-named consumer cannot reference a
+  weak-named dependency, and there was no workaround short of repackaging the DLL. The key is
+  Microsoft's published open-source key, the same one netstandard, System.Memory and
+  System.Buffers carry; its private half is published by design, so this is assembly IDENTITY
+  and not a security property. It does not attest that a file came from this project, and
+  InternalsVisibleTo is not an access control. Verify origin with the SHA-256 checksums
+  published on each GitHub release.
+  UPGRADING: gaining a strong name changes the assembly identity. A bindingRedirect written
+  against the old unsigned identity will not match the new one and should be removed rather
+  than edited, and anything that hardcodes a full assembly display name needs the token added.
+  Recompiling is otherwise enough. See docs/SIGNING.md.
+
+New features
+- Encryption accepts binary secrets, not only a text password:
+  - WithEncryption(byte[]) - a binary password, PBKDF2-stretched exactly like a text password.
+    It is a DIFFERENT credential from the text password whose UTF-8 bytes match it.
+  - WithEncryptionRawKey(byte[]) - a raw AES key used verbatim, no derivation, 16/24/32 bytes,
+    for callers who already hold key material.
+  Each has value, Func&lt;byte[]&gt; and Func&lt;T,byte[]&gt; overloads. The on-disk format is
+  unchanged and the text-password path is byte-for-byte compatible with every earlier version.
+
+Bug fixes (regressions introduced in 2.1.0)
+- A custom module inside the encryption layer is readable again. 2.1.0's wrong-password UTF-8
+  check ran on that module's still-encoded output, so a compressing or otherwise binary module
+  attached before WithEncryption rejected a correct password; the check now runs on the final
+  plaintext. Files 2.0.x wrote through such a chain load again.
+- RecoveryModule absorbs a short or zero-length encrypted file again. 2.1.0 threw from the
+  decrypt stage before recovery could run, so a zero-byte file - the usual result of an
+  interrupted save - was no longer recoverable.
+- A file too short to hold an initialization vector is a JsonSettingsException again, rather
+  than an EndOfStreamException escaping catch (JsonSettingsException).
+- Serialization depth: Newtonsoft.Json 13 capped nesting at 64 by default, inherited silently
+  in 2.1.0. MaxDepth is now set explicitly to 128 - past any realistic settings graph, yet low
+  enough to remain a working backstop, since the reader is recursive and exhausts the stack
+  before a larger limit could fire. Set SerializationSettings.MaxDepth = null for the pre-2.1.0
+  unlimited behaviour. See docs/UPGRADE-2.0.x-to-2.1.0.md.
+
+2.1.0
 
 Bug fixes
 - SuspendAutosave: fixed silent data loss. A change made inside a suspension scope defers
@@ -288,19 +332,6 @@ Bug fixes
   executable path cannot be determined, as under single-file publish.
 
 Targets and packaging
-- Both packages are now strong-named, with PublicKeyToken=cc7b13ffcd2ddd51. Everything
-  published before this shipped unsigned, which meant a strong-named assembly could not
-  reference this library at all - a strong-named consumer cannot reference a weak-named
-  dependency, and there was no workaround short of repackaging the DLL. The key is
-  Microsoft's published open-source key, the same one netstandard, System.Memory and
-  System.Buffers carry; its private half is published by design, so this is assembly
-  IDENTITY and not a security property. It does not attest that a file came from this
-  project, and InternalsVisibleTo is not an access control. Verify origin with the
-  SHA-256 checksums published on each GitHub release.
-  UPGRADING: gaining a strong name changes the assembly identity. A bindingRedirect
-  written against the old unsigned identity will not match the new one and should be
-  removed rather than edited, and anything that hardcodes a full assembly display name
-  needs the token added. Recompiling is otherwise enough. See docs/SIGNING.md.
 - Multi-targeting: netstandard2.0, net48, net6.0, net8.0 and net10.0 for both
   Nucs.JsonSettings and Nucs.JsonSettings.Autosave (Autosave previously shipped
   netstandard2.0 only).

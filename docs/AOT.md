@@ -1,6 +1,6 @@
 # Native AOT and Trimming
 
-**Status as of 2.1.0: neither package is AOT-compatible, and neither is trim-safe.**
+**Status as of 2.2.0: neither package is AOT-compatible, and neither is trim-safe.**
 
 | Package | `PublishAot=true` | `PublishTrimmed=true` |
 |---|---|---|

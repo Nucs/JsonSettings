@@ -43,6 +43,23 @@ q.WithEncryption(() => GetSecureStringFromVault());
 q.WithEncryption(set => set.SomeProperty);
 ```
 
+The secret can also be supplied as bytes. A `byte[]` **password** is stretched into the key with the
+same PBKDF2 derivation as a text password; a **raw key** is used verbatim and must be 16, 24 or 32
+bytes (AES-128/192/256):
+
+```csharp
+// Binary password - PBKDF2-derived. NOTE: this is a DIFFERENT credential from the text password
+// whose UTF-8 encoding equals these bytes, because the text derivation folds in the string's
+// character length. Pick one form per file.
+q.WithEncryption(passwordBytes);
+q.WithEncryption(() => GetPasswordBytesFromVault());
+
+// Raw AES key - used as-is, no derivation. You own the key's quality, so supply high-entropy
+// material (e.g. RandomNumberGenerator.GetBytes(32)), not a low-entropy value.
+q.WithEncryptionRawKey(key32);
+q.WithEncryptionRawKey(() => GetKeyFromVault());
+```
+
 The property-fetcher form is handy when part of your settings (loaded via a constructor argument, for
 example) is itself the key:
 

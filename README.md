@@ -52,9 +52,9 @@ signing infrastructure.
 > origin, verify the SHA-256 checksums published with each
 > [GitHub release](https://github.com/Nucs/JsonSettings/releases).
 
-Versions before 2.1.0 shipped **unsigned** (`PublicKeyToken=null`). Upgrading across that
-boundary changes assembly identity, so a binding redirect written against the old unsigned
-identity will not match — remove it rather than editing it.
+Versions up to and including 2.1.0 shipped **unsigned** (`PublicKeyToken=null`); 2.2.0 is the first
+signed release. Upgrading across that boundary changes assembly identity, so a binding redirect
+written against the old unsigned identity will not match — remove it rather than editing it.
 
 See [docs/SIGNING.md](https://github.com/Nucs/JsonSettings/blob/master/docs/SIGNING.md) for how
 to verify it yourself and what the build enforces.

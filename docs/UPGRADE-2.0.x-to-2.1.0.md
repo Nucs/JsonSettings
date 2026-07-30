@@ -1,4 +1,4 @@
-# Upgrading from 2.0.x to 2.1.0 (and what 2.1.1 restores)
+# Upgrading from 2.0.x to 2.1.0 (and what 2.2.0 restores)
 
 **2.1.0 shipped four behaviour changes against 2.0.x. Three were bugs and are restored verbatim;
 the fourth is restored for every realistic graph behind a working depth backstop.** The public API
