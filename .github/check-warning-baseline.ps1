@@ -43,6 +43,15 @@ if (-not (Test-Path $BaselinePath)) {
 $baseline = Get-Content $BaselinePath -Raw | ConvertFrom-Json
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
+# The rebuilds below overwrite bin/ outputs that a PREVIOUS build's worker nodes may still
+# hold: MSBuild nodes idle for 15 minutes after their build by default, and the AspectInjector
+# weaving task runs inside them with the woven projects' references loaded. Measuring right
+# after a build - which is both what CI does and what a developer checking their own change
+# does - then dies ten retries into CopyFilesToOutputDirectory with MSB3027 "The file is
+# locked by: .NET Host". Shutting the build servers down first releases those handles; it is
+# best-effort on purpose, because "nothing was running" must not fail the gate.
+& dotnet build-server shutdown *> $null
+
 $failed = $false
 $improved = @()
 
@@ -57,10 +66,13 @@ foreach ($project in $baseline.projects.PSObject.Properties) {
     Write-Host "::group::Measuring $($project.Name)"
 
     # -t:Rebuild because an incremental build reports nothing for projects it skips, which
-    # would silently measure zero and pass.
+    # would silently measure zero and pass. -nodeReuse:false so THIS script's worker nodes
+    # exit with it rather than idling and doing to the next rebuild what the shutdown above
+    # just cleaned up.
     $output = & dotnet build $projectPath `
         --configuration $Configuration `
         -t:Rebuild `
+        -nodeReuse:false `
         --nologo `
         -v n 2>&1
 

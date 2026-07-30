@@ -27,6 +27,14 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # MSBuild worker nodes outlive their build by 15 minutes by default, and the AspectInjector
+  # weaving task runs inside them with the woven projects' references loaded. A later step in
+  # the same job that rebuilds those outputs then loses a copy race to a process that is idle
+  # by design: the warning-baseline step failed exactly that way on this pipeline's first PR
+  # run, with MSB3027 "The file is locked by: .NET Host" out of CopyFilesToOutputDirectory.
+  # One-shot nodes cost seconds per build here and remove the entire class of failure; the
+  # baseline script additionally shuts lingering servers down so it is also safe run alone.
+  MSBUILDDISABLENODEREUSE: 1
 
 jobs:
   # ---------------------------------------------------------------------------------------
