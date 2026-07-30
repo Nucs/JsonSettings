@@ -37,16 +37,26 @@ namespace Nucs.JsonSettings.Autosave {
             if (module == null)
                 return; //autosave was never enabled on this instance
 
+            if (module.IsSaving)
+                return; //re-entered from inside this module's own Save (e.g. an AfterSave handler
+                        //that writes a monitored property); saving again would recurse forever
+
             if (module.AutosavingState == AutosavingState.SuspendedChanged)
                 return; //a save is already owed; nothing further to record
 
             if (!module.IsMonitored(propertyName))
                 return;
 
-            if (module.UpdatesSuspended)
+            if (module.UpdatesSuspended) {
                 module.AutosavingState = AutosavingState.SuspendedChanged;
-            else
-                settings.Save();
+            } else {
+                module.IsSaving = true;
+                try {
+                    settings.Save();
+                } finally {
+                    module.IsSaving = false;
+                }
+            }
         }
 
         /// <summary>
@@ -73,24 +83,17 @@ namespace Nucs.JsonSettings.Autosave {
         ///     The set of property names a write to which commits a save, for a settings type.
         /// </summary>
         /// <remarks>
-        ///     The filter is carried over verbatim from the interceptor constructors it replaces,
-        ///     with one deliberate relaxation: the <c>GetSetMethod()?.IsVirtual == true</c> test is
-        ///     gone. That requirement existed solely because a Castle class proxy can only override
-        ///     virtual members -- a non-virtual property silently bypassed the proxy entirely, which
-        ///     is why the old code had to reject such classes up front with a
-        ///     <see cref="JsonSettingsException"/>. Weaving rewrites the setter itself, so
-        ///     non-virtual properties are now first-class.
-        ///
-        ///     Non-public setters are included (<c>GetSetMethod(true)</c>) so that
-        ///     <c>public string Foo { get; private set; }</c> is monitored; the property itself
-        ///     must still be public, matching what gets serialized.
+        ///     The predicate is <see cref="AutosaveModule.IsAutosaveMonitored"/>, shared with
+        ///     <see cref="NotificationBinder"/> so the two cannot disagree. It relaxes the old
+        ///     interceptor's <c>GetSetMethod()?.IsVirtual == true</c> test: that requirement existed
+        ///     solely because a Castle class proxy can only override virtual members, and weaving
+        ///     rewrites the setter itself, so non-virtual properties are now first-class. Non-public
+        ///     setters are included so that <c>public string Foo { get; private set; }</c> is
+        ///     monitored; the property itself is still public, matching what gets serialized.
         /// </remarks>
         internal static HashSet<string> ResolveMonitoredProperties(Type settingsType) {
             var monitored = settingsType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                        .Where(p => p.GetSetMethod(true) != null
-                                                    && p.GetCustomAttribute<JsonIgnoreAttribute>(true) == null
-                                                    && p.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null
-                                                    && AutosaveModule._frameworkParameters.All(f => f != p.Name))
+                                        .Where(AutosaveModule.IsAutosaveMonitored)
                                         .Select(p => p.Name);
 
             return new HashSet<string>(monitored, StringComparer.Ordinal);

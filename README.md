@@ -306,7 +306,20 @@ is removed, since the type it exposed no longer exists in the dependency graph.
 
 #### Attributes
 Properties can be marked with `IgnoreAutosaveAttribute` (`JsonIgnoreAttribute` will also work)
-to be excluded from the monitored properties for changes.
+to be excluded from the monitored properties for changes. This applies to collections too: an
+`[IgnoreAutosave]` `ObservableCollection` does not save when its contents change.
+
+#### Behaviour notes
+- **Indexers are not monitored.** Writing `settings[key] = value` does not autosave — an indexer
+  is not a serializable property. Use a normal property or call `Save()`.
+- **Reentrancy is safe.** Writing a monitored property from inside an `AfterSave` handler does not
+  trigger another save (it would otherwise recurse); the value is kept in memory and persists on
+  the next save.
+- **`SuspendAutosave` nests.** Nested suspension scopes are reference-counted and collapse into a
+  single save when the outermost scope closes; an inner scope closing does not end suspension.
+- **A failing save surfaces at the assignment.** If the triggered `Save()` throws, the exception
+  propagates out of the property assignment (the new value is already set in memory).
+- **Disposing the settings unbinds autosave**, including handlers attached to nested collections.
 
 #### Requirements
 - Install `nucs.JsonSettings.Autosave` nuget package
