@@ -4,7 +4,9 @@ using System.IO;
 namespace Nucs.JsonSettings {
     public static class Files {
         public static FileStream AttemptOpenFile(this FileInfo file, FileMode filemode = FileMode.Open, FileAccess fileaccess = FileAccess.Read, FileShare fileshare = FileShare.None, bool @throw = false) {
-            return AttemptOpenFile(file?.FullName, filemode, fileaccess, fileshare);
+            //Forward @throw as well: without it the FileInfo overload silently used @throw=false, so a
+            //caller asking to surface the IOException got a null instead.
+            return AttemptOpenFile(file?.FullName, filemode, fileaccess, fileshare, @throw);
         }
 
         /// <summary>

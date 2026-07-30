@@ -98,6 +98,17 @@ namespace Nucs.JsonSettings {
             //Bridge numeric (and other IConvertible) width mismatches, e.g. the Int64 a JSON integer
             //deserializes back into for a Get<int>. Nullable is unwrapped so Get<int?> resolves too.
             var target = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+            //Enums are not directly convertible from their underlying integral via Convert.ChangeType
+            //(it throws InvalidCastException), yet a round-trip stores an enum exactly that way -- as the
+            //boxed Int64 a JSON integer deserializes to, or as its name when a string-enum converter is
+            //used. Coerce both forms back to the enum so Get<TEnum> survives a save/load like Get<int>.
+            if (target.IsEnum) {
+                return value is string enumName
+                    ? (T) Enum.Parse(target, enumName, ignoreCase: true)
+                    : (T) Enum.ToObject(target, Convert.ChangeType(value, Enum.GetUnderlyingType(target)));
+            }
+
             return (T) Convert.ChangeType(value, target);
         }
 
