@@ -673,22 +673,64 @@ namespace Nucs.JsonSettings {
 
         #endregion
 
-        private bool _hasconfigured = false;
+        //Configuration runs exactly once per instance, and a concurrent caller must WAIT for it to
+        //finish rather than race ahead against a half-configured object -- e.g. a Save that beat the
+        //encryption module being attached would write plaintext. Three states, not a bool: the middle
+        //one, Configuring, is what makes a second thread block instead of either re-running configure
+        //(the old "Can't run configure twice!" throw, which was an unsynchronized-bootstrap race) or
+        //proceeding on an object that is only half set up.
+        private enum ConfigurationState : byte {
+            NotConfigured = 0,
+            Configuring = 1,
+            Configured = 2
+        }
+
+        //A byte-backed enum cannot be Interlocked.CompareExchange'd (there is no byte/enum overload),
+        //and the hard parts here are the WAIT and reentrancy rather than the claim -- so a monitor
+        //guards the transition. Monitor being reentrant is exactly what OnConfigure needs: its
+        //Configurate callback is user code that may call back into Save/Load (hence EnsureConfigured)
+        //on this same thread, and that re-entry must fall straight through, not deadlock waiting on
+        //itself. `volatile` gives the lock-free fast path its acquire read, so everything OnConfigure
+        //publishes before the Configured write is visible to any thread that observes Configured.
+        private volatile ConfigurationState _configureState = ConfigurationState.NotConfigured;
+        private readonly object _configureGate = new object();
 
         /// <summary>
         ///     Configurate properties of this JsonSettings, for example - call <see cref="FluentJsonSettings.WithBase64{T}"/> on this.<br></br>
         /// </summary>
+        /// <remarks>
+        ///     Run-once and reentrancy are enforced by <see cref="EnsureConfigured"/>; an override should
+        ///     call <c>base.OnConfigure()</c> to fire the fluent <see cref="Configurate"/> handlers.
+        /// </remarks>
         protected virtual void OnConfigure() {
-            if (_hasconfigured)
-                throw new InvalidOperationException("Can't run configure twice!");
-            _hasconfigured = true;
             Configurate?.Invoke(this);
         }
 
+        /// <summary>
+        ///     Runs <see cref="OnConfigure"/> exactly once for this instance, blocking any concurrent
+        ///     caller until it completes. Safe to call from multiple threads, and re-entrant from within
+        ///     <see cref="OnConfigure"/> itself (the configuring thread falls through rather than blocking).
+        /// </summary>
         protected internal void EnsureConfigured() {
-            if (_hasconfigured)
-                return;
-            OnConfigure();
+            if (_configureState == ConfigurationState.Configured)
+                return; //fast path: a single volatile read, no lock.
+
+            lock (_configureGate) {
+                //Configured by another thread while we waited on the gate, or we are the reentrant owner
+                //already mid-configure (Configuring on this same thread): either way, nothing to do here.
+                if (_configureState != ConfigurationState.NotConfigured)
+                    return;
+
+                _configureState = ConfigurationState.Configuring; //a same-thread reentrant call now returns above
+                try {
+                    OnConfigure();
+                } catch {
+                    _configureState = ConfigurationState.NotConfigured; //failed: let a later call retry rather than wedge
+                    throw;
+                }
+
+                _configureState = ConfigurationState.Configured;
+            }
         }
 
         protected internal virtual void OnBeforeLoad(ref string destinition) {
