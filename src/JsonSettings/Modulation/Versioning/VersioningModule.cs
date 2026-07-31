@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Newtonsoft.Json;
 
 namespace Nucs.JsonSettings.Modulation {
@@ -31,7 +32,11 @@ namespace Nucs.JsonSettings.Modulation {
     public class VersioningModule<T> : Module where T : JsonSettings, IVersionable {
         // ReSharper disable once StaticMemberInGenericType
         private static VersioningPolicyHandler? _defaultPolicy;
-        protected volatile int internalCalls; //guard for event handling
+        //Reentrancy guard for event handling. ++/-- is a read-modify-write done through Interlocked to
+        //stay atomic under concurrent load of one instance, and the read below goes through Volatile.Read
+        //so every access is barrier-consistent; the field is therefore NOT `volatile`, because passing a
+        //volatile field by ref to Interlocked warns CS0420 (the ref would not be treated as volatile anyway).
+        protected int internalCalls;
         protected string? loadedPath; //the path that was passed during loading
 
         /// <summary>
@@ -114,7 +119,7 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         protected virtual void SocketOnAfterLoad(JsonSettings sender, bool successfulLoad) {
-            if (internalCalls >= 1)
+            if (Volatile.Read(ref internalCalls) >= 1)
                 return;
 
             T tsender = (T) sender;
@@ -177,13 +182,13 @@ namespace Nucs.JsonSettings.Modulation {
                     }
 
                     //save
-                    internalCalls++;
+                    Interlocked.Increment(ref internalCalls);
                     try {
                         sender.FileName = loadedPath = cleanName;
                         sender.LoadDefault(ConstructingParameters);
                         sender.Save();
                     } finally {
-                        internalCalls--;
+                        Interlocked.Decrement(ref internalCalls);
                     }
 
                     return;

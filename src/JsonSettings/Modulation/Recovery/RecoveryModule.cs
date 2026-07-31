@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using Newtonsoft.Json;
 
 namespace Nucs.JsonSettings.Modulation.Recovery {
@@ -9,7 +10,11 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
     public class RecoveryModule : Module {
         public RecoveryAction RecoveryAction { get; set; }
         protected string loadedPath; //the attempted load path
-        protected volatile int internalCalls; //guard for event handling
+        //Reentrancy guard for event handling. ++/-- is a read-modify-write, so it goes through
+        //Interlocked to stay atomic under concurrent load of one instance; the field is therefore NOT
+        //`volatile`, because passing a volatile field by ref to Interlocked warns CS0420 (the ref would
+        //not be treated as volatile anyway).
+        protected int internalCalls;
 
         /// <summary>
         ///     The parameters that'll be passed to the constructor of JsonSettings that were passed.
@@ -87,7 +92,7 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
                     }
 
                     //save
-                    internalCalls++;
+                    Interlocked.Increment(ref internalCalls);
                     try {
                         sender.FileName = loadedPath = cleanName;
                         sender.LoadDefault(ConstructingParameters);
@@ -95,7 +100,7 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
                         recovered = true;
                         handled = true;
                     } finally {
-                        internalCalls--;
+                        Interlocked.Decrement(ref internalCalls);
                     }
 
                     return;
