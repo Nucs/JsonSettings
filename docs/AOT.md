@@ -13,24 +13,44 @@ unannotated reflection means neither package can keep that guarantee yet.
 This document records what was measured, why it fails, and what fixing it would cost, so the
 question does not have to be re-litigated from scratch.
 
+## Why it can't be fully supported — and what we do
+
+**Why.** The remaining blocker is `Newtonsoft.Json`. It is unannotated for trimming and ships
+no source generator, so the trimmer cannot see the members it reflects on. Under AOT it
+degrades to reflection rather than crashing, but any type a consumer does not preserve is
+silently serialized as `{}`, and the build cannot honestly earn a trim-safe guarantee. Fixing
+that means replacing the serializer — a breaking, major-version rewrite (Option B) — so it is
+out of scope for now.
+
+**What we do instead.**
+
+- **Removed the one *hard* blocker.** Autosave no longer generates code at runtime
+  (`Castle.DynamicProxy` → AspectInjector compile-time weaving), so nothing throws
+  `PlatformNotSupportedException` under AOT.
+- **Encryption uses in-box `System.Security.Cryptography`** — no reflection, AOT-clean on its own.
+- **We do not set `<IsAotCompatible>`.** Claiming it would be a false guarantee while Newtonsoft
+  reflects on types the trimmer cannot see.
+- **We document the preservation recipe** ([below](#what-a-consumer-can-do-today)). A consumer
+  who roots their settings types gets the whole feature set working under AOT — measured
+  **15/15**, JIT and fully-rooted NativeAOT alike.
+
 > **What changed in 2.2.0.** Blocker 1 below — `Castle.DynamicProxy` and its hard dependency
 > on `System.Reflection.Emit` — was removed by replacing DynamicProxy with compile-time IL
 > weaving. The section is kept rather than deleted because the reasoning is what justifies
 > the replacement, and because the same trap catches every other runtime-proxy library.
 >
-> **Scope of that claim.** What is verified is that the mechanism is gone: the shipped
-> `JsonSettings.Autosave` assembly no longer references `Castle.*` at all (asserted by
-> `AutosaveWeavingSupportTests.AutosaveAssembly_DoesNotReferenceCastle`), the advice is
-> injected into consumer setters at build time, and autosave works end to end through a real
-> `.nupkg` in a separate consuming project. What has **not** been re-run is the 15-probe
-> `PublishAot` harness below; rows 1-3 of the results table therefore still describe 2.1.0.
-> Blockers 2 and 3 are untouched by this change, so the `{ "Section": {} }` failure below is
-> still live.
+> **Now measured against 2.2.0.** The 15-probe `PublishAot` harness was re-run against the
+> 2.2.0 libraries: JIT **15/15** and fully-rooted NativeAOT **15/15**, including all three
+> autosave paths that crashed under 2.1.0. The project's own suite is green on every shipped
+> target (net10.0/8.0/6.0 = 426, net472/net48 = 421). Blockers 2 and 3 are untouched, so the
+> `{ "Section": {} }` failure on *un-preserved* types below is still live — the 15/15 is the
+> preserved ceiling, not a zero-config result.
 
 ---
 
 ## Contents
 
+- [Why it can't be fully supported — and what we do](#why-it-cant-be-fully-supported--and-what-we-do)
 - [What was measured](#what-was-measured)
 - [Results](#results)
 - [Blocker 1 — Castle DynamicProxy is Reflection.Emit](#blocker-1--castle-dynamicproxy-is-reflectionemit)
@@ -72,6 +92,11 @@ that motivated AOT in the first place.
 | 4 | `PublishTrimmed` (JIT retained), out of the box | 2 / 15 | 26.4 MB |
 | 5 | `PublishTrimmed` (JIT retained), everything rooted | **15 / 15** | 27.5 MB |
 
+> **2.2.0 update:** the rows above are the 2.1.0 baseline. Re-running the harness on 2.2.0
+> changes exactly one — **row 3 (everything rooted) is now 15/15**, because the three former
+> Autosave failures no longer need a runtime code generator. Rows 1, 2 and 4 are unchanged;
+> they are gated by Blockers 2–3 (metadata), which 2.2.0 did not touch.
+
 Four things to take from that table.
 
 **Out of the box, everything fails.** Not the exotic features — `JsonSettings.Load<T>()` on a
@@ -85,11 +110,11 @@ That is `Activation.CreateInstance` in [`src/JsonSettings/Inline/Activation.cs`]
 The constructor exists in source; the trimmer removed it because only reflection reaches it,
 and `Type.GetConstructors()` cannot tell the trimmer that.
 
-**Row 5 is the important contrast.** Trimming alone passes 15/15 once metadata is preserved,
-including all three autosave paths. NativeAOT with the *same* preservation still fails 3/15.
-The difference is not metadata — it is that AOT has no runtime code generator.
-**Trimming is a metadata problem and is survivable. AOT is that plus a code-generation
-problem, and the code-generation half is not survivable for Autosave.**
+**Row 5 vs row 3 — the 2.1.0 gap, now closed.** In 2.1.0 trimming reached 15/15 with
+preservation but NativeAOT stalled at 12/15; the missing three were Autosave, which needed a
+runtime code generator AOT does not provide. 2.2.0 removed that need via compile-time weaving,
+so fully-rooted NativeAOT now also measures **15/15**. Everything still short of that — rows 1,
+2 and 4 — is a pure metadata problem (Blockers 2–3), survivable only by preservation.
 
 **Row 2 shows where the gap actually lives.** Rooting the libraries and leaving consumer
 types to normal trim analysis fixes almost nothing (3/15) — `SettingsBag` passes only because
@@ -260,7 +285,7 @@ so the consumer gets a build-time warning rather than a runtime surprise.
 
 ## What a consumer can do today
 
-If you must ship trimmed or AOT with 2.1.0:
+If you must ship trimmed or AOT (2.2.0):
 
 1. **`Nucs.JsonSettings.Autosave` is no longer a hard blocker** as of 2.2.0 — mark your
    settings class `[Autosave]` and the interception is compiled in rather than emitted.
