@@ -10,6 +10,14 @@ namespace Nucs.JsonSettings.Collections {
     ///     A dictionary that returns default(T) incase of not existing value.
     ///     And Add will add or set value.
     /// </summary>
+    /// <remarks>
+    ///     Thread-safe by construction: this derives from <see cref="ConcurrentDictionary{TKey,TValue}"/>,
+    ///     so every single operation -- indexer get/set, <see cref="Add"/>, <c>TryGetValue</c>,
+    ///     <c>TryRemove</c>, and enumeration -- is atomic and safe under concurrent readers and writers.
+    ///     What is NOT atomic, exactly as for the base type, is a compound sequence built on top of it:
+    ///     <see cref="FindKeyByValue"/>'s scan, <see cref="Clone"/>'s snapshot, or any caller's
+    ///     check-then-act (read a key, then write it) can interleave with another thread's write.
+    /// </remarks>
     [DebuggerStepThrough]
     internal class SafeDictionary<TKey, TValue> : ConcurrentDictionary<TKey, TValue> {
         /// <summary>

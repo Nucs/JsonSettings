@@ -38,7 +38,12 @@ namespace Nucs.JsonSettings.Autosave {
                                               .Where(AutosaveModule.IsNotificationBindable)
                                               .ToArray();
 
-            Dictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)> dictionary = new Dictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)>();
+            //ConcurrentDictionary, not Dictionary: this staging table is populated single-threaded
+            //here, but keeping every map in the notification/autosave path concurrent removes the
+            //plain-Dictionary failure mode outright (a torn bucket array / lost write under a racing
+            //populate) rather than relying on the construction staying single-threaded forever. It
+            //seeds _monitoredPropertiesTable, which is itself concurrent and mutated at runtime.
+            ConcurrentDictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)> dictionary = new ConcurrentDictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)>(StringComparer.Ordinal);
             foreach (var property in bindableProperties) {
                 var getter = property.GetGetMethod(true);
                 dictionary[property.Name] = (t: property, getter, property.GetSetMethod(true), getter.Invoke(_settings, null));

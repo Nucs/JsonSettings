@@ -11,7 +11,14 @@ namespace Nucs.JsonSettings {
     /// <summary>
     ///     A dynamic settings class, adds settings as you go.
     /// </summary>
-    /// <remarks>SettingsBag is threadsafe by using <see cref="ConcurrentDictionary{TKey,TValue}"/>.</remarks>
+    /// <remarks>
+    ///     The value store is thread-safe: it is backed by a <see cref="ConcurrentDictionary{TKey,TValue}"/>
+    ///     (through <see cref="SafeDictionary{TKey,TValue}"/>), so concurrent <see cref="Get{T}"/>,
+    ///     <see cref="Set"/>, <see cref="Remove"/> and enumeration of <see cref="Data"/> neither corrupt
+    ///     state nor lose entries. Autosave-on-write (when <see cref="Autosave"/> is enabled) is a
+    ///     separate concern: the persistence path is not fully synchronized across threads, so drive
+    ///     saves from a single writer or coalesce a burst inside a SuspendAutosave scope.
+    /// </remarks>
     public sealed class SettingsBag : JsonSettings {
         private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
         private AutosaveModule? _autosaveModule; //TODO: this potentially can support WPF binding
