@@ -13,7 +13,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Minimum 13.0.3, no upper bound - same [13.0.3, ) range and rationale as
+         JsonSettings.csproj; kept in step with the version this package references
+         transitively through that project. -->
+    <PackageReference Include="Newtonsoft.Json" Version="[13.0.3, )" />
 
     <!-- Replaces Castle.Core 5.1.1. DynamicProxy builds proxy types at runtime with
          System.Reflection.Emit, which a Native AOT binary has no code generator to execute —

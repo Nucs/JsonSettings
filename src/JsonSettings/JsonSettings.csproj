@@ -28,7 +28,17 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Minimum 13.0.3, no upper bound: [13.0.3, ). A bare Version="13.0.3" already MEANS
+         ">= 13.0.3" to NuGet - a simple version is a floor, not a pin - and both spellings
+         pack to the identical `Newtonsoft.Json (>= 13.0.3)` dependency. The interval form is
+         used only so the csproj states that intent instead of reading like an exact pin.
+         No maximum on purpose: a consumer already resolving a newer Json.NET (13.0.4, a
+         future 13.x, or a 14.x once one exists) keeps it rather than being forced back, and
+         13.0.3 is the floor because the depth backstop (SerializationSettings.MaxDepth = 128,
+         see the release notes) assumes Newtonsoft 13's behaviour. This project's own restore
+         still takes the lowest match, 13.0.3, so nothing here is built against an untested
+         higher version. -->
+    <PackageReference Include="Newtonsoft.Json" Version="[13.0.3, )" />
   </ItemGroup>
 
   <!-- Friend assemblies. These were plain [assembly: InternalsVisibleTo("...")] attributes in
