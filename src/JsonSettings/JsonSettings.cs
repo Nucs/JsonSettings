@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters;
 using System.Text;
+using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Nucs.JsonSettings.Autosave;
@@ -802,6 +803,8 @@ namespace Nucs.JsonSettings {
 
         #region IDisposable
 
+        private int _disposed;
+
         protected virtual void Dispose(bool disposing) {
             if (disposing) {
                 Modulation?.Dispose();
@@ -809,6 +812,12 @@ namespace Nucs.JsonSettings {
         }
 
         public void Dispose() {
+            //Idempotent and thread-safe: the first caller wins the 0->1 transition and runs the dispose
+            //chain (the virtual Dispose(bool), including any subclass override) exactly once; a concurrent
+            //or repeat Dispose() returns. No lock -- dispose is fire-and-forget, so a second caller just
+            //leaves rather than waiting: the 2-state Interlocked guard, not the configure-style lock.
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
             Dispose(true);
             GC.SuppressFinalize(this);
         }
