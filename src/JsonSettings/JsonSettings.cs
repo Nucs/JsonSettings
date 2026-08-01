@@ -194,7 +194,10 @@ namespace Nucs.JsonSettings {
             try {
                 lock (o) {
                     o.OnBeforeSave(ref filename);
-                    stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+                    //@throw: true so a sharing violation (another handle holds the file -- e.g. a
+                    //concurrent reader) surfaces as the IOException the catch below wraps into a
+                    //JsonSettingsException, instead of a swallowed null that then NREs on SetLength(0).
+                    stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, @throw: true);
                     o.FileName = filename;
                     o.OnBeforeSerialize();
                     var json = o.ToJson(serializeAsType: inType);
@@ -463,63 +466,71 @@ namespace Nucs.JsonSettings {
             o.EnsureConfigured();
             configure?.Invoke();
 
-            o.OnBeforeLoad(ref filename);
+            //Load takes the SAME lock Save does, so a load and a save on this instance are mutually
+            //exclusive rather than colliding on the file (which surfaced as an unwrapped IOException in
+            //Load and a NullReferenceException in Save) and rather than tearing the object as one
+            //thread's PopulateObject raced the other's ToJson. Monitor is reentrant, so the nested
+            //o.Save(filename) below -- and any Save/LoadDefault a recovery/versioning handler runs --
+            //re-enters this lock instead of deadlocking.
+            lock (o) {
+                o.OnBeforeLoad(ref filename);
 
-            if (File.Exists(filename)) {
-                try {
-                    byte[] bytes;
-                    using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-                        bytes = ReadAllBytes(fs);
-
-                    o.OnDecrypt(ref bytes);
-                    o.OnAfterDecrypt(ref bytes);
-
-                    var fc = Encoding.GetString(bytes);
-                    if (string.IsNullOrEmpty(fc) || string.IsNullOrEmpty(fc.Replace("\r", "").Replace("\n", "").Trim())) {
-                        bool recovered = false; //by default we ignore
-                        bool handled = false; //by default we ignore
-                        o.OnTryingRecover(filename, null, ref recovered, ref handled);
-                        if (!recovered)
-                            throw new JsonSettingsException("The settings file is empty!");
-
-                        o.OnRecovered();
-                        o.OnAfterLoad(false);
-                        o.FileName = filename;
-                        return o;
-                    }
-
-                    o.OnBeforeDeserialize(ref fc);
-
+                if (File.Exists(filename)) {
                     try {
-                        o.LoadJson(fc);
-                    } catch (JsonException e) {
-                        bool recovered = false; //by default we ignore
-                        bool handled = false; //by default we ignore
-                        o.OnTryingRecover(filename, e, ref recovered, ref handled);
+                        byte[] bytes;
+                        using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                            bytes = ReadAllBytes(fs);
 
-                        if (!recovered)
-                            throw new JsonSettingsException($"Unable to parse file '{filename}', see inner exception...", e);
+                        o.OnDecrypt(ref bytes);
+                        o.OnAfterDecrypt(ref bytes);
 
-                        o.OnRecovered();
-                        o.OnAfterLoad(false);
+                        var fc = Encoding.GetString(bytes);
+                        if (string.IsNullOrEmpty(fc) || string.IsNullOrEmpty(fc.Replace("\r", "").Replace("\n", "").Trim())) {
+                            bool recovered = false; //by default we ignore
+                            bool handled = false; //by default we ignore
+                            o.OnTryingRecover(filename, null, ref recovered, ref handled);
+                            if (!recovered)
+                                throw new JsonSettingsException("The settings file is empty!");
+
+                            o.OnRecovered();
+                            o.OnAfterLoad(false);
+                            o.FileName = filename;
+                            return o;
+                        }
+
+                        o.OnBeforeDeserialize(ref fc);
+
+                        try {
+                            o.LoadJson(fc);
+                        } catch (JsonException e) {
+                            bool recovered = false; //by default we ignore
+                            bool handled = false; //by default we ignore
+                            o.OnTryingRecover(filename, e, ref recovered, ref handled);
+
+                            if (!recovered)
+                                throw new JsonSettingsException($"Unable to parse file '{filename}', see inner exception...", e);
+
+                            o.OnRecovered();
+                            o.OnAfterLoad(false);
+                            o.FileName = filename;
+                            return o;
+                        }
+
+                        o.OnAfterDeserialize();
                         o.FileName = filename;
+                        o.OnAfterLoad(true);
                         return o;
+                    } catch (InvalidOperationException e) when (e.Message.Contains("Cannot convert")) {
+                        throw new JsonSettingsException("Unable to deserialize settings file, value<->type mismatch. see inner exception", e);
+                    } catch (ArgumentException e) when (e.Message.StartsWith("Invalid")) {
+                        throw new JsonSettingsException("Settings file is corrupt.");
                     }
-
-                    o.OnAfterDeserialize();
+                } else {
+                    //empty file
+                    o.OnAfterLoad(false);
                     o.FileName = filename;
-                    o.OnAfterLoad(true);
-                    return o;
-                } catch (InvalidOperationException e) when (e.Message.Contains("Cannot convert")) {
-                    throw new JsonSettingsException("Unable to deserialize settings file, value<->type mismatch. see inner exception", e);
-                } catch (ArgumentException e) when (e.Message.StartsWith("Invalid")) {
-                    throw new JsonSettingsException("Settings file is corrupt.");
+                    o.Save(filename);
                 }
-            } else {
-                //empty file
-                o.OnAfterLoad(false);
-                o.FileName = filename;
-                o.Save(filename);
             }
 
             return o;
