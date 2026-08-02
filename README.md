@@ -14,18 +14,20 @@ to serialize nested (custom) objects, dictionaries and lists as simply as by cre
 ### Installation
 ```sh
 dotnet add package Nucs.JsonSettings
-dotnet add package Nucs.JsonSettings.Autosave   # optional, only for EnableAutosave()
+dotnet add package Nucs.JsonSettings.Autosave        # optional, for EnableAutosave()
+dotnet add package Nucs.JsonSettings.NotifyChanges   # optional, for [NotifyChanges] data binding
 ```
 ```sh
 PM> Install-Package Nucs.JsonSettings
 PM> Install-Package Nucs.JsonSettings.Autosave
+PM> Install-Package Nucs.JsonSettings.NotifyChanges
 ```
 
-Both packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`.
+All three packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`.
 The `netstandard2.0` asset covers everything without an exact match, including
 `net472`+, `netcoreapp3.1`, `net5.0`, `net7.0`, `net9.0`, Unity and Xamarin.
 
-> **Native AOT / trimming:** neither package is trim-safe yet. Under `PublishTrimmed` or
+> **Native AOT / trimming:** none of the packages are trim-safe yet. Under `PublishTrimmed` or
 > `PublishAot` a settings file can still be silently written back as `{}` with no exception,
 > because Newtonsoft.Json's reflection is invisible to the trimmer.
 > `Nucs.JsonSettings.Autosave` no longer blocks AOT on its own: it is built on compile-time
@@ -36,7 +38,7 @@ The `netstandard2.0` asset covers everything without an exact match, including
 
 ### Strong naming
 
-Both packages are strong-named, so they can be referenced from a strong-named assembly:
+All packages are strong-named, so they can be referenced from a strong-named assembly:
 
 ```
 Nucs.JsonSettings,          PublicKeyToken=cc7b13ffcd2ddd51
@@ -437,13 +439,14 @@ raises `OnPropertyChanged` and an auto-implemented one behave identically. The
 - Call `mySettings.EnableAutosave()` extension after calling `Load`
 
 #### Producing notifications for the View — `[NotifyChanges]`
-The above makes autosave *react* to `PropertyChanged`. To make a setter *raise* it — so a WPF binding
-refreshes — without hand-writing `OnPropertyChanged()` in every setter, including on **auto-properties**
-(which otherwise save but never notify), mark the class `[NotifyChanges]`:
+The above makes autosave *react* to `PropertyChanged`. To make a setter *raise* it — so a binding
+(WPF, WinForms, Avalonia, WinUI, MAUI, Uno) refreshes — without hand-writing `OnPropertyChanged()` in
+every setter, including on **auto-properties** (which otherwise save but never notify), install the
+separate **`Nucs.JsonSettings.NotifyChanges`** package and mark the class `[NotifyChanges]`:
 
 ```C#
-[Autosave, NotifyChanges]
-public class WindowSettings : NotifiyingJsonSettings {
+[Autosave, NotifyChanges]                     // [Autosave] from Nucs.JsonSettings.Autosave,
+public class WindowSettings : NotifiyingJsonSettings {   // [NotifyChanges] from Nucs.JsonSettings.NotifyChanges
     public override string FileName { get; set; } = "window.json";
     public double Width { get; set; }   // binds two-way, saves, and notifies — no boilerplate
     public string Title { get; set; }
@@ -452,7 +455,8 @@ public class WindowSettings : NotifiyingJsonSettings {
 
 - Compile-time weave like `[Autosave]`, **not inherited**, and composes with it (one write saves and
   notifies once). Put it on auto-properties — a hand-written setter that already calls
-  `OnPropertyChanged()` would notify twice.
+  `OnPropertyChanged()` would notify twice. Framework-neutral: depends only on `System.ComponentModel`,
+  not on WPF.
 - `NotificationGuard` controls when it fires, per class or per property: `OnlyChanged` (default),
   `SkipNullOrDefault`, `Always` — and they combine (`[Flags]`).
 - Silence a property with `[IgnoreNotify]` (independent of `[IgnoreAutosave]` — a property can save
@@ -461,9 +465,14 @@ public class WindowSettings : NotifiyingJsonSettings {
   (`OnPropertyChanged` / `RaisePropertyChanged` / `NotifyOfPropertyChange`). For a class with **no**
   base, `[NotifyChangesMixin]` injects `INotifyPropertyChanged` for you (per-instance; best for a single
   class — a hierarchy should use `NotifiyingJsonSettings` + `[NotifyChanges]`).
+- Also raises **`INotifyPropertyChanging`** before the change (on `NotifiyingJsonSettings`, a convention
+  raiser, or the mixin), fans a change out to a computed property with **`[NotifyChangesFor(nameof(…))]`**,
+  and marshals notifications onto the UI thread for off-thread writes via
+  **`EnableNotificationMarshaling()`**.
 
-See the [Notifications & WPF guide](docs/website-src/docs/notifications.md) for the guard details, the
-mixin, nested-collection autosave, threading, and a comparison with Fody `PropertyChanged`,
+See the [Notifications & Data Binding guide](docs/website-src/docs/notifications.md) for the guard
+details, the mixin, `INotifyPropertyChanging`, `[NotifyChangesFor]`, `SynchronizationContext`
+marshalling, nested-collection autosave, threading, and a comparison with Fody `PropertyChanged`,
 CommunityToolkit.Mvvm and ReactiveUI.
 
 Throttled Save

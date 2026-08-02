@@ -1,12 +1,25 @@
-# Notifications & WPF
+# Notifications & Data Binding
 
-Turn a settings class into an observable ViewModel. This guide covers producing
-`INotifyPropertyChanged` notifications from your setters with the `[NotifyChanges]` and
-`[NotifyChangesMixin]` aspects, the change guards that decide when a notification fires, the
-ways a settings class can implement the interface, and how autosave reacts to nested
-`INotifyPropertyChanged` / `INotifyCollectionChanged` changes. Everything here ships in the
-`Nucs.JsonSettings.Autosave` package and is built on the same compile-time IL weaving as
-[`[Autosave]`](autosave.md) &mdash; no runtime proxy, Native-AOT-safe.
+Turn a settings class into an observable, bindable object. This guide covers producing
+`INotifyPropertyChanged` / `INotifyPropertyChanging` notifications from your setters with the
+`[NotifyChanges]` and `[NotifyChangesMixin]` aspects, the change guards that decide when a
+notification fires, dependent-property notification with `[NotifyChangesFor]`, opt-in
+`SynchronizationContext` marshalling for off-thread writes, the ways a settings class can implement
+the interface, and how autosave reacts to nested `INotifyPropertyChanged` /
+`INotifyCollectionChanged` changes.
+
+The producing aspects ship in the **`Nucs.JsonSettings.NotifyChanges`** package and are built on the
+same compile-time IL weaving as [`[Autosave]`](autosave.md) &mdash; no runtime proxy,
+Native-AOT-safe. The contract is the BCL's `System.ComponentModel`, not any UI framework, so the
+same settings class binds under **WPF, WinForms, WinUI, MAUI, Avalonia and Uno**.
+
+> [!IMPORTANT]
+> The notification aspects live in their own **`Nucs.JsonSettings.NotifyChanges`** package
+> (namespace `Nucs.JsonSettings.NotifyChanges`), separate from autosave. `[NotifyChanges]`,
+> `[NotifyChangesMixin]`, `[IgnoreNotify]` and `[NotifyChangesFor]` come from there; `[Autosave]` /
+> `EnableAutosave()` stay in `Nucs.JsonSettings.Autosave`. To both **save and notify**, reference
+> **both** packages &mdash; samples below that do both need `using Nucs.JsonSettings.Autosave;` **and**
+> `using Nucs.JsonSettings.NotifyChanges;`.
 
 ## Two directions
 
@@ -28,8 +41,9 @@ collection edits.
 ```csharp
 using System.ComponentModel;
 using Nucs.JsonSettings;
-using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Examples;   // NotifiyingJsonSettings
+using Nucs.JsonSettings.Autosave;        // [Autosave], EnableAutosave
+using Nucs.JsonSettings.NotifyChanges;   // [NotifyChanges], [NotifyChangesMixin], [IgnoreNotify], [NotifyChangesFor]
+using Nucs.JsonSettings.Examples;        // NotifiyingJsonSettings
 
 [Autosave]        // persist on change
 [NotifyChanges]   // raise PropertyChanged on change
@@ -149,6 +163,32 @@ public class ProxySettings : BindableSettings {
 > value is set (and saved, if `[Autosave]`), and nothing is raised. Add a base, a raiser, or the
 > mixin to start notifying.
 
+## Notifying before the change &mdash; `INotifyPropertyChanging`
+
+The same aspect also raises `INotifyPropertyChanging.PropertyChanging` **before** the assignment,
+whenever the class supports it. Because `[NotifyChanges]` wraps the setter (`Kind.Around`) it is
+already positioned to fire the "about to change" edge before the value is written and the "changed"
+edge after &mdash; both gated by the same [change guard](#change-guards), so a suppressed no-op write
+raises neither.
+
+- `NotifiyingJsonSettings` implements `INotifyPropertyChanging` out of the box (its `OnPropertyChanging`
+  raiser mirrors `OnPropertyChanged`).
+- Your own base/class is driven by **convention**: an `OnPropertyChanging` or `RaisePropertyChanging`
+  (`void`, one `string`) method &mdash; the CommunityToolkit / Prism house styles.
+- `[NotifyChangesMixin]` **injects** `INotifyPropertyChanging` alongside `INotifyPropertyChanged`, so a
+  mixin class implements both.
+
+```csharp
+var s = JsonSettings.Load<AppSettings>("app.json");
+((INotifyPropertyChanging) s).PropertyChanging += (_, e) => { /* old value still in place */ };
+s.PropertyChanged             += (_, e) => { /* new value now set */ };
+s.Theme = "Light";            // -> PropertyChanging("Theme"), then PropertyChanged("Theme")
+```
+
+WPF data binding uses `PropertyChanged`; `PropertyChanging` is for change trackers, undo/redo and
+validators that need the pre-change value. It is always raised inline (never marshalled), because
+"about to change" must precede the write.
+
 ## Change guards
 
 By default a setter notifies **only when the value actually changes** &mdash; the same guard an
@@ -200,6 +240,35 @@ Behaviour in detail:
 > `OnlyChanged` reads the getter through reflection once per write. For settings &mdash; low-frequency,
 > config-shaped writes &mdash; this is immaterial, but it is why the guard, like the serializer, needs
 > the model preserved under trimming/AOT.
+
+## Dependent properties &mdash; `[NotifyChangesFor]`
+
+A **computed** property has no setter to weave, so a binding to it goes stale when the properties it
+derives from change. Mark each *input* property with `[NotifyChangesFor(nameof(TheComputedOne))]` and a
+write to the input raises a notification for the computed one too &mdash; the counterpart to
+CommunityToolkit.Mvvm's `[NotifyPropertyChangedFor]`.
+
+```csharp
+[NotifyChanges]
+public class ProfileSettings : NotifiyingJsonSettings {
+    public override string FileName { get; set; } = "profile.json";
+
+    [NotifyChangesFor(nameof(FullName))] public string First { get; set; }
+    [NotifyChangesFor(nameof(FullName))] public string Last  { get; set; }
+
+    [JsonIgnore] public string FullName => $"{First} {Last}";   // binding refreshes when First/Last change
+}
+```
+
+- **Fires after the source, in declared order.** One write to `First` raises `PropertyChanged("First")`
+  then `PropertyChanged("FullName")`.
+- **Gated by the source's guard.** Dependents are derived, so they carry no guard of their own; a no-op
+  write the source's `OnlyChanged` suppresses fans out nothing.
+- **Repeatable and safe.** Stack several on one property (targets merge and de-duplicate). A target that
+  names the property itself, or is an indexer, framework-managed, or `[IgnoreNotify]`, is dropped.
+- **Both flavours.** Works under `[NotifyChanges]` (through the class's raiser) and `[NotifyChangesMixin]`
+  (on the injected event), and marshals with the source when
+  [marshalling](#off-thread-writes--synchronizationcontext-marshalling) is on.
 
 ## Ignoring properties
 
@@ -438,6 +507,41 @@ s.Volatile.Add(new());                             // does NOT save — [IgnoreA
 - **Disposing the settings** unbinds every nested handler, so a collection held elsewhere cannot keep
   saving through &mdash; or keep alive &mdash; a disposed object.
 
+## Off-thread writes &mdash; `SynchronizationContext` marshalling
+
+Raising `PropertyChanged` on a background thread is a problem every UI framework shares: WPF marshals a
+scalar `PropertyChanged` for you, but mutating a **bound `ObservableCollection`** from another thread
+throws `NotSupportedException`, and other stacks marshal even less. Settings are often written from
+background work, so this bites in practice.
+
+`EnableNotificationMarshaling()` captures the current `SynchronizationContext` and posts every
+subsequent notification back to it. Call it **on the UI thread** (after `Load` / `EnableAutosave`, e.g.
+when you set the `DataContext`). It is opt-in, off by default, dependency-free, and works for every UI
+framework because a `SynchronizationContext` is the one primitive they all install on their UI thread.
+
+```csharp
+var settings = JsonSettings.Load<AppSettings>("app.json").EnableAutosave();
+settings.EnableNotificationMarshaling();          // on the UI thread
+DataContext = settings;
+
+await Task.Run(() => settings.Title = "Ready");   // PropertyChanged now arrives on the UI thread
+```
+
+- **Stored per-instance in a weak table.** No core change, no type change, and it does not keep the
+  settings object alive; it works the same for a notifying base, a convention class, and a mixin class.
+- **Inline when already on the captured thread.** A write on the UI thread raises synchronously as
+  before; only an off-thread write is posted.
+- **`Post`, not `Send`.** The raise is asynchronous, so do not write a handler that assumes the setter
+  has not yet returned. `PropertyChanging` is **not** marshalled (it must precede the write).
+- **`DisableNotificationMarshaling()`** turns it back off; `EnableNotificationMarshaling(context)` takes
+  an explicit context for when the capturing thread is not the one holding the object (or in tests).
+
+> [!NOTE]
+> Marshalling covers the notifications the settings object **raises**. Replacing a bound collection
+> marshals its `PropertyChanged`, but an in-place `collection.Add(...)` raises `CollectionChanged` from
+> the collection itself, which this does not intercept. For in-place edits from a worker thread, marshal
+> the mutation yourself or use WPF's `BindingOperations.EnableCollectionSynchronization`.
+
 ## WPF binding patterns
 
 - **DataContext.** Set a window's or control's `DataContext` to the loaded settings object and bind
@@ -449,9 +553,10 @@ s.Volatile.Add(new());                             // does NOT save — [IgnoreA
 > [!WARNING]
 > **Threading.** Raise notifications on the UI thread while the object is bound. WPF marshals a simple
 > scalar-property `PropertyChanged` for you, but mutating a bound `ObservableCollection` from a
-> background thread throws. If you write settings off the UI thread, marshal through the `Dispatcher`,
-> or update off-thread inside a [`SuspendAutosave`](autosave.md#suspend-autosave) scope and assign the
-> result back on the UI thread.
+> background thread throws. If you write settings off the UI thread, turn on
+> [`EnableNotificationMarshaling()`](#off-thread-writes--synchronizationcontext-marshalling) so raises
+> post back to the UI thread, marshal the mutation through the `Dispatcher` yourself, or update inside a
+> [`SuspendAutosave`](autosave.md#suspend-autosave) scope and assign the result back on the UI thread.
 
 > [!TIP]
 > **Bursts (e.g. a slider).** Every bound write is a disk write. To coalesce a known burst into one
@@ -475,11 +580,12 @@ constraint. See [`docs/AOT.md`](https://github.com/Nucs/JsonSettings/blob/master
 ## Strong-named consumers
 
 IL weaving rewrites the compiled assembly after it is signed, invalidating the strong-name signature.
-The `Nucs.JsonSettings.Autosave` package ships MSBuild targets that re-sign your assembly with your own
-`AssemblyOriginatorKeyFile` after the weave; the notification aspects run in that **same** AspectInjector
-pass, so they are re-signed automatically with no extra configuration. See
-[Autosave &rsaquo; Strong-named consumers](autosave.md#strong-named-consumers) for the full note and the
-`NucsAutosaveResignAfterWeaving` opt-out.
+Like `Nucs.JsonSettings.Autosave`, the `Nucs.JsonSettings.NotifyChanges` package ships MSBuild targets
+that re-sign your assembly with your own `AssemblyOriginatorKeyFile` after the weave, so a class marked
+`[NotifyChanges]` / `[NotifyChangesMixin]` is re-signed automatically with no extra configuration. The
+two packages use disjoint target names, so referencing **both** is fine. Opt out with
+`<NucsNotifyChangesResignAfterWeaving>false</NucsNotifyChangesResignAfterWeaving>`; see
+[Autosave &rsaquo; Strong-named consumers](autosave.md#strong-named-consumers) for the full note.
 
 ## Comparison with other approaches
 
@@ -514,19 +620,22 @@ directly; the convention resolver bridges to their method *names* instead.
 | `FileName` fires notifications | It does not &mdash; `FileName`/`Modulation`/`Version` are framework-managed and excluded. |
 | Mixin class does not save on `collection.Add(...)` | `NotificationBinder` needs `NotifiyingJsonSettings`. Use the notifying base for nested-collection autosave. |
 | `EnableAutosave()` throws "not marked `[Autosave]`" | Autosave and notifications are separate. Add `[Autosave]` too (both are needed to save *and* notify). |
-| `NotSupportedException` mutating a bound collection | Cross-thread collection change. Marshal to the `Dispatcher`, or edit inside `SuspendAutosave` and assign on the UI thread. |
+| `NotSupportedException` mutating a bound collection | Cross-thread collection change. Turn on `EnableNotificationMarshaling()`, marshal to the `Dispatcher`, or edit inside `SuspendAutosave` and assign on the UI thread. |
 | Notification fires when a value is set to the same thing | The guard is `Always` (or a per-property override). Use `OnlyChanged` (the default). |
 
 ## Requirements
 
-- Install the `Nucs.JsonSettings.Autosave` package.
-- To **produce** notifications: derive `NotifiyingJsonSettings` (or expose a convention raiser) and add
-  `[NotifyChanges]`; **or** add `[NotifyChangesMixin]` with no base.
-- To **save** as well: add `[Autosave]` and call `EnableAutosave()` after `Load`.
+- To **produce** notifications: install `Nucs.JsonSettings.NotifyChanges`, then derive
+  `NotifiyingJsonSettings` (or expose a convention raiser) and add `[NotifyChanges]`; **or** add
+  `[NotifyChangesMixin]` with no base.
+- To **save** as well: install `Nucs.JsonSettings.Autosave`, add `[Autosave]`, and call
+  `EnableAutosave()` after `Load`. Saving and notifying are **separate packages**; reference both to do both.
 - To have autosave **react** to nested collection/property changes: derive `NotifiyingJsonSettings`.
+- For **off-thread** writes to a bound object: call `EnableNotificationMarshaling()` on the UI thread.
 - `[NotifyChanges]` and `[Autosave]` are **not inherited** &mdash; mark every declaring class in a hierarchy.
 - Silence a property with `[IgnoreNotify]` (notifications) or `[IgnoreAutosave]` (saving); the two are
-  independent. Framework `FileName` / `Modulation` / `Version` never notify.
+  independent. Framework `FileName` / `Modulation` / `Version` never notify. Fan a change out to a
+  computed property with `[NotifyChangesFor]`.
 
 ## See also
 

@@ -1,7 +1,7 @@
 using System;
 using AspectInjector.Broker;
 
-namespace Nucs.JsonSettings.Autosave {
+namespace Nucs.JsonSettings.NotifyChanges {
     /// <summary>
     ///     Raises a change notification from every instance setter in the annotated scope, so a
     ///     settings class binds to WPF (or any <see cref="System.ComponentModel.INotifyPropertyChanged"/>
@@ -18,7 +18,8 @@ namespace Nucs.JsonSettings.Autosave {
     ///     interface as well.
     ///     </para>
     ///     <para>
-    ///     Like <see cref="AutosaveAttribute"/> this is a compile-time aspect woven by AspectInjector,
+    ///     Like <c>[Autosave]</c> (in the sibling <c>Nucs.JsonSettings.Autosave</c> package) this is a
+    ///     compile-time aspect woven by AspectInjector,
     ///     it emits no runtime code (Native-AOT-safe), and it is <em>not inherited</em>: a setter is
     ///     woven where it is declared, so every class in a hierarchy that declares properties you want
     ///     to notify on needs its own <c>[NotifyChanges]</c>. It composes with <c>[Autosave]</c> --
@@ -55,10 +56,17 @@ namespace Nucs.JsonSettings.Autosave {
         /// </summary>
         public NotificationGuard Guard { get; set; } = NotificationGuard.OnlyChanged;
 
+        //Cached so the post-assignment raise does not allocate an Action per write. Safe as a static
+        //field because this aspect is Scope.Global (one singleton for every woven instance), and
+        //RaiseViaBaseOrConvention already dispatches to the correct instance's raiser.
+        private static readonly Action<object, string> _raiseChanged = NotifyChangesRuntime.RaiseViaBaseOrConvention;
+
         /// <summary>
-        ///     Wraps every instance setter in the annotated scope. Reads the guard and old value
-        ///     before the assignment, runs the assignment, then raises a notification if the guard
-        ///     agrees this was a real change.
+        ///     Wraps every instance setter in the annotated scope. Reads the guard and old value before
+        ///     the assignment; if the guard agrees this is a real change, raises <c>PropertyChanging</c>
+        ///     (where the class supports it) before the assignment, runs the assignment, then raises
+        ///     <c>PropertyChanged</c> -- plus any <see cref="NotifyChangesForAttribute"/> dependents, and
+        ///     marshalled through a captured <c>SynchronizationContext</c> when one is set.
         /// </summary>
         [Advice(Kind.Around, Targets = Target.Setter | Target.AnyAccess | Target.Instance)]
         public object AroundSetter([Argument(Source.Instance)] object instance,
@@ -68,9 +76,12 @@ namespace Nucs.JsonSettings.Autosave {
             if (NotifyChangesRuntime.IsNotifyIgnored(instance.GetType(), propertyName))
                 return target(arguments);
             var decision = NotifyChangesRuntime.Prepare(instance, propertyName);
+            var raise = NotifyChangesRuntime.ShouldRaise(decision, arguments);
+            if (raise)
+                NotifyChangesRuntime.RaiseChangingViaBaseOrConvention(instance, propertyName);
             var result = target(arguments);
-            if (NotifyChangesRuntime.ShouldRaise(decision, arguments))
-                NotifyChangesRuntime.RaiseViaBaseOrConvention(instance, propertyName);
+            if (raise)
+                NotifyChangesRuntime.RaiseChangedAndDependents(instance, propertyName, _raiseChanged);
             return result;
         }
     }

@@ -1,6 +1,6 @@
 using System;
 
-namespace Nucs.JsonSettings.Autosave {
+namespace Nucs.JsonSettings.NotifyChanges {
     /// <summary>
     ///     Decides, per woven setter, whether an assignment is allowed to raise a change
     ///     notification. Consumed by <see cref="NotifyChangesAttribute"/> and

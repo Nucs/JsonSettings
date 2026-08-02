@@ -1,12 +1,15 @@
 #nullable enable
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using Nucs.JsonSettings.Examples;
 using Nucs.JsonSettings.Modulation;
 
-namespace Nucs.JsonSettings.Autosave {
+namespace Nucs.JsonSettings.NotifyChanges {
     /// <summary>
     ///     Marks an aspect attribute that carries a <see cref="NotificationGuard"/>, so the runtime
     ///     can resolve the configured guard from whichever notification attribute a type or property
@@ -29,7 +32,7 @@ namespace Nucs.JsonSettings.Autosave {
     ///     whether the assignment counts as a change worth announcing -- is identical, and lives
     ///     here so the two paths cannot drift.
     ///
-    ///     Like <see cref="AutosaveRuntime"/>, this is on the hot path of every write to a woven
+    ///     Like <c>AutosaveRuntime</c>, this is on the hot path of every write to a woven
     ///     type, so per-type/per-property reflection is resolved once and cached. Nothing here emits
     ///     runtime code, so it stays Native-AOT-safe the same way the weaving does; the reflection it
     ///     does perform (reading a getter, reading an attribute) needs the settings model preserved
@@ -57,6 +60,29 @@ namespace Nucs.JsonSettings.Autosave {
         private static readonly string[] _raiserConventions = {
             "OnPropertyChanged", "RaisePropertyChanged", "NotifyOfPropertyChange"
         };
+
+        //The INotifyPropertyChanging-side raiser, resolved and cached exactly like _raiserCache.
+        private static readonly ConcurrentDictionary<Type, MethodInfo?> _changingRaiserCache =
+            new ConcurrentDictionary<Type, MethodInfo?>();
+
+        //Changing-side conventions, mirroring _raiserConventions. Caliburn.Micro has no
+        //"NotifyOfPropertyChanging", so only the two that exist in the wild are listed:
+        //  OnPropertyChanging     - our NotifiyingJsonSettings, CommunityToolkit ObservableObject
+        //  RaisePropertyChanging  - Prism BindableBase
+        private static readonly string[] _changingRaiserConventions = {
+            "OnPropertyChanging", "RaisePropertyChanging"
+        };
+
+        //Per (type, property) list of OTHER property names to also raise when this property changes,
+        //declared with [NotifyChangesFor]. Empty array = none; resolved once, then a hash lookup.
+        private static readonly ConcurrentDictionary<(Type Type, string Property), string[]> _dependentsCache =
+            new ConcurrentDictionary<(Type, string), string[]>();
+
+        //Opt-in marshalling target per settings instance (see EnableNotificationMarshaling). A
+        //ConditionalWeakTable keys on the instance without keeping it alive and needs no core change,
+        //so it works uniformly for the notifying base, a convention class, and a mixin class alike.
+        private static readonly ConditionalWeakTable<object, SynchronizationContext> _marshalContexts =
+            new ConditionalWeakTable<object, SynchronizationContext>();
 
         /// <summary>
         ///     Captured at the start of a woven setter, before the assignment runs. Carries whatever
@@ -167,6 +193,121 @@ namespace Nucs.JsonSettings.Autosave {
         }
 
         /// <summary>
+        ///     Raises the "changed" notification for <paramref name="propertyName"/> and then for every
+        ///     property that named it in a <see cref="NotifyChangesForAttribute"/>, routing the whole
+        ///     batch through the instance's marshalling context if one was captured. This is the single
+        ///     entry point both aspects use for the post-assignment raise.
+        /// </summary>
+        /// <param name="raiseOne">
+        ///     How to raise one property name on the instance: the advice-only aspect passes
+        ///     <see cref="RaiseViaBaseOrConvention"/>; the mixin passes its injected event. The
+        ///     dependents raise the same way as the source, so a computed property notifies through
+        ///     whatever channel the class already uses.
+        /// </param>
+        /// <remarks>
+        ///     Primary and dependents are raised inside one <see cref="Dispatch"/> so that, when
+        ///     marshalling is on, they arrive on the UI thread together and in declared order rather
+        ///     than as separate posts. Dependents fire unconditionally once the source raised -- they
+        ///     are derived values, so the source's change guard is the only gate; a target that is
+        ///     itself framework-managed, an indexer, or <c>[IgnoreNotify]</c> is skipped by
+        ///     <see cref="GetDependents"/>.
+        /// </remarks>
+        public static void RaiseChangedAndDependents(object instance, string propertyName, Action<object, string> raiseOne) {
+            Dispatch(instance, () => {
+                raiseOne(instance, propertyName);
+                var dependents = GetDependents(instance.GetType(), propertyName);
+                for (int i = 0; i < dependents.Length; i++)
+                    raiseOne(instance, dependents[i]);
+            });
+        }
+
+        /// <summary>
+        ///     Raises the "changing" notification (before the assignment) for a class that supports it
+        ///     -- the shipped <see cref="NotifiyingJsonSettings"/> base or a class exposing a
+        ///     conventional <c>OnPropertyChanging</c> / <c>RaisePropertyChanging</c> raiser. A class
+        ///     that implements neither is a harmless no-op, exactly like the changed side. Used by the
+        ///     advice-only <see cref="NotifyChangesAttribute"/>.
+        /// </summary>
+        /// <remarks>
+        ///     Deliberately NOT routed through <see cref="Dispatch"/>: a "changing" event that means
+        ///     "the value is about to change" must fire synchronously before the setter body runs, and
+        ///     posting it to another thread would deliver it after the change. Marshalling targets the
+        ///     binding-relevant changed notification; <see cref="System.ComponentModel.INotifyPropertyChanging"/>
+        ///     consumers (change trackers, validators) are not the cross-thread-collection case it
+        ///     exists for.
+        /// </remarks>
+        public static void RaiseChangingViaBaseOrConvention(object instance, string propertyName) {
+            if (instance is NotifiyingJsonSettings notifying) {
+                notifying.OnPropertyChanging(propertyName);
+                return;
+            }
+
+            var raiser = _changingRaiserCache.GetOrAdd(instance.GetType(), ResolveChangingRaiser);
+            raiser?.Invoke(instance, new object[] { propertyName });
+        }
+
+        /// <summary>
+        ///     Runs <paramref name="raise"/> on the instance's captured marshalling context when one was
+        ///     set (see <c>EnableNotificationMarshaling</c>) and the caller is not already on it;
+        ///     otherwise runs it inline. Off by default -- with no captured context this is a direct call.
+        /// </summary>
+        private static void Dispatch(object instance, Action raise) {
+            if (_marshalContexts.TryGetValue(instance, out var context) && context != null && context != SynchronizationContext.Current)
+                context.Post(static state => ((Action) state!).Invoke(), raise);
+            else
+                raise();
+        }
+
+        /// <summary>
+        ///     Records the <see cref="SynchronizationContext"/> that woven setters should post their
+        ///     change notifications to for <paramref name="instance"/>. Replaces any previous one.
+        /// </summary>
+        internal static void SetMarshalContext(object instance, SynchronizationContext context) {
+            //No AddOrUpdate on netstandard2.0's ConditionalWeakTable; remove-then-add is the portable
+            //form. Capture is a one-time setup call, so the tiny window between the two is immaterial.
+            _marshalContexts.Remove(instance);
+            _marshalContexts.Add(instance, context);
+        }
+
+        /// <summary>
+        ///     Stops marshalling notifications for <paramref name="instance"/>; subsequent raises run
+        ///     inline again. Returns whether a context was actually removed.
+        /// </summary>
+        internal static bool RemoveMarshalContext(object instance) {
+            return _marshalContexts.Remove(instance);
+        }
+
+        /// <summary>
+        ///     The other property names to raise when <paramref name="propertyName"/> changes, from the
+        ///     <see cref="NotifyChangesForAttribute"/>(s) on that property. De-duplicated, in declared
+        ///     order, with self-references and non-notifiable targets (framework-managed, indexer,
+        ///     <c>[IgnoreNotify]</c>) removed. Resolved once per (type, property), then a hash lookup.
+        /// </summary>
+        internal static string[] GetDependents(Type type, string propertyName) {
+            return _dependentsCache.GetOrAdd((type, propertyName), key => {
+                var (t, name) = key;
+                var property = GetProperty(t, name);
+                if (property == null)
+                    return Array.Empty<string>();
+
+                var declared = property.GetCustomAttributes<NotifyChangesForAttribute>(true)
+                                       .SelectMany(a => a.OtherProperties ?? Array.Empty<string>());
+
+                var result = new List<string>();
+                foreach (var target in declared) {
+                    if (string.IsNullOrEmpty(target) || target == name)
+                        continue; //ignore empties and a property naming itself
+                    if (IsNotifyIgnored(t, target))
+                        continue; //do not resurrect a framework / indexer / [IgnoreNotify] target
+                    if (!result.Contains(target))
+                        result.Add(target);
+                }
+
+                return result.Count == 0 ? Array.Empty<string>() : result.ToArray();
+            });
+        }
+
+        /// <summary>
         ///     The guard in effect for a property: its own <c>[NotifyChanges]</c>/<c>[NotifyChangesMixin]</c>
         ///     if it carries one, otherwise the nearest one on the class hierarchy, otherwise the
         ///     default <see cref="NotificationGuard.OnlyChanged"/>.
@@ -223,6 +364,16 @@ namespace Nucs.JsonSettings.Autosave {
         private static MethodInfo? ResolveRaiser(Type type) {
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
             foreach (var name in _raiserConventions) {
+                var method = type.GetMethod(name, flags, binder: null, types: new[] { typeof(string) }, modifiers: null);
+                if (method != null && method.ReturnType == typeof(void))
+                    return method;
+            }
+            return null;
+        }
+
+        private static MethodInfo? ResolveChangingRaiser(Type type) {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
+            foreach (var name in _changingRaiserConventions) {
                 var method = type.GetMethod(name, flags, binder: null, types: new[] { typeof(string) }, modifiers: null);
                 if (method != null && method.ReturnType == typeof(void))
                     return method;

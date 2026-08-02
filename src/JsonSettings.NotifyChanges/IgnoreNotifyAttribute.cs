@@ -1,6 +1,6 @@
 using System;
 
-namespace Nucs.JsonSettings.Autosave {
+namespace Nucs.JsonSettings.NotifyChanges {
     /// <summary>
     ///     The property's setter will not raise a change notification under
     ///     <see cref="NotifyChangesAttribute"/> or <see cref="NotifyChangesMixinAttribute"/>.

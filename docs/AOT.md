@@ -1,14 +1,15 @@
 ﻿# Native AOT and Trimming
 
-**Status as of 2.2.0: neither package is trim-safe. The hard AOT blocker in Autosave is gone.**
+**Status as of 2.2.0: none of the packages are trim-safe. The hard AOT blocker in Autosave is gone.**
 
 | Package | `PublishAot=true` | `PublishTrimmed=true` |
 |---|---|---|
 | `Nucs.JsonSettings` | Broken by default. Works if the consumer preserves metadata. Fixable in this repo. | Same. |
 | `Nucs.JsonSettings.Autosave` | No longer blocked by its own proxying. Inherits the core package's metadata problem. | Works once metadata is preserved. |
+| `Nucs.JsonSettings.NotifyChanges` | AOT-safe weaving (emits nothing at runtime, like Autosave); its `[NotifyChanges]` reflection over the model inherits the core package's metadata problem. | Works once metadata is preserved. |
 
-Neither project sets `<IsAotCompatible>`, and that is still correct — Newtonsoft.Json's
-unannotated reflection means neither package can keep that guarantee yet.
+No project sets `<IsAotCompatible>`, and that is still correct — Newtonsoft.Json's
+unannotated reflection means none of the packages can keep that guarantee yet.
 
 This document records what was measured, why it fails, and what fixing it would cost, so the
 question does not have to be re-litigated from scratch.

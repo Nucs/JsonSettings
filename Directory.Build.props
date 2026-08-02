@@ -306,6 +306,26 @@ New features
   outright rather than relying on the AES-CBC UTF-8 heuristic; the default stays AES-256-CBC, unchanged
   on disk.
 
+Notifications and data binding (new package Nucs.JsonSettings.NotifyChanges)
+- New package Nucs.JsonSettings.NotifyChanges produces INotifyPropertyChanged from your setters for data
+  binding, split out of Nucs.JsonSettings.Autosave so a class can notify without autosaving or the
+  reverse. Mark a class [NotifyChanges] (with a NotifiyingJsonSettings base or a convention raiser) or
+  [NotifyChangesMixin] (no base - the interface is injected) and every setter raises PropertyChanged with
+  no hand-written OnPropertyChanged, including on auto-properties. Compile-time IL weaving like
+  [Autosave], Native AOT-safe, and framework-neutral: it depends only on System.ComponentModel, so the
+  same class binds under WPF, WinForms, WinUI, MAUI, Avalonia and Uno. To both save and notify, reference
+  both packages. These aspects never shipped in a release, so the move is not a breaking change.
+- NotificationGuard (OnlyChanged default, SkipNullOrDefault, Always; [Flags]) decides when a setter
+  notifies, per class or per property. [IgnoreNotify] silences a property, independent of [IgnoreAutosave].
+- Also raises INotifyPropertyChanging before the assignment: NotifiyingJsonSettings now implements it, a
+  convention OnPropertyChanging/RaisePropertyChanging is recognised, and [NotifyChangesMixin] injects it
+  alongside INotifyPropertyChanged.
+- [NotifyChangesFor(nameof(Other))] fans a change out to a computed property so its binding refreshes -
+  the counterpart to CommunityToolkit.Mvvm's [NotifyPropertyChangedFor].
+- EnableNotificationMarshaling() captures the UI thread's SynchronizationContext and posts notifications
+  back to it, so a settings object written from a background thread still raises PropertyChanged on the UI
+  thread. Opt-in, off by default, and depends on no UI framework.
+
 Autosave (see the breaking-change note above for the [Autosave] requirement)
 - Native AOT compatible. AspectInjector emits nothing at runtime, so EnableAutosave() works under
   Native AOT, where the Castle.DynamicProxy path threw PlatformNotSupportedException and no

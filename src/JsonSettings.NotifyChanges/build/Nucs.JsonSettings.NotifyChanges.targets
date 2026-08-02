@@ -1,0 +1,83 @@
+<Project>
+
+  <!-- ====================================================================================
+       Restore the strong-name signature that IL weaving invalidates.
+
+       This is a byte-for-byte sibling of Nucs.JsonSettings.Autosave.targets - the two
+       packages weave with the same AspectInjector pass and hit the same retired-resigning
+       problem (see that file, and https://github.com/pamidur/aspect-injector/releases/tag/2.9.0
+       and docs/SIGNING.md for the full rationale). The ONLY differences here are the identifier
+       names: every target, property, item and warning code is prefixed NucsNotifyChanges /
+       _NucsNC / NJS100x instead of NucsAutosave / _Nucs / NJS100(1|2), so a consumer that
+       references BOTH packages imports two targets with DISTINCT names and MSBuild runs both
+       rather than silently letting one override the other.
+
+       WHAT THIS DOES. After the weave, if the project is really signing (not delay-signing,
+       not public-signing) it re-signs the intermediate assembly with the same key the compiler
+       used. If sn.exe cannot be found it warns rather than failing the build.
+
+       Opt out with <NucsNotifyChangesResignAfterWeaving>false</NucsNotifyChangesResignAfterWeaving>.
+       ==================================================================================== -->
+
+  <PropertyGroup>
+    <NucsNotifyChangesResignAfterWeaving Condition="'$(NucsNotifyChangesResignAfterWeaving)' == ''">true</NucsNotifyChangesResignAfterWeaving>
+
+    <!-- Delay-signed and public-signed assemblies never carried a valid signature to begin
+         with, so there is nothing to restore and re-signing them would be wrong. -->
+    <_NucsNCShouldResign>false</_NucsNCShouldResign>
+    <_NucsNCShouldResign Condition="'$(NucsNotifyChangesResignAfterWeaving)' == 'true'
+                                    and '$(SignAssembly)' == 'true'
+                                    and '$(DelaySign)' != 'true'
+                                    and '$(PublicSign)' != 'true'
+                                    and '$(AssemblyOriginatorKeyFile)' != ''
+                                    and '$(AspectInjector_Enabled)' != 'false'">true</_NucsNCShouldResign>
+  </PropertyGroup>
+
+  <!-- sn.exe ships with the .NET Framework SDK and is Windows-only. The glob is evaluated
+       once per project evaluation and is narrow enough not to be a measurable cost. -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT' and '$(_NucsNCShouldResign)' == 'true'">
+    <_NucsNCSnCandidate Include="$([System.Environment]::GetFolderPath(SpecialFolder.ProgramFilesX86))\Microsoft SDKs\Windows\v*\bin\NETFX * Tools\x64\sn.exe" />
+    <_NucsNCSnCandidate Include="$([System.Environment]::GetFolderPath(SpecialFolder.ProgramFilesX86))\Microsoft SDKs\Windows\v*\bin\NETFX * Tools\sn.exe" />
+  </ItemGroup>
+
+  <!-- Target batching: with Outputs referencing the item, this body runs once per candidate
+       and the property is left holding the last one. MSBuild has no "take one item" idiom
+       that reads better than this. -->
+  <Target Name="NucsNotifyChanges_LocateSn" Outputs="%(_NucsNCSnCandidate.Identity)">
+    <PropertyGroup>
+      <_NucsNCSnExe>%(_NucsNCSnCandidate.FullPath)</_NucsNCSnExe>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="NucsNotifyChanges_ResignAfterWeaving"
+          AfterTargets="AspectInjector_InjectAspects"
+          DependsOnTargets="NucsNotifyChanges_LocateSn"
+          Condition="'$(_NucsNCShouldResign)' == 'true'">
+
+    <Exec Condition="'$(_NucsNCSnExe)' != ''"
+          Command="&quot;$(_NucsNCSnExe)&quot; -q -R &quot;@(IntermediateAssembly->'%(FullPath)')&quot; &quot;$(AssemblyOriginatorKeyFile)&quot;"
+          StandardOutputImportance="low"
+          ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="_NucsNCSnExitCode" />
+    </Exec>
+
+    <!-- CRITICAL, and the reason this is not just an Exec. AspectInjector's weave target is
+         incremental on the <intermediate assembly>.aspectsinjected marker, stamped to the
+         assembly's modified time. sn -R rewrites the assembly in place and moves its timestamp
+         PAST the marker, so without the re-stamp below the next build weaves a second time on
+         top of the advice already there - a setter woven twice notifies (or saves) twice. See
+         the fuller note in Nucs.JsonSettings.Autosave.targets. -->
+    <Touch Condition="'$(_NucsNCSnExe)' != '' and '$(_NucsNCSnExitCode)' == '0'"
+           Files="@(IntermediateAssembly->'%(FullPath).aspectsinjected')"
+           AlwaysCreate="true" />
+
+    <Warning Condition="'$(_NucsNCSnExe)' == ''"
+             Code="NJS1003"
+             Text="Nucs.JsonSettings.NotifyChanges: this project is strong-named and its assembly was rewritten by AspectInjector, which invalidates the signature. sn.exe was not found, so the signature could not be restored. Install the .NET Framework SDK, or set &lt;NucsNotifyChangesResignAfterWeaving&gt;false&lt;/NucsNotifyChangesResignAfterWeaving&gt; to silence this. The assembly still loads and runs -- .NET 5+ does not verify strong names -- but it will fail an explicit `sn -vf` check." />
+
+    <Warning Condition="'$(_NucsNCSnExe)' != '' and '$(_NucsNCSnExitCode)' != '0'"
+             Code="NJS1004"
+             Text="Nucs.JsonSettings.NotifyChanges: sn.exe -R failed with exit code $(_NucsNCSnExitCode); the strong-name signature invalidated by IL weaving was not restored." />
+  </Target>
+
+</Project>

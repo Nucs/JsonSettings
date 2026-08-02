@@ -3,7 +3,7 @@ using System;
 using System.ComponentModel;
 using AspectInjector.Broker;
 
-namespace Nucs.JsonSettings.Autosave {
+namespace Nucs.JsonSettings.NotifyChanges {
     /// <summary>
     ///     Makes a settings class implement <see cref="INotifyPropertyChanged"/> <em>and</em> raise it
     ///     from every instance setter -- a full WPF-bindable ViewModel with no base class and no
@@ -59,8 +59,9 @@ namespace Nucs.JsonSettings.Autosave {
     [Aspect(Scope.PerInstance)]
     [Injection(typeof(NotifyChangesMixinAttribute))]
     [Mixin(typeof(INotifyPropertyChanged))]
+    [Mixin(typeof(INotifyPropertyChanging))]
     [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-    public sealed class NotifyChangesMixinAttribute : Attribute, INotifyPropertyChanged, IHasNotificationGuard {
+    public sealed class NotifyChangesMixinAttribute : Attribute, INotifyPropertyChanged, INotifyPropertyChanging, IHasNotificationGuard {
         /// <summary>
         ///     When a setter in this class is allowed to raise a notification. Defaults to
         ///     <see cref="NotificationGuard.OnlyChanged"/>. A <see cref="NotifyChangesAttribute"/> on
@@ -76,9 +77,19 @@ namespace Nucs.JsonSettings.Autosave {
         public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <summary>
+        ///     The <see cref="INotifyPropertyChanging"/> event injected alongside
+        ///     <see cref="PropertyChanged"/>, raised before the assignment so a mixin class is
+        ///     symmetric with the notifying base. WPF binds on <c>PropertyChanged</c>; this is for
+        ///     change trackers and validators that observe the "about to change" edge.
+        /// </summary>
+        public event PropertyChangingEventHandler? PropertyChanging;
+
+        /// <summary>
         ///     Wraps every instance setter in the class. Shares the guard evaluation with
         ///     <see cref="NotifyChangesAttribute"/>; only the raise differs -- here it invokes the
-        ///     event injected into this very instance.
+        ///     events injected into this very instance. Raises <c>PropertyChanging</c> before the
+        ///     assignment and <c>PropertyChanged</c> (plus any <see cref="NotifyChangesForAttribute"/>
+        ///     dependents, marshalled if a context was captured) after it.
         /// </summary>
         [Advice(Kind.Around, Targets = Target.Setter | Target.AnyAccess | Target.Instance)]
         public object AroundSetter([Argument(Source.Instance)] object instance,
@@ -88,10 +99,19 @@ namespace Nucs.JsonSettings.Autosave {
             if (NotifyChangesRuntime.IsNotifyIgnored(instance.GetType(), propertyName))
                 return target(arguments);
             var decision = NotifyChangesRuntime.Prepare(instance, propertyName);
+            var raise = NotifyChangesRuntime.ShouldRaise(decision, arguments);
+            if (raise)
+                PropertyChanging?.Invoke(instance, new PropertyChangingEventArgs(propertyName));
             var result = target(arguments);
-            if (NotifyChangesRuntime.ShouldRaise(decision, arguments))
-                PropertyChanged?.Invoke(instance, new PropertyChangedEventArgs(propertyName));
+            if (raise)
+                NotifyChangesRuntime.RaiseChangedAndDependents(instance, propertyName, RaiseChanged);
             return result;
+        }
+
+        //The Action<object,string> handed to the shared runtime so dependents raise the same way as
+        //the source: through THIS per-instance aspect's injected PropertyChanged.
+        private void RaiseChanged(object instance, string propertyName) {
+            PropertyChanged?.Invoke(instance, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
