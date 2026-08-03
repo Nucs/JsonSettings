@@ -328,6 +328,12 @@ Notifications and data binding (new package Nucs.JsonSettings.NotifyChanges)
 - EnableNotificationMarshaling() captures the UI thread's SynchronizationContext and posts notifications
   back to it, so a settings object written from a background thread still raises PropertyChanged on the UI
   thread. Opt-in, off by default, and depends on no UI framework.
+- Performance: the reflection left on hot and per-instance paths is now cached through a new
+  Nucs.JsonSettings.Reflection.ReflectionHelper accessor cache. Every woven [NotifyChanges] setter read the
+  property's previous value with PropertyInfo.GetValue and called a convention raiser with MethodInfo.Invoke
+  on each write; both now use a delegate compiled once per member (with a reflective fallback under Native
+  AOT, so nothing changes there). The nested-notifier binder and the per-instance constructor discovery in
+  Activation (HasDefaultConstructor / CreateInstance) are cached likewise. Behaviour is unchanged.
 
 Autosave (see the breaking-change note above for the [Autosave] requirement)
 - Native AOT compatible. AspectInjector emits nothing at runtime, so EnableAutosave() works under

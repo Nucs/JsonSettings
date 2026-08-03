@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Nucs.JsonSettings.Examples;
 using Nucs.JsonSettings.Modulation;
+using Nucs.JsonSettings.Reflection;
 
 namespace Nucs.JsonSettings.NotifyChanges {
     /// <summary>
@@ -33,10 +34,14 @@ namespace Nucs.JsonSettings.NotifyChanges {
     ///     here so the two paths cannot drift.
     ///
     ///     Like <c>AutosaveRuntime</c>, this is on the hot path of every write to a woven
-    ///     type, so per-type/per-property reflection is resolved once and cached. Nothing here emits
-    ///     runtime code, so it stays Native-AOT-safe the same way the weaving does; the reflection it
-    ///     does perform (reading a getter, reading an attribute) needs the settings model preserved
-    ///     under trimming exactly as the serializer already does.
+    ///     type, so per-type/per-property reflection is resolved once and cached -- and the two
+    ///     invocations left on that path, reading a property's previous value and calling a convention
+    ///     raiser, go through <see cref="Nucs.JsonSettings.Reflection.ReflectionHelper"/>, which caches a
+    ///     compiled accessor per member on a JIT runtime and falls back to a reflective invoke under
+    ///     Native AOT. That fallback is why this stays Native-AOT-safe the same way the weaving does: it
+    ///     never <em>requires</em> runtime code generation. The reflection it does perform (reading a
+    ///     getter, reading an attribute) needs the settings model preserved under trimming exactly as the
+    ///     serializer already does.
     /// </remarks>
     public static class NotifyChangesRuntime {
         private static readonly ConcurrentDictionary<(Type Type, string Property), NotificationGuard> _guardCache =
@@ -189,7 +194,8 @@ namespace Nucs.JsonSettings.NotifyChanges {
             }
 
             var raiser = _raiserCache.GetOrAdd(instance.GetType(), ResolveRaiser);
-            raiser?.Invoke(instance, new object[] { propertyName });
+            if (raiser != null)
+                ReflectionHelper.StringActionInvoker(raiser)(instance, propertyName);
         }
 
         /// <summary>
@@ -243,7 +249,8 @@ namespace Nucs.JsonSettings.NotifyChanges {
             }
 
             var raiser = _changingRaiserCache.GetOrAdd(instance.GetType(), ResolveChangingRaiser);
-            raiser?.Invoke(instance, new object[] { propertyName });
+            if (raiser != null)
+                ReflectionHelper.StringActionInvoker(raiser)(instance, propertyName);
         }
 
         /// <summary>
@@ -338,7 +345,7 @@ namespace Nucs.JsonSettings.NotifyChanges {
             if (property is null || !property.CanRead)
                 return null;
             try {
-                return property.GetValue(instance);
+                return ReflectionHelper.Getter(property)(instance);
             } catch {
                 //an indexer, or a getter that throws mid-construction: fall back to "no old value",
                 //which makes OnlyChanged behave as Always for this write rather than crash the setter.

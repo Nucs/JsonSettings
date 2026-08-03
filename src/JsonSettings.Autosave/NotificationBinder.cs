@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
 using Nucs.JsonSettings.Examples;
+using Nucs.JsonSettings.Reflection;
 
 namespace Nucs.JsonSettings.Autosave {
     /// <summary>
@@ -46,7 +47,10 @@ namespace Nucs.JsonSettings.Autosave {
             ConcurrentDictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)> dictionary = new ConcurrentDictionary<string, (PropertyInfo t, MethodInfo, MethodInfo, object)>(StringComparer.Ordinal);
             foreach (var property in bindableProperties) {
                 var getter = property.GetGetMethod(true);
-                dictionary[property.Name] = (t: property, getter, property.GetSetMethod(true), getter.Invoke(_settings, null));
+                //ReflectionHelper.Getter caches a compiled (or, under AOT, reflective) accessor per
+                //property, shared with NotifyChangesRuntime; the MethodInfo is still carried in the
+                //tuple for the record it keeps of each monitored property.
+                dictionary[property.Name] = (t: property, getter, property.GetSetMethod(true), ReflectionHelper.Getter(property)(_settings));
             }
             _monitoredPropertiesTable = new ConcurrentDictionary<string, (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue)>(dictionary, StringComparer.Ordinal);
             _properties = new HashSet<string>(_monitoredPropertiesTable.Keys);
@@ -95,7 +99,7 @@ namespace Nucs.JsonSettings.Autosave {
         /// </remarks>
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e) {
             if (e.PropertyName != null && _monitoredPropertiesTable.TryGetValue(e.PropertyName, out (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue) propInfo)) {
-                var newValue = propInfo.GetMethod.Invoke(_settings, null);
+                var newValue = ReflectionHelper.Getter(propInfo.Property)(_settings);
                 if (propInfo.CurrentValue != newValue) {
                     _monitoredPropertiesTable[e.PropertyName] = (propInfo.Property, propInfo.GetMethod, propInfo.SetMethod, newValue);
                     Subscribe(newValue);

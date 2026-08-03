@@ -244,6 +244,13 @@ performed now lives in `AutosaveRuntime.ResolveMonitoredProperties`, invoked onc
 `EnableAutosave()` rather than on any write. The Autosave rows here therefore describe the
 Castle build; the core-package rows are unchanged. The counts below have not been re-measured.
 
+A 2.2.0 addition not in the table above: `Nucs.JsonSettings.Reflection.ReflectionHelper` caches the
+notification hot path's property reads and convention-raiser calls. On a JIT runtime it
+`Expression.Compile()`s an accessor once per member — an `IL3050` (`RequiresDynamicCode`) site — but the
+compile is gated on `RuntimeFeature.IsDynamicCodeSupported` and drops to a reflective `GetValue`/`Invoke`
+when that is `false`, so under Native AOT it generates no code and behaves exactly as the direct
+`GetValue`/`Invoke` it replaced. It is a speed optimisation on the JIT path, not a new AOT blocker.
+
 Note the totals move with reachability: **181 warnings out of the box, 311 fully rooted.**
 A warning count from a trimmed build is a floor, never a ceiling — code the trimmer already
 removed is code the analyzer never inspected. Any future baseline should be captured from a
