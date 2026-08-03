@@ -372,6 +372,13 @@ Testing
   back identically on modern .NET and the reverse, including the floating-point formatting that
   differs between the two - net48 renders a round-trippable double with "R" while .NET Core renders
   the shortest round-trippable string. Regenerate the fixtures with JSONSETTINGS_REGEN_CROSSVERSION=1.
+- Added targeted edge-case and unhappy-flow coverage across the core and modules, chosen from a line
+  coverage pass: Save translating a read-only or exclusively-held file into a catchable
+  JsonSettingsException (rather than an UnauthorizedAccessException/IOException or a null-stream NRE), a
+  corrupt file surfacing as the same, the configure-state guard rolling back so an instance whose
+  OnConfigure threw can be loaded again, attaching a versioning module to a non-IVersionable socket,
+  the invalid-action defensive arms, the notification-marshalling argument guards, and
+  AutosaveModule.TryTriggerSave.
 
 2.1.0
 

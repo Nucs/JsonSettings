@@ -91,6 +91,19 @@ namespace Nucs.JsonSettings.Tests.Autosave {
                 "dependents fan out through the mixin's injected PropertyChanged too");
         }
 
+        [TestMethod]
+        public void DependentTargetingFrameworkVersion_IsDroppedSilently() {
+            using var f = new TempFile();
+            var o = JsonSettings.Load<VersionableDependentSettings>(f.FileName);
+            var raised = Record(o);
+
+            o.Trigger = "x";
+
+            //IVersionable.Version is framework-managed, so even an explicit [NotifyChangesFor(nameof(Version))]
+            //target is one of the "cannot carry a notification" cases and is not resurrected.
+            raised.Should().Equal(new[] { "Trigger" });
+        }
+
         #region settings types
 
         [NotifyChanges]
@@ -139,6 +152,20 @@ namespace Nucs.JsonSettings.Tests.Autosave {
 
             public MixinDependentSettings() { }
             public MixinDependentSettings(string fileName) : base(fileName) { }
+        }
+
+        [NotifyChanges]
+        public class VersionableDependentSettings : NotifiyingJsonSettings, Nucs.JsonSettings.Modulation.IVersionable {
+            public override string FileName { get; set; } = "verdep.jsn";
+
+            public System.Version Version { get; set; } = new System.Version(1, 0, 0, 0);
+
+            //Names the framework-managed Version, which must be filtered out of the fan-out.
+            [NotifyChangesFor(nameof(Version))]
+            public string Trigger { get; set; }
+
+            public VersionableDependentSettings() { }
+            public VersionableDependentSettings(string fileName) : base(fileName) { }
         }
 
         #endregion

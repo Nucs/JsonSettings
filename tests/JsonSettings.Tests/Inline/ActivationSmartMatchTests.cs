@@ -32,6 +32,15 @@ namespace Nucs.JsonSettings.Tests.Inline {
             result.Should().BeNull();
         }
 
+        [TestMethod]
+        public void AmbiguousConstructor_AllNullArguments_MatchesFirstOfRightArity() {
+            //Both constructors are applicable for {null, null}, so Activator is ambiguous. With every
+            //argument null there is no type information to discriminate on, so the smart match's all-null
+            //shortcut accepts the first constructor of the right arity -- a null wildcard, not a failure.
+            var result = Activation.CreateInstance(typeof(InterfaceAmbiguous), new object[] { null, null });
+            result.Should().BeOfType<InterfaceAmbiguous>();
+        }
+
         public class MixedAmbiguous {
             public string Picked;
             public MixedAmbiguous(string a, string b) { Picked = "string,string"; }
