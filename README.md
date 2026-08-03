@@ -24,8 +24,9 @@ PM> Install-Package Nucs.JsonSettings.NotifyChanges
 ```
 
 All three packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`.
-The `netstandard2.0` asset covers everything without an exact match, including
-`net472`+, `netcoreapp3.1`, `net5.0`, `net7.0`, `net9.0`, Unity and Xamarin.
+The `netstandard2.0` asset covers frameworks without a closer match — `net472`+,
+`netcoreapp3.1`, `net5.0`, Unity and Xamarin; a newer runtime with no exact match resolves to
+the nearest lower asset instead (`net7.0`→`net6.0`, `net9.0`→`net8.0`).
 
 > **Native AOT / trimming:** none of the packages are trim-safe yet. Under `PublishTrimmed` or
 > `PublishAot` a settings file can still be silently written back as `{}` with no exception,
@@ -75,7 +76,7 @@ to verify it yourself and what the build enforces.
     - [Encryption](#encryption)
     - [Autosave](#autosave)
       - [Suspend Saving](#suspend-autosave)
-      - [WPF Support with INotificationChanged/INotificationCollectionChanged](#wpf-support-with-inotificationchangedinotificationcollectionchanged)
+      - [WPF Support with INotifyPropertyChanged/INotifyCollectionChanged](#wpf-support-with-inotifypropertychangedinotifycollectionchanged)
       - [Throttled Save](#throttled-save)
 - [Dynamic Settings Bag](#dynamic-settings-bag)
 - [Changing JsonSerializerSettings](#changing-jsonserializersettings)
@@ -91,7 +92,7 @@ Features Overview
  - Cross-platform, multi-targeting `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`
  - Modularity allowing easy extension and high control over behavior on a per-object level  <span style='font-size:11px; padding-left: 3px' >[read more](#modulation-api)</span>
  - Autosaving on changes  <span style='font-size:11px; padding-left: 3px' >[read more](#autosave)</span>
-   - Via `INotificationChanged`/`INotificationCollectionChanged` allowing WPF binding (with interval throttling support to avoid cpu overload)  <span style='font-size:11px; padding-left: 3px' >[read more](#inotificationchanged-and-wpf-support)</span>
+   - Via `INotifyPropertyChanged`/`INotifyCollectionChanged` allowing WPF binding  <span style='font-size:11px; padding-left: 3px' >[read more](#wpf-support-with-inotifypropertychangedinotifycollectionchanged)</span>
    - Via compile-time IL weaving of the property setters, marked with `[Autosave]`  <span style='font-size:11px; padding-left: 3px' >[read more](#autosave)</span>
  - Versioning control  <span style='font-size:11px; padding-left: 3px' >[read more](#versioning)</span>
    - Offers protection mechanisms such as renaming file and loading default
@@ -158,7 +159,7 @@ Settings["key2"] = 123;
 dynamic dyn = Settings.AsDynamic();
 if ((int?)dyn.key2==123)
     Console.WriteLine("explode");
-dyn.Save(); /* or */ Settings.Save();
+Settings.Save();
 ```
 * **Encrypted settings**
     * Uses AES via `System.Security.Cryptography` (the .NET BCL); optional AES-GCM, AES-CCM, ChaCha20-Poly1305 or authenticated AES-CBC-HMAC.
@@ -204,7 +205,7 @@ var c = JsonSettings.Configure<MySettings>("config.json")
 ```C#
 Settings x  = JsonSettings.Load<Settings>().EnableAutosave(); //call after loading
 //or:
-ISettings x = JsonSettings.Load<Settings>().EnableIAutosave<ISettings>(); //Settings implements interface ISettings
+ISettings x = JsonSettings.Load<Settings>().EnableIAutosave<Settings, ISettings>(); //Settings implements interface ISettings
 
 x.Property = "value"; //Saved!
 ```
@@ -215,7 +216,6 @@ x.Property = "value"; //Saved!
 ```C#
 //Step 1:
 SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json").EnableAutosave(); //call after loading
-//Unavailable for hardcoded settings yet! (ty netstandard2.0 for not being awesome on proxies)
 //Step 2:
 Settings.AsDynamic().key = "wow"; //Saved!
 Settings["key"] = "wow two"; //Saved!
@@ -265,8 +265,8 @@ There are two ways to specify which version to enforce.
 //TODO: example
 
 #### Policy
-A comparison between versions is done by the `Policy` which is a `Func<Version, Version, bool>` passed during the construction of `VersioningModule<T>` or fallbacks to `static VersioningModule.DefaultPolicy` which can be changed.<br/>
-It is possible to change the static default policy by changing `VersioningModule.DefaultPolicy` although each `VersioningModule<T>` can be assigned its own policy.<br/>
+A comparison between versions is done by the `Policy` which is a `VersioningPolicyHandler` delegate (`(Version, Version) => bool`) passed during the construction of `VersioningModule<T>` or falls back to `static VersioningModule<T>.DefaultPolicy` which can be changed.<br/>
+It is possible to change the static default policy by changing `VersioningModule<T>.DefaultPolicy` although each `VersioningModule<T>` can be assigned its own policy.<br/>
 By default the versions must match exactly:<br/>
 ```C# 
 static bool DefaultEqualPolicy(Version version, Version expectedVersion) {
@@ -416,7 +416,7 @@ If there were no changes between the allocation of `SuspendAutosave` object and 
 
 //TODO: example
 
-WPF Support with INotificationChanged/INotificationCollectionChanged
+WPF Support with INotifyPropertyChanged/INotifyCollectionChanged
 ---
 Any settings class can turn into a ViewModel with full autosave support making window settings and state persistence much simpler.
 
@@ -424,7 +424,7 @@ When your settings class inherits `INotifyPropertyChanged`, upon calling `Enable
 a `NotificationBinder` is attached to the settings object that'll listen to the settings class's:
 - `event PropertyChanged` calls
 - All properties that implement `INotifyPropertyChanged` will bind to their `event PropertyChanged`
-- All properties that implement `INotificationCollectionChanged` such as `ObservableCollection<T>`  will bind to their `event CollectionChanged`
+- All properties that implement `INotifyCollectionChanged` such as `ObservableCollection<T>`  will bind to their `event CollectionChanged`
 - All other properties save through their woven setter (`virtual` is not required as of 2.2.0).
 
 So evidently, objects inside ObservableCollection or other nested properties that are not in the settings class are not monitored for changes.<br/><br/>
@@ -525,7 +525,8 @@ public static JsonSerializerSettings SerializationSettings { get; set; } = new J
     ReferenceLoopHandling = ReferenceLoopHandling.Ignore, 
     NullValueHandling = NullValueHandling.Include, 
     ContractResolver = new FileNameIgnoreResolver(), 
-    TypeNameHandling = TypeNameHandling.Auto
+    TypeNameHandling = TypeNameHandling.Auto, 
+    MaxDepth = 128
 };
 ```
 
@@ -601,7 +602,7 @@ event DecryptHandler Decrypt(JsonSettings sender, ref byte[] data);
 event AfterDecryptHandler AfterDecrypt(JsonSettings sender, ref byte[] data);
 event BeforeDeserializeHandler BeforeDeserialize(JsonSettings sender, ref string data);
 event AfterDeserializeHandler AfterDeserialize(JsonSettings sender);
-event AfterLoadHandler AfterLoad(JsonSettings sender);
+event AfterLoadHandler AfterLoad(JsonSettings sender, bool successfulLoad);
 ```
 And in a case of `JsonException` during `LoadJson`
 ```C#
