@@ -111,14 +111,17 @@ jobs:
     # own assembly is signed then cannot reference the package at all - which they discover, not
     # us. So the property is asserted on the built output rather than assumed from the setting.
     #
-    # -MinimumAssemblies 10 is the real assertion: 2 shipped projects x 5 target frameworks. A
+    # -MinimumAssemblies 15 is the real assertion: 3 shipped projects x 5 target frameworks. A
     # gate that passes because it found nothing to check is the failure mode being avoided here.
+    # (The bin scan actually checks more than 15 - each extension project's output also contains a
+    # copy of the referenced Nucs.JsonSettings.dll - but 15 is the floor that proves nothing was
+    # skipped. The exact per-package count is enforced on the .nupkg files in the pack job.)
     - name: Verify assemblies are strong-named
       shell: pwsh
       run: >-
         ./.github/check-strong-name.ps1
-        -Path 'src/JsonSettings/bin/Release','src/JsonSettings.Autosave/bin/Release'
-        -MinimumAssemblies 10
+        -Path 'src/JsonSettings/bin/Release','src/JsonSettings.Autosave/bin/Release','src/JsonSettings.NotifyChanges/bin/Release'
+        -MinimumAssemblies 15
 
     # Warnings are already errors for anything outside the allowlist in
     # Directory.Build.targets. This catches the other half: new instances of the codes that
@@ -169,7 +172,7 @@ jobs:
   #
   # The solution is NOT built here. JsonSettings.Examples is a WinForms app targeting
   # net*-windows, which cannot build on Linux at all, so this builds the test project
-  # directly - which pulls in both shipped libraries as project references anyway.
+  # directly - which pulls in all three shipped libraries as project references anyway.
   # ---------------------------------------------------------------------------------------
   test-linux:
     runs-on: ubuntu-latest
@@ -416,7 +419,8 @@ jobs:
 
         foreach ($project in @(
             'src/JsonSettings/JsonSettings.csproj',
-            'src/JsonSettings.Autosave/JsonSettings.Autosave.csproj')) {
+            'src/JsonSettings.Autosave/JsonSettings.Autosave.csproj',
+            'src/JsonSettings.NotifyChanges/JsonSettings.NotifyChanges.csproj')) {
           Write-Host "::group::pack $project"
           # No --no-build: pack builds it, so the packed binaries are guaranteed to be the
           # ones stamped with this version rather than whatever a previous step left on disk.
@@ -436,7 +440,7 @@ jobs:
       run: |
         $version = "${{ needs.validate-release.outputs.version }}"
         $output = Join-Path $env:GITHUB_WORKSPACE 'artifacts/nuget'
-        $expected = @("Nucs.JsonSettings.$version.nupkg", "Nucs.JsonSettings.Autosave.$version.nupkg")
+        $expected = @("Nucs.JsonSettings.$version.nupkg", "Nucs.JsonSettings.Autosave.$version.nupkg", "Nucs.JsonSettings.NotifyChanges.$version.nupkg")
 
         $actual = @(Get-ChildItem $output -Filter *.nupkg | Select-Object -ExpandProperty Name)
         $failed = $false
@@ -463,7 +467,7 @@ jobs:
           Write-Host "Produced: $($actual -join ', ')"
           exit 1
         }
-        Write-Host "Both packages carry version $version."
+        Write-Host "All three packages carry version $version."
 
     # The release gate. Reads every lib/**/*.dll out of the .nupkg files themselves rather than
     # trusting the bin/ directories they were built from, because what ships is the package - a
@@ -475,7 +479,7 @@ jobs:
     # needing to remember to re-check.
     - name: Verify packaged assemblies are strong-named
       shell: pwsh
-      run: ./.github/check-strong-name.ps1 -Path 'artifacts/nuget' -MinimumAssemblies 10
+      run: ./.github/check-strong-name.ps1 -Path 'artifacts/nuget' -MinimumAssemblies 15
 
     - name: Upload packages
       uses: actions/upload-artifact@v4
@@ -537,6 +541,7 @@ jobs:
           '```'
           "dotnet add package Nucs.JsonSettings --version $version"
           "dotnet add package Nucs.JsonSettings.Autosave --version $version"
+          "dotnet add package Nucs.JsonSettings.NotifyChanges --version $version"
           '```'
           ""
           "Targets netstandard2.0, net48, net6.0, net8.0 and net10.0."
@@ -589,7 +594,7 @@ jobs:
     # what is in your hand costs seconds; a wrong package on nuget.org is permanent.
     - name: Verify packages are strong-named before publishing
       shell: pwsh
-      run: ./.github/check-strong-name.ps1 -Path 'artifacts' -MinimumAssemblies 10
+      run: ./.github/check-strong-name.ps1 -Path 'artifacts' -MinimumAssemblies 15
 
     # Loops over every package. The previous version ran
     #   Get-ChildItem $out -Filter *.nupkg | Select-Object -First 1

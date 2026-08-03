@@ -48,13 +48,15 @@
     single .dll.
 
 .PARAMETER Include
-    Filename filter for directory scans. Defaults to JsonSettings*.dll so a bin/ directory full
-    of restored dependencies does not get audited - Newtonsoft and Castle are signed with their
-    own keys and failing on that would be wrong.
+    Filename filter for directory scans. Defaults to Nucs.JsonSettings*.dll so a bin/ directory
+    full of restored dependencies does not get audited - Newtonsoft and AspectInjector are signed
+    with their own keys and failing on that would be wrong. (The shipped assemblies carry the Nucs.
+    prefix; the .csproj/folder names are the short JsonSettings* form - see the AssemblyName note in
+    each csproj.)
 
 .PARAMETER MinimumAssemblies
     Fail if fewer than this many assemblies were checked. The release pipeline passes the exact
-    number it expects, which is what turns "the packages are signed" into "all ten shipped
+    number it expects, which is what turns "the packages are signed" into "all fifteen shipped
     assets are signed" - a package silently missing a target framework fails here too.
 
 .PARAMETER ExpectedToken
@@ -70,7 +72,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string[]]$Path,
-    [string]$Include = 'JsonSettings*.dll',
+    [string]$Include = 'Nucs.JsonSettings*.dll',
     [int]$MinimumAssemblies = 1,
     [string]$ExpectedToken = 'cc7b13ffcd2ddd51'
 )
