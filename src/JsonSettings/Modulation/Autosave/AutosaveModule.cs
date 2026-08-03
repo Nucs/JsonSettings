@@ -26,8 +26,8 @@ namespace Nucs.JsonSettings.Autosave {
         internal static bool IsAutosaveOptedIn(PropertyInfo property) {
             return property.GetIndexParameters().Length == 0
                    && !IsVersionableVersion(property)
-                   && property.GetCustomAttribute<JsonIgnoreAttribute>(true) == null
-                   && property.GetCustomAttribute<IgnoreAutosaveAttribute>(true) == null
+                   && property.GetCustomAttribute<JsonIgnoreAttribute>(true) is null
+                   && property.GetCustomAttribute<IgnoreAutosaveAttribute>(true) is null
                    && _frameworkParameters.All(f => f != property.Name);
         }
 

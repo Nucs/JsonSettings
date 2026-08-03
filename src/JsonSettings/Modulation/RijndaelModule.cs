@@ -31,14 +31,14 @@ namespace Nucs.JsonSettings.Modulation {
 
         /// <summary>Obsolete alias for <see cref="EncryptionModule.FromRawKey(byte[])"/>.</summary>
         public new static RijndaelModule FromRawKey(byte[] key) {
-            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (key is null) throw new ArgumentNullException(nameof(key));
             AesKeyLengths.Validate(key);
             return new RijndaelModule(CloneFetcher(key), rawKey: true);
         }
 
         /// <summary>Obsolete alias for <see cref="EncryptionModule.FromRawKey(System.Func{byte[]})"/>.</summary>
         public new static RijndaelModule FromRawKey(Func<byte[]> keyFetcher) {
-            if (keyFetcher == null) throw new ArgumentNullException(nameof(keyFetcher));
+            if (keyFetcher is null) throw new ArgumentNullException(nameof(keyFetcher));
             return new RijndaelModule(keyFetcher, rawKey: true);
         }
     }

@@ -119,7 +119,7 @@ namespace Nucs.JsonSettings {
         protected JsonSettings(string fileName) {
             #pragma warning restore 8618
             _childtype = GetType();
-            if (_childtype.GetCustomAttribute<ProxyGeneratedAttribute>() == null) {
+            if (_childtype.GetCustomAttribute<ProxyGeneratedAttribute>() is null) {
                 Modulation = new ModuleSocket(this);
                 // ReSharper disable once VirtualMemberCallInConstructor
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
@@ -233,7 +233,7 @@ namespace Nucs.JsonSettings {
         }
 
         public void Load(string filename) {
-            if (filename == null)
+            if (filename is null)
                 throw new ArgumentNullException(nameof(filename));
             Load(this, (Action) null!, filename);
         }
@@ -305,7 +305,7 @@ namespace Nucs.JsonSettings {
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public void Load(string filename, Action<JsonSettings>? configure) {
-            if (filename == null)
+            if (filename is null)
                 throw new ArgumentNullException(nameof(filename));
             Load(this, configure, filename);
         }
@@ -353,7 +353,7 @@ namespace Nucs.JsonSettings {
         /// <returns>The loaded or freshly new saved object</returns>
         public static T Load<T>(string filename, Action<T>? configure, object[] args) where T : ISavable {
             T o = (T) typeof(T).CreateInstance(args);
-            return Load(o, configure == null ? null : () => configure?.Invoke(o), filename);
+            return Load(o, configure is null ? null : () => configure?.Invoke(o), filename);
         }
 
         /// <summary>
@@ -458,7 +458,7 @@ namespace Nucs.JsonSettings {
                 }
             }
 
-            if (instance == null)
+            if (instance is null)
                 throw new ArgumentNullException(nameof(instance));
 
             JsonSettings o = (JsonSettings) (ISavable) instance;
@@ -610,7 +610,7 @@ namespace Nucs.JsonSettings {
                 throw new JsonSettingsException("Could not resolve path because 'FileName' is null or empty.");
 
             if (filename == "<DEFAULT>") {
-                if (o.FileName == null) //param filename is default and o.FileName are null.
+                if (o.FileName is null) //param filename is default and o.FileName are null.
                     return null;
                 filename = o.FileName; //load from instance.
             }

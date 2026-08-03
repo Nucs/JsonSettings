@@ -62,7 +62,7 @@ namespace Nucs.JsonSettings {
 
                 _autosave = value;
 
-                if (value && _autosaveModule == null)
+                if (value && _autosaveModule is null)
                     Modulation.Attach(_autosaveModule = new AutosaveModule());
                 else if (!value && _autosaveModule != null) {
                     Modulation.Deattach(_autosaveModule);
@@ -95,7 +95,7 @@ namespace Nucs.JsonSettings {
         ///     after the exact/assignable fast path, and treats a null the same as a missing key.
         /// </remarks>
         public T? Get<T>(string key, T @default = default(T)) {
-            if (!_data.TryGetValue(key, out var value) || value == null)
+            if (!_data.TryGetValue(key, out var value) || value is null)
                 return @default;
 
             //Exact type, an assignable reference, or T == object: hand it back untouched.

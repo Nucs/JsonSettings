@@ -102,7 +102,7 @@ namespace Nucs.JsonSettings.Modulation {
         ///     algorithms validate their own length when the module runs.
         /// </summary>
         public static EncryptionModule FromRawKey(byte[] key) {
-            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (key is null) throw new ArgumentNullException(nameof(key));
             //Eager AES validation so the common misuse still surfaces at configuration time, as it did
             //before. Non-AES algorithms re-validate against their own length at resolve time.
             AesKeyLengths.Validate(key);
@@ -115,7 +115,7 @@ namespace Nucs.JsonSettings.Modulation {
         ///     resolved.
         /// </summary>
         public static EncryptionModule FromRawKey(Func<byte[]> keyFetcher) {
-            if (keyFetcher == null) throw new ArgumentNullException(nameof(keyFetcher));
+            if (keyFetcher is null) throw new ArgumentNullException(nameof(keyFetcher));
             return new EncryptionModule(keyFetcher, rawKey: true);
         }
 
@@ -157,7 +157,7 @@ namespace Nucs.JsonSettings.Modulation {
             //to RecoveryModule - or reported as "The settings file is empty!" when no recovery was
             //configured. Treat it as empty here, restoring that path, rather than letting a length or
             //authentication error escape the recovery hook as it did in 2.1.0.
-            if (data == null || data.Length < engine.MinimumLength) {
+            if (data is null || data.Length < engine.MinimumLength) {
                 data = new byte[0];
                 return;
             }
@@ -223,7 +223,7 @@ namespace Nucs.JsonSettings.Modulation {
         ///     True when <paramref name="data"/> decodes as UTF-8 without invalid sequences.
         /// </summary>
         private static bool IsValidUtf8(byte[] data) {
-            if (data == null || data.Length == 0)
+            if (data is null || data.Length == 0)
                 return true;
 
             try {

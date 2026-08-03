@@ -83,7 +83,7 @@ namespace Nucs.JsonSettings.Modulation {
                 var attr = typeof(T).GetProperty(nameof(IVersionable.Version), BindingFlags.Instance | BindingFlags.Public)
                                    ?.GetCustomAttributes<EnforcedVersionAttribute>()
                                     .FirstOrDefault(); //get latest attribute
-                if (attr == null)
+                if (attr is null)
                     return;
 
                 if (attr.Version != null)
@@ -143,7 +143,7 @@ namespace Nucs.JsonSettings.Modulation {
                 case VersioningResultAction.DoNothing: return;
                 case VersioningResultAction.Throw:     throw new InvalidVersionException($"Loaded version '{sender.Version}' mismatches expected version '{ExpectedVersion}'");
                 case VersioningResultAction.RenameAndLoadDefault: {
-                    if (loadedPath == null)
+                    if (loadedPath is null)
                         throw new ArgumentNullException(nameof(loadedPath));
 
                     //parse current name

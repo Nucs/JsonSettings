@@ -61,7 +61,7 @@ namespace Nucs.JsonSettings.Modulation.Encryption {
     /// <summary>Validation for a verbatim AES key: 16, 24 or 32 bytes.</summary>
     internal static class AesKeyLengths {
         internal static void Validate(byte[] key) {
-            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (key is null) throw new ArgumentNullException(nameof(key));
             if (key.Length != 16 && key.Length != 24 && key.Length != 32)
                 throw new ArgumentException($"A raw AES key must be 16, 24 or 32 bytes (AES-128/192/256); got {key.Length}.", nameof(key));
         }
@@ -141,7 +141,7 @@ namespace Nucs.JsonSettings.Modulation.Encryption {
         internal override int MinimumLength => AesCbcEngine.IvSize + MacSize;
 
         internal override void ValidateRawKey(byte[] key) {
-            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (key is null) throw new ArgumentNullException(nameof(key));
             var cipherLen = key.Length - MacSize;
             if (cipherLen != 16 && cipherLen != 24 && cipherLen != 32)
                 throw new ArgumentException($"A raw AES-CBC-HMAC key must be a 16/24/32-byte AES key followed by a {MacSize}-byte HMAC key (48, 56 or 64 bytes total); got {key.Length}.", nameof(key));
@@ -299,7 +299,7 @@ namespace Nucs.JsonSettings.Modulation.Encryption {
         internal override int KeyBytes => KeyLength;
 
         internal override void ValidateRawKey(byte[] key) {
-            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (key is null) throw new ArgumentNullException(nameof(key));
             if (key.Length != KeyLength)
                 throw new ArgumentException($"A raw ChaCha20-Poly1305 key must be {KeyLength} bytes; got {key.Length}.", nameof(key));
         }

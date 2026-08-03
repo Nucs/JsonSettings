@@ -34,7 +34,7 @@ namespace Nucs.JsonSettings.Autosave {
                 return;
 
             var module = TryGetAutosaveModule(settings);
-            if (module == null)
+            if (module is null)
                 return; //autosave was never enabled on this instance
 
             if (module.IsSaving)

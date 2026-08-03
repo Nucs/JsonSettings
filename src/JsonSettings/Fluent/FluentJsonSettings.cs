@@ -46,7 +46,7 @@ namespace Nucs.JsonSettings.Fluent {
         /// </summary>
         /// <returns>Self</returns>
         public static T WithDefaultValues<T>(this T _instance, Action<T> @do) where T : JsonSettings {
-            if (@do == null) throw new ArgumentNullException(nameof(@do));
+            if (@do is null) throw new ArgumentNullException(nameof(@do));
             @do(_instance);
             return _instance;
         }

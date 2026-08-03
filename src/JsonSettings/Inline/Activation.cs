@@ -25,13 +25,13 @@ namespace Nucs.JsonSettings {
             if (t.IsValueType || ctrs.Any(c => c.IsPublic)) //is valuetype or has public constractor.
                 return Activator.CreateInstance(t);
             var prv = ctrs.FirstOrDefault(c => c.IsAssembly ||c.IsFamily || c.IsPrivate); //check protected/internal/private constructor
-            if (prv == null)
+            if (prv is null)
                 throw new ReflectiveException($"Type {t.FullName} does not have empty constructor (public or private)");
             return prv.Invoke(null);
         }
 
         public static object CreateInstance(this Type t, object[] args) {
-            if (args == null || args.Length==0) return t.CreateInstance();
+            if (args is null || args.Length==0) return t.CreateInstance();
             try {
                 return Activator.CreateInstance(t, args);
             } catch (AmbiguousMatchException) {
@@ -42,14 +42,14 @@ namespace Nucs.JsonSettings {
                         return false;
 
                     //all args are null
-                    if (args.All(arg => arg == null))
+                    if (args.All(arg => arg is null))
                         return true;
 
                     //smart match
                     for (int i = 0; i < p.Length; i++) {
                         var arg = args[i];
                         var param = p[i];
-                        if (arg == null)
+                        if (arg is null)
                             continue;
                         if (arg.GetType() != param.ParameterType)
                             goto _nomatch;

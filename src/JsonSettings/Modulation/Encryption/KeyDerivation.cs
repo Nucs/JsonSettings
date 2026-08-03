@@ -27,7 +27,7 @@ namespace Nucs.JsonSettings.Modulation.Encryption {
         ///     original string key path exactly.
         /// </summary>
         internal static byte[] FromText(string password, int keyBytes) {
-            if (password == null)
+            if (password is null)
                 password = string.Empty;
 
             var pwd = Encoding.UTF8.GetBytes(password);
@@ -44,7 +44,7 @@ namespace Nucs.JsonSettings.Modulation.Encryption {
         ///     bytes happen to equal <paramref name="password"/>.
         /// </summary>
         internal static byte[] FromBytes(byte[] password, int keyBytes) {
-            if (password == null)
+            if (password is null)
                 password = Array.Empty<byte>();
 
             var lengthTag = BitConverter.GetBytes(password.Length);

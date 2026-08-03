@@ -198,7 +198,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
         public void WriteInAfterSave_KeepsValueInMemory() {
             using var f = new TempFile();
             var o = JsonSettings.Load<TwoProps>(f.FileName).EnableAutosave();
-            o.AfterSave += (s, d) => { if (o.B == null) o.B = "set-during-save"; };
+            o.AfterSave += (s, d) => { if (o.B is null) o.B = "set-during-save"; };
 
             o.A = "trigger";
 

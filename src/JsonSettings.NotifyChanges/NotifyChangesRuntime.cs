@@ -124,7 +124,7 @@ namespace Nucs.JsonSettings.NotifyChanges {
                     return true;
 
                 var property = GetProperty(t, name);
-                if (property == null)
+                if (property is null)
                     return false;
 
                 if (property.GetIndexParameters().Length != 0)
@@ -287,7 +287,7 @@ namespace Nucs.JsonSettings.NotifyChanges {
             return _dependentsCache.GetOrAdd((type, propertyName), key => {
                 var (t, name) = key;
                 var property = GetProperty(t, name);
-                if (property == null)
+                if (property is null)
                     return Array.Empty<string>();
 
                 var declared = property.GetCustomAttributes<NotifyChangesForAttribute>(true)
@@ -335,7 +335,7 @@ namespace Nucs.JsonSettings.NotifyChanges {
 
         private static object? TryReadCurrentValue(object instance, string propertyName) {
             var property = _propertyCache.GetOrAdd((instance.GetType(), propertyName), static key => GetProperty(key.Type, key.Property));
-            if (property == null || !property.CanRead)
+            if (property is null || !property.CanRead)
                 return null;
             try {
                 return property.GetValue(instance);
@@ -382,7 +382,7 @@ namespace Nucs.JsonSettings.NotifyChanges {
         }
 
         private static bool IsNullOrDefault(object? value) {
-            if (value == null)
+            if (value is null)
                 return true;
 
             var type = value.GetType();

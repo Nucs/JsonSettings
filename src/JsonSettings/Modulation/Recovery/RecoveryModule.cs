@@ -53,7 +53,7 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
             switch (action) {
                 case RecoveryAction.Throw: throw new JsonSettingsRecoveryException($"Loading {sender._childtype.Name} settings{(sender is IVersionable v ? $" version '{v.Version}'" : "")}");
                 case RecoveryAction.RenameAndLoadDefault: {
-                    if (loadedPath == null)
+                    if (loadedPath is null)
                         throw new ArgumentNullException(nameof(loadedPath));
 
                     //parse current name

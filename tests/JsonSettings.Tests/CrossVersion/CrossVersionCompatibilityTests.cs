@@ -202,7 +202,7 @@ namespace Nucs.JsonSettings.Tests.CrossVersion {
             var assembly = typeof(CrossVersionCompatibilityTests).Assembly;
             var suffix = FixtureResourceSuffix(framework);
             var resource = assembly.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith(suffix, StringComparison.Ordinal));
-            if (resource == null) {
+            if (resource is null) {
                 json = null;
                 return false;
             }

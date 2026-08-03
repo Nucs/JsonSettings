@@ -55,7 +55,7 @@ namespace Nucs.JsonSettings.Autosave {
         /// </returns>
         /// <exception cref="JsonSettingsException">When <typeparamref name="TSettings"/> is not marked <see cref="AutosaveAttribute"/>.</exception>
         public static TSettings EnableAutosave<TSettings>(this TSettings settings) where TSettings : JsonSettings {
-            if (settings == null)
+            if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
 
             //SettingsBag has its own dictionary-backed autosave and is not woven. Its instance
@@ -106,7 +106,7 @@ namespace Nucs.JsonSettings.Autosave {
         /// </remarks>
         /// <exception cref="JsonSettingsException">When <typeparamref name="TSettings"/> is not marked <see cref="AutosaveAttribute"/>.</exception>
         public static ISettings EnableIAutosave<TSettings, ISettings>(this TSettings settings) where TSettings : JsonSettings, ISettings where ISettings : class {
-            if (settings == null)
+            if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
             if (!typeof(ISettings).IsInterface)
                 throw new ArgumentException("Target type must be an interface", nameof(settings));

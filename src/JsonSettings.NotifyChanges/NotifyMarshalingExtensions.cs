@@ -57,11 +57,11 @@ namespace Nucs.JsonSettings.NotifyChanges {
         ///     UI thread). Pass one explicitly with <see cref="EnableNotificationMarshaling{T}(T, SynchronizationContext)"/>.
         /// </exception>
         public static T EnableNotificationMarshaling<T>(this T settings) where T : JsonSettings {
-            if (settings == null)
+            if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
 
             var context = SynchronizationContext.Current;
-            if (context == null)
+            if (context is null)
                 throw new JsonSettingsException(
                     "EnableNotificationMarshaling() must be called on a thread that has a SynchronizationContext "
                     + "(typically the UI thread), so change notifications can be marshalled back to it. None was "
@@ -78,9 +78,9 @@ namespace Nucs.JsonSettings.NotifyChanges {
         /// </summary>
         /// <exception cref="ArgumentNullException"><paramref name="settings"/> or <paramref name="context"/> is null.</exception>
         public static T EnableNotificationMarshaling<T>(this T settings, SynchronizationContext context) where T : JsonSettings {
-            if (settings == null)
+            if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
-            if (context == null)
+            if (context is null)
                 throw new ArgumentNullException(nameof(context));
 
             NotifyChangesRuntime.SetMarshalContext(settings, context);
@@ -93,7 +93,7 @@ namespace Nucs.JsonSettings.NotifyChanges {
         /// </summary>
         /// <exception cref="ArgumentNullException"><paramref name="settings"/> is null.</exception>
         public static T DisableNotificationMarshaling<T>(this T settings) where T : JsonSettings {
-            if (settings == null)
+            if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
 
             NotifyChangesRuntime.RemoveMarshalContext(settings);

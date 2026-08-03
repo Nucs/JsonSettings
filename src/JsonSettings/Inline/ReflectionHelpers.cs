@@ -7,7 +7,7 @@ namespace Microsoft.Xna.Framework.Utilities {
         /// Returns true if the given type represents a non-object type that is not abstract.
         /// </summary>
         public static bool IsConcreteClass(Type t) {
-            if (t == null) {
+            if (t is null) {
                 throw new NullReferenceException("Must supply the t (type) parameter");
             }
 
