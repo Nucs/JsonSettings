@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.Examples", "ex
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.Autosave", "src\JsonSettings.Autosave\JsonSettings.Autosave.csproj", "{D6C73FB9-033B-44D8-BC0E-85DC6EFF8CDE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.NotifyChanges", "src\JsonSettings.NotifyChanges\Nucs.JsonSettings.NotifyChanges.csproj", "{0EF85747-CD94-4696-BC11-74A40AC0E0D8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSettings.NotifyChanges", "src\JsonSettings.NotifyChanges\JsonSettings.NotifyChanges.csproj", "{0EF85747-CD94-4696-BC11-74A40AC0E0D8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{76A13B45-7AC9-4596-AACA-4BCCD13A1DC8}"
 EndProject

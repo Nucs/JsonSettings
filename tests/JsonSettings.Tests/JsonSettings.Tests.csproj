@@ -44,7 +44,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
-      <ProjectReference Include="..\..\src\JsonSettings.NotifyChanges\Nucs.JsonSettings.NotifyChanges.csproj" />
+      <ProjectReference Include="..\..\src\JsonSettings.NotifyChanges\JsonSettings.NotifyChanges.csproj" />
       <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
     </ItemGroup>
 
