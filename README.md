@@ -41,8 +41,9 @@ The `netstandard2.0` asset covers everything without an exact match, including
 All packages are strong-named, so they can be referenced from a strong-named assembly:
 
 ```
-Nucs.JsonSettings,          PublicKeyToken=cc7b13ffcd2ddd51
-Nucs.JsonSettings.Autosave, PublicKeyToken=cc7b13ffcd2ddd51
+Nucs.JsonSettings,               PublicKeyToken=cc7b13ffcd2ddd51
+Nucs.JsonSettings.Autosave,      PublicKeyToken=cc7b13ffcd2ddd51
+Nucs.JsonSettings.NotifyChanges, PublicKeyToken=cc7b13ffcd2ddd51
 ```
 
 The key is Microsoft's [published open-source signing key](https://github.com/dotnet/arcade/blob/main/src/Microsoft.DotNet.Arcade.Sdk/tools/snk/Open.snk)
@@ -52,8 +53,8 @@ signing infrastructure.
 
 > **This is identity, not authenticity.** Anyone can sign an assembly with that key, so a
 > strong name here tells the runtime which assembly this is and lets it bind versions — it does
-> **not** attest that the file came from this project. Neither package is Authenticode-signed or
-> NuGet author-signed, and `InternalsVisibleTo` is not an access control. If you need to verify
+> **not** attest that the file came from this project. None of the packages are Authenticode-signed
+> or NuGet author-signed, and `InternalsVisibleTo` is not an access control. If you need to verify
 > origin, verify the SHA-256 checksums published with each
 > [GitHub release](https://github.com/Nucs/JsonSettings/releases).
 

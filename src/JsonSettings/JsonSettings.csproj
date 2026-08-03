@@ -6,6 +6,11 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
     <Description>Easiest way you'll ever write settings for your app. This library is built to be modular and one-liner exploiting the powerful serialization capabilities of Json.NET out of the box without any mapping necessary to serialize nested custom objects, dictionaries and lists.</Description>
     <RootNamespace>Nucs.JsonSettings</RootNamespace>
     <PackageId>Nucs.JsonSettings</PackageId>
+    <!-- Ship as Nucs.JsonSettings.dll so the assembly identity equals the PackageId and the root
+         namespace. Set explicitly because the .csproj/folder keep the short JsonSettings name (source
+         layout only); without this the assembly would default to that short name and drift from the
+         package and namespace. -->
+    <AssemblyName>Nucs.JsonSettings</AssemblyName>
     <Title>Nucs.JsonSettings</Title>
     <!-- Held at 9.0 on purpose, below the repo-wide 12.0 in Directory.Build.props. This is
          the netstandard2.0-facing assembly, and keeping the syntax within C# 9 keeps it
@@ -52,7 +57,9 @@ Encrypt, Encode and have full control over hardcoded / dynamic settings.</Summar
        StrongNameTests proves it resolves rather than assuming it. -->
   <ItemGroup>
     <InternalsVisibleTo Include="JsonSettings.Tests" />
-    <InternalsVisibleTo Include="JsonSettings.Autosave" />
+    <!-- The Autosave assembly ships as Nucs.JsonSettings.Autosave (see its <AssemblyName>), so the
+         friend reference names it by that identity, not by the short JsonSettings.Autosave csproj name. -->
+    <InternalsVisibleTo Include="Nucs.JsonSettings.Autosave" />
   </ItemGroup>
 
 </Project>

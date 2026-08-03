@@ -72,13 +72,17 @@ described as a security improvement in release notes or anywhere else.
 ## Upgrading from an unsigned version (2.1.0 or earlier)
 
 Everything published up to and including 2.1.0 shipped **unsigned** (`PublicKeyToken=null`; verified
-against `Nucs.JsonSettings` 2.0.1, 2.0.2 and 2.1.0 on nuget.org). 2.2.0 is the first signed release.
-Gaining a strong name **changes the assembly identity**, which has two practical effects:
+against `Nucs.JsonSettings` 2.0.1, 2.0.2 and 2.1.0 on nuget.org). 2.2.0 is the first signed release,
+and it also **renames the assemblies** so the assembly identity matches the package id and namespace:
+`JsonSettings.dll` → `Nucs.JsonSettings.dll` and `JsonSettings.Autosave.dll` →
+`Nucs.JsonSettings.Autosave.dll` (the new `Nucs.JsonSettings.NotifyChanges` follows the same rule). So
+both the simple name **and** the token change, which has two practical effects:
 
 - A `bindingRedirect` written against the old identity will not match the new one. Remove it
-  rather than editing it — the redirect's `publicKeyToken="null"` is part of what it matches on.
+  rather than editing it — both the assembly name and the `publicKeyToken="null"` it matched on have
+  changed.
 - Anything that hardcodes the full identity string (some plugin loaders, `Assembly.Load` with a
-  display name, serialized `System.Type` names in old config files) needs the token added.
+  display name, serialized `System.Type` names in old config files) needs the name and token updated.
 
 Recompiling against 2.2.0 is otherwise sufficient; no source change is required.
 
@@ -155,7 +159,7 @@ the weaving — and therefore the signature damage — happens in whichever asse
 settings class:
 
 - **This repository's own build** imports the file directly from `Directory.Build.targets`, which
-  is why `JsonSettings.Autosave.dll` passes `check-strong-name.ps1` despite being woven.
+  is why `Nucs.JsonSettings.Autosave.dll` passes `check-strong-name.ps1` despite being woven.
 - **A strong-named consumer** gets it transitively: their own assembly is woven where their
   `[Autosave]` class is declared, and the packaged target re-signs it with their key. Verified end
   to end by consuming the packed `.nupkg` from a separately-signed project and confirming
@@ -174,19 +178,24 @@ The "signature blob present and not all zeros" check in `check-strong-name.ps1` 
 table above) is what would catch a re-sign that silently failed: a re-signed assembly carries a
 real 128-byte signature, an unrestored one does not.
 
+`Nucs.JsonSettings.NotifyChanges` weaves `[NotifyChanges]` the same way and ships the identical
+restore step under **disjoint** names — targets `NucsNotifyChanges_*`, warnings `NJS1003`/`NJS1004`,
+opt-out `<NucsNotifyChangesResignAfterWeaving>false</NucsNotifyChangesResignAfterWeaving>` — so a
+consumer referencing **both** packages re-signs cleanly with no MSBuild target-name collision.
+
 ## Verifying it yourself
 
 Token of an installed package:
 
 ```powershell
-[System.Reflection.AssemblyName]::GetAssemblyName("$env:USERPROFILE\.nuget\packages\nucs.jsonsettings\2.2.0\lib\net8.0\JsonSettings.dll").GetPublicKeyToken() |
+[System.Reflection.AssemblyName]::GetAssemblyName("$env:USERPROFILE\.nuget\packages\nucs.jsonsettings\2.2.0\lib\net8.0\Nucs.JsonSettings.dll").GetPublicKeyToken() |
     ForEach-Object { '{0:x2}' -f $_ }
 ```
 
 On .NET Framework, or with the Windows SDK on PATH:
 
 ```
-sn -T JsonSettings.dll
+sn -T Nucs.JsonSettings.dll
 ```
 
 Everything the release pipeline checks, against any directory or `.nupkg`:

@@ -261,19 +261,22 @@
     <PackageReleaseNotes>2.2.0
 
 Breaking changes
-- Both packages are now strong-named, with PublicKeyToken=cc7b13ffcd2ddd51. Everything
-  published up to and including 2.1.0 shipped unsigned, which meant a strong-named assembly
-  could not reference this library at all - a strong-named consumer cannot reference a
-  weak-named dependency, and there was no workaround short of repackaging the DLL. The key is
-  Microsoft's published open-source key, the same one netstandard, System.Memory and
-  System.Buffers carry; its private half is published by design, so this is assembly IDENTITY
-  and not a security property. It does not attest that a file came from this project, and
-  InternalsVisibleTo is not an access control. Verify origin with the SHA-256 checksums
+- Both shipped packages are now strong-named (PublicKeyToken=cc7b13ffcd2ddd51) AND their assemblies
+  are renamed to match their package ids and namespaces: JsonSettings.dll -> Nucs.JsonSettings.dll and
+  JsonSettings.Autosave.dll -> Nucs.JsonSettings.Autosave.dll. (The new Nucs.JsonSettings.NotifyChanges
+  package follows the same rule but has no prior release to break.) Everything published up to and
+  including 2.1.0 shipped unsigned, which meant a strong-named assembly could not reference this library
+  at all - a strong-named consumer cannot reference a weak-named dependency, and there was no workaround
+  short of repackaging the DLL. The key is Microsoft's published open-source key, the same one
+  netstandard, System.Memory and System.Buffers carry; its private half is published by design, so this
+  is assembly IDENTITY and not a security property. It does not attest that a file came from this
+  project, and InternalsVisibleTo is not an access control. Verify origin with the SHA-256 checksums
   published on each GitHub release.
-  UPGRADING: gaining a strong name changes the assembly identity. A bindingRedirect written
-  against the old unsigned identity will not match the new one and should be removed rather
-  than edited, and anything that hardcodes a full assembly display name needs the token added.
-  Recompiling is otherwise enough. See docs/SIGNING.md.
+  UPGRADING: the assembly identity changes in two ways - a strong-name token where there was none, and a
+  new simple name (Nucs.JsonSettings[.Autosave]). A bindingRedirect written against the old unsigned
+  identity will not match the new one and should be removed rather than edited, and anything that
+  hardcodes a full assembly display name needs the name and token updated. Recompiling is otherwise
+  enough. See docs/SIGNING.md.
 - Autosave now requires an [Autosave] attribute on the settings class. Nucs.JsonSettings.Autosave
   no longer proxies with Castle.DynamicProxy; it rewrites the property setters at compile time
   with AspectInjector. An existing EnableAutosave()/EnableIAutosave() call now throws until the

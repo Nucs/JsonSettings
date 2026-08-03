@@ -6,6 +6,9 @@
     <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>
     <PackageId>Nucs.JsonSettings.Autosave</PackageId>
+    <!-- Ship as Nucs.JsonSettings.Autosave.dll so assembly identity = PackageId = namespace; the
+         short .csproj/folder name is source layout only. See the note in JsonSettings.csproj. -->
+    <AssemblyName>Nucs.JsonSettings.Autosave</AssemblyName>
     <Title>Nucs.JsonSettings.Autosave</Title>
     <!-- GeneratePackageOnBuild is deliberately absent; see the note in JsonSettings.csproj.
          In short: on a multi-targeted project it makes `dotnet pack` from a clean tree fail

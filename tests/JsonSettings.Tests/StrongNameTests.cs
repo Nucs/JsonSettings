@@ -52,10 +52,15 @@ namespace Nucs.JsonSettings.Tests {
         // `Autosave.` binds to first.
         private static Assembly AutosaveAssembly => typeof(global::Nucs.JsonSettings.Autosave.TypeValidation).Assembly;
 
+        // Same rationale as AutosaveAssembly: reached through an internal type so the keyed
+        // InternalsVisibleTo in JsonSettings.NotifyChanges.csproj is a compile-time assertion too.
+        private static Assembly NotifyChangesAssembly => typeof(global::Nucs.JsonSettings.NotifyChanges.IHasNotificationGuard).Assembly;
+
         private static IEnumerable<Assembly> ShippedAssemblies {
             get {
                 yield return CoreAssembly;
                 yield return AutosaveAssembly;
+                yield return NotifyChangesAssembly;
             }
         }
 
@@ -140,6 +145,8 @@ namespace Nucs.JsonSettings.Tests {
                 .BeFalse("Paths is internal to JsonSettings; reaching it here is friend access, not a public API");
             typeof(global::Nucs.JsonSettings.Autosave.TypeValidation).IsVisible.Should()
                 .BeFalse("TypeValidation is internal to JsonSettings.Autosave");
+            typeof(global::Nucs.JsonSettings.NotifyChanges.IHasNotificationGuard).IsVisible.Should()
+                .BeFalse("IHasNotificationGuard is internal to JsonSettings.NotifyChanges");
         }
 
         private static string ToHex(byte[] bytes) {
