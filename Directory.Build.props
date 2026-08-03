@@ -333,6 +333,10 @@ Autosave (see the breaking-change note above for the [Autosave] requirement)
 - Native AOT compatible. AspectInjector emits nothing at runtime, so EnableAutosave() works under
   Native AOT, where the Castle.DynamicProxy path threw PlatformNotSupportedException and no
   annotation could fix it. Nucs.JsonSettings.Autosave no longer depends on Castle.Core.
+- Removed the vestigial public ProxyGeneratedAttribute. It tagged Castle.DynamicProxy-generated
+  types so the JsonSettings constructor could skip re-creating their ModuleSocket; with the proxy
+  path gone nothing applies it and the constructor guard that read it was always taken, so the
+  attribute and the guard were both deleted.
 - The package re-signs the woven assembly after the weave (shipped build/ and buildTransitive/
   targets), because weaving invalidates the strong-name signature the compiler applied and
   AspectInjector 2.9.0 retired its own re-signing. If sn.exe is unavailable the build warns

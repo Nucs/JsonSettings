@@ -119,16 +119,14 @@ namespace Nucs.JsonSettings {
         protected JsonSettings(string fileName) {
             #pragma warning restore 8618
             _childtype = GetType();
-            if (_childtype.GetCustomAttribute<ProxyGeneratedAttribute>() is null) {
-                Modulation = new ModuleSocket(this);
-                // ReSharper disable once VirtualMemberCallInConstructor
-                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                if (fileName != null)
-                    FileName = fileName;
+            Modulation = new ModuleSocket(this);
+            // ReSharper disable once VirtualMemberCallInConstructor
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            if (fileName != null)
+                FileName = fileName;
 
-                if (!_childtype.HasDefaultConstructor())
-                    throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
-            }
+            if (!_childtype.HasDefaultConstructor())
+                throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
         }
 
         /// <summary>
