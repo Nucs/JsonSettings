@@ -17,7 +17,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
     [TestClass]
     public class NestedNotifierTests {
         private static NotificationBinder BinderOf(NotifyingParent p) =>
-            p.Modulation.GetModule<AutosaveModule>().NotificationsHandler!;
+            (NotificationBinder) p.Modulation.GetModule<AutosaveModule>().NotificationsHandler!;
 
         [TestMethod]
         public void NestedPropertyChanged_TriggersSave() {

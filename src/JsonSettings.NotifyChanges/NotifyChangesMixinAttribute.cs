@@ -37,7 +37,7 @@ namespace Nucs.JsonSettings.NotifyChanges {
     ///     </para>
     ///     <para>
     ///     Note the boundary with autosave's nested-collection support: <c>EnableAutosave()</c> only
-    ///     attaches a <see cref="NotificationBinder"/> to a <c>NotifiyingJsonSettings</c>, so a
+    ///     attaches a <c>NotificationBinder</c> to a <c>NotifiyingJsonSettings</c>, so a
     ///     mixin-only class still autosaves on its own property writes but not when a nested
     ///     <c>ObservableCollection</c> is mutated in place. Use the notifying base if you need that.
     ///     </para>

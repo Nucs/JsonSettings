@@ -120,7 +120,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
         /// <remarks>
         ///     The binder required <c>virtual</c> where the save path did not, so a non-virtual
         ///     collection property saved on assignment but its replacement was never subscribed. Both
-        ///     now share one filter (<see cref="AutosaveModule.IsNotificationBindable"/>).
+        ///     now share one filter (<see cref="AutosavePolicy.IsNotificationBindable"/>).
         /// </remarks>
         [TestMethod]
         public void NonVirtualNotifyingCollection_RebindsReplacement() {

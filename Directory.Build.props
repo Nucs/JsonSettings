@@ -337,6 +337,15 @@ Autosave (see the breaking-change note above for the [Autosave] requirement)
   types so the JsonSettings constructor could skip re-creating their ModuleSocket; with the proxy
   path gone nothing applies it and the constructor guard that read it was always taken, so the
   attribute and the guard were both deleted.
+- Autosave machinery no longer ships inside the base package. IgnoreAutosaveAttribute,
+  NotificationBinder and the SuspendAutosave struct, plus the property opt-in rules, moved from
+  Nucs.JsonSettings.dll to Nucs.JsonSettings.Autosave.dll where they are actually wired up; the
+  Nucs.JsonSettings.Autosave namespace is unchanged, so a project that references the Autosave
+  package sees no difference while a base-only project no longer sees types that did nothing
+  without it. AutosaveModule stays in the base package as the shared save-suspension state that
+  SettingsBag's dictionary autosave and LoadJson drive with the base package alone; its
+  SuspendAutosave() method is removed (call the settings.SuspendAutosave() extension) and its
+  NotificationsHandler is now typed IDisposable.
 - The package re-signs the woven assembly after the weave (shipped build/ and buildTransitive/
   targets), because weaving invalidates the strong-name signature the compiler applied and
   AspectInjector 2.9.0 retired its own re-signing. If sn.exe is unavailable the build warns

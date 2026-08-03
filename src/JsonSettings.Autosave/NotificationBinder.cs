@@ -35,7 +35,7 @@ namespace Nucs.JsonSettings.Autosave {
             //regardless of the property's [IgnoreAutosave] -- the source of the bug where an ignored
             //collection saved on mutation.
             var bindableProperties = _settings.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                              .Where(AutosaveModule.IsNotificationBindable)
+                                              .Where(AutosavePolicy.IsNotificationBindable)
                                               .ToArray();
 
             //ConcurrentDictionary, not Dictionary: this staging table is populated single-threaded

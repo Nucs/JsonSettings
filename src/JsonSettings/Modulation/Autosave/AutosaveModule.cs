@@ -1,80 +1,20 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using Newtonsoft.Json;
-using Nucs.JsonSettings.Modulation;
+using System;
+using System.Collections.Generic;
 using Module = Nucs.JsonSettings.Modulation.Module;
 
 namespace Nucs.JsonSettings.Autosave {
+    /// <summary>
+    ///     The shared save-suspension state a settings instance carries while autosave is enabled.
+    /// </summary>
+    /// <remarks>
+    ///     This stays in the base package on purpose: <see cref="SettingsBag"/>'s dictionary-backed
+    ///     autosave and <c>JsonSettings.LoadJson</c>'s load-suppression both drive this state with the
+    ///     base package alone, and the woven path in <c>Nucs.JsonSettings.Autosave</c> reuses the very
+    ///     same instance. All of the weaving-specific reflection -- the opt-in rules, the
+    ///     <c>NotificationBinder</c>, the <c>SuspendAutosave</c> entry point -- lives in that package
+    ///     instead; this type keeps only the flags and the reference-counted suspension machine.
+    /// </remarks>
     public class AutosaveModule : Module {
-        internal static readonly string[] _frameworkParameters = {nameof(JsonSettings.FileName), nameof(JsonSettings.Modulation)};
-        internal static readonly int _frameworkParametersLength = _frameworkParameters.Length;
-
-        /// <summary>
-        ///     Whether a property is opted into autosave at all -- i.e. not excluded by
-        ///     <see cref="JsonIgnoreAttribute"/> or <see cref="IgnoreAutosaveAttribute"/> and not one
-        ///     of the framework's own properties (FileName, Modulation).
-        /// </summary>
-        /// <remarks>
-        ///     This is the one place the opt-out rule is written down. It used to be duplicated
-        ///     across the woven-path resolver in <c>AutosaveRuntime</c>, the old interceptor
-        ///     constructors, and <see cref="NotificationBinder"/>, and they had drifted -- most
-        ///     visibly, <see cref="NotificationBinder"/> also required <c>virtual</c> where the save
-        ///     path no longer did, and it ignored <see cref="IgnoreAutosaveAttribute"/> when binding
-        ///     collection fields, so an <c>[IgnoreAutosave]</c> collection still saved on mutation.
-        /// </remarks>
-        internal static bool IsAutosaveOptedIn(PropertyInfo property) {
-            return property.GetIndexParameters().Length == 0
-                   && !IsVersionableVersion(property)
-                   && property.GetCustomAttribute<JsonIgnoreAttribute>(true) is null
-                   && property.GetCustomAttribute<IgnoreAutosaveAttribute>(true) is null
-                   && _frameworkParameters.All(f => f != property.Name);
-        }
-
-        /// <summary>
-        ///     The <see cref="IVersionable.Version"/> property on a versionable settings class.
-        /// </summary>
-        /// <remarks>
-        ///     Version is framework metadata managed by <c>VersioningModule</c>, not a user setting:
-        ///     the module writes it during load, recovery and default-loading (e.g.
-        ///     <c>tsender.Version = ExpectedVersion</c>). Monitoring it means a reload that
-        ///     normalises the version, or any framework version write while autosave is live,
-        ///     commits an autosave the user never asked for. It rides along in every ordinary save
-        ///     already, so excluding it from the *trigger* set loses nothing -- exactly the reason
-        ///     FileName and Modulation are excluded. The check is scoped to
-        ///     <see cref="IVersionable"/> so a user's own unrelated property named "Version" is
-        ///     unaffected.
-        /// </remarks>
-        private static bool IsVersionableVersion(PropertyInfo property) {
-            return property.Name == nameof(IVersionable.Version)
-                   && property.DeclaringType != null
-                   && typeof(IVersionable).IsAssignableFrom(property.DeclaringType);
-        }
-
-        /// <summary>
-        ///     Whether a write to this property should commit a save. Requires a setter (public or
-        ///     not, so <c>{ get; private set; }</c> counts): only an assignable property has a woven
-        ///     setter for the advice to run in.
-        /// </summary>
-        internal static bool IsAutosaveMonitored(PropertyInfo property) {
-            return property.GetSetMethod(true) != null && IsAutosaveOptedIn(property);
-        }
-
-        /// <summary>
-        ///     Whether the current value of this property should be watched for nested
-        ///     <see cref="System.ComponentModel.INotifyPropertyChanged"/> /
-        ///     <see cref="System.Collections.Specialized.INotifyCollectionChanged"/> changes.
-        /// </summary>
-        /// <remarks>
-        ///     Deliberately does NOT require a setter, unlike <see cref="IsAutosaveMonitored"/>: a
-        ///     get-only <c>ObservableCollection</c> is the idiomatic way to expose a mutable list you
-        ///     never reassign, and its contents changing still has to save. Only a readable,
-        ///     opted-in property qualifies.
-        /// </remarks>
-        internal static bool IsNotificationBindable(PropertyInfo property) {
-            return property.GetGetMethod(true) != null && IsAutosaveOptedIn(property);
-        }
-
         /// <summary>
         ///     True while this module is committing an autosave, so that a write made from inside a
         ///     save (typically an <c>AfterSave</c> handler that touches a monitored property) does
@@ -170,15 +110,12 @@ namespace Nucs.JsonSettings.Autosave {
         /// <summary>
         ///     The notification handler taking care of binding and unbinding to property and collection changes.
         /// </summary>
-        public NotificationBinder? NotificationsHandler { get; set; }
-
-        /// <summary>
-        ///     Suspends auto-saving until SuspendAutosave.Dispose or SuspendAutosave.Resume are called.<br/>
-        ///     If changes are introduced while suspension then a save will be commited and resume or disposal.
-        /// </summary>
-        public SuspendAutosave SuspendAutosave() {
-            return new SuspendAutosave(this);
-        }
+        /// <remarks>
+        ///     Typed as <see cref="IDisposable"/> so the base package holds only the lifetime, not the
+        ///     autosave-specific binder itself: <c>Nucs.JsonSettings.Autosave</c> assigns a
+        ///     <c>NotificationBinder</c> here and this module disposes it when it is torn down.
+        /// </remarks>
+        public IDisposable? NotificationsHandler { get; set; }
 
         /// <summary>
         ///     Will try to trigger save if this module did not lose reference to <see cref="JsonSettings"/> socket.
@@ -196,7 +133,7 @@ namespace Nucs.JsonSettings.Autosave {
         ///     <see cref="Module.Socket"/> is a <see cref="WeakReference{T}"/>, so anything that must
         ///     still be able to reach the settings later has to hold on to the returned reference for
         ///     that whole period rather than re-resolving the socket on demand.
-        ///     See <see cref="Autosave.SuspendAutosave"/>.
+        ///     See <c>SuspendAutosave</c>.
         /// </remarks>
         internal JsonSettings? TryGetSettings() {
             if (Socket != null && Socket.TryGetTarget(out var settings))

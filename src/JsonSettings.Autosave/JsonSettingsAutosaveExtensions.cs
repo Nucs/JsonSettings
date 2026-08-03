@@ -120,7 +120,7 @@ namespace Nucs.JsonSettings.Autosave {
         /// </summary>
         /// <returns>A suspend state tracker that can be Disposed for a using block</returns>
         public static SuspendAutosave SuspendAutosave<TSettings>(this TSettings settings) where TSettings : JsonSettings {
-            return settings.Modulation.GetModule<AutosaveModule>().SuspendAutosave();
+            return new SuspendAutosave(settings.Modulation.GetModule<AutosaveModule>());
         }
     }
 }

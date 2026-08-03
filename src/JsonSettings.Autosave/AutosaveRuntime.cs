@@ -87,7 +87,7 @@ namespace Nucs.JsonSettings.Autosave {
         ///     The set of property names a write to which commits a save, for a settings type.
         /// </summary>
         /// <remarks>
-        ///     The predicate is <see cref="AutosaveModule.IsAutosaveMonitored"/>, shared with
+        ///     The predicate is <see cref="AutosavePolicy.IsAutosaveMonitored"/>, shared with
         ///     <see cref="NotificationBinder"/> so the two cannot disagree. It relaxes the old
         ///     interceptor's <c>GetSetMethod()?.IsVirtual == true</c> test: that requirement existed
         ///     solely because a Castle class proxy can only override virtual members, and weaving
@@ -97,7 +97,7 @@ namespace Nucs.JsonSettings.Autosave {
         /// </remarks>
         internal static HashSet<string> ResolveMonitoredProperties(Type settingsType) {
             var monitored = settingsType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                        .Where(AutosaveModule.IsAutosaveMonitored)
+                                        .Where(AutosavePolicy.IsAutosaveMonitored)
                                         .Select(p => p.Name);
 
             return new HashSet<string>(monitored, StringComparer.Ordinal);
