@@ -21,6 +21,15 @@ same settings class binds under **WPF, WinForms, WinUI, MAUI, Avalonia and Uno**
 > **both** packages &mdash; samples below that do both need `using Nucs.JsonSettings.Autosave;` **and**
 > `using Nucs.JsonSettings.NotifyChanges;`.
 
+> [!TIP]
+> Everything on this page has a **runnable counterpart**:
+> [`examples/JsonSettings.Examples.UI`](https://github.com/Nucs/JsonSettings/tree/master/examples/JsonSettings.Examples.UI)
+> is a WPF app with one tab per integration &mdash; the window's own position/size/title persist
+> through a TwoWay binding, and each tab pairs its demo with save/notification counters, an
+> activity log (thread-stamped, so the marshalling behaviour is visible) and a live preview of the
+> JSON file on disk. Run it with
+> `dotnet run --project examples/JsonSettings.Examples.UI -f net8.0-windows`.
+
 ## Two directions
 
 "Notifications" join a settings object to WPF in two opposite directions, and it helps to keep
@@ -639,6 +648,8 @@ directly; the convention resolver bridges to their method *names* instead.
 
 ## See also
 
+- [`examples/JsonSettings.Examples.UI`](https://github.com/Nucs/JsonSettings/tree/master/examples/JsonSettings.Examples.UI)
+  &mdash; the runnable WPF tour of every integration on this page.
 - [Autosave](autosave.md) &mdash; persisting on change, suspension, reentrancy, strong-naming.
 - [Dynamic Settings Bag](dynamic-settings-bag.md) &mdash; the key/value alternative (no `INotifyPropertyChanged`).
 - [Modulation API](modulation-api.md) &mdash; how modules such as `AutosaveModule` attach to an object.

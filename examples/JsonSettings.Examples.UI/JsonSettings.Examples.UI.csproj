@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nucs.JsonSettings.Examples.UI</RootNamespace>
+    <!-- A WPF demo app, not a shipped artifact. It exists so the notification aspects are
+         exercised from a real XAML consumer on every shipped Windows target: two-way binding,
+         ItemsSource over a nested ObservableCollection, off-thread writes marshalled back to
+         the Dispatcher, the [NotifyChangesMixin] interface injection seen by the binding
+         engine, and the raiser-convention path — one runnable window per integration the
+         docs/website-src/docs/notifications.md guide describes. -->
+    <IsPackable>false</IsPackable>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <TargetFrameworks>net6.0-windows;net8.0-windows;net10.0-windows</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <!-- AspectInjector is NOT referenced here on purpose: it flows transitively through the
+       Autosave/NotifyChanges project references (neither marks it PrivateAssets), which is
+       exactly the path a NuGet consumer weaves through — this project doubles as proof that
+       the transitive flow works. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.NotifyChanges\JsonSettings.NotifyChanges.csproj" />
+  </ItemGroup>
+
+</Project>

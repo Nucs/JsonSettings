@@ -476,6 +476,16 @@ details, the mixin, `INotifyPropertyChanging`, `[NotifyChangesFor]`, `Synchroniz
 marshalling, nested-collection autosave, threading, and a comparison with Fody `PropertyChanged`,
 CommunityToolkit.Mvvm and ReactiveUI.
 
+For a runnable tour, [`examples/JsonSettings.Examples.UI`](examples/JsonSettings.Examples.UI) is a
+WPF app in which every control is a bound settings property — the window's own position/size/title
+persist through the binding, and one tab per integration (guards, `[NotifyChangesFor]`, the
+opt-outs, nested collections, the mixin, raiser conventions, `EnableIAutosave`, marshalling) shows
+its save/notification counters, an activity log and the JSON file on disk, live:
+
+```sh
+dotnet run --project examples/JsonSettings.Examples.UI -f net8.0-windows
+```
+
 Throttled Save
 ---
 Upcoming feature...
