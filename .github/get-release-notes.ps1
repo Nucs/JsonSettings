@@ -35,14 +35,25 @@ $ErrorActionPreference = 'Stop'
 $CurrentTag = $CurrentTag -replace '^refs/tags/', ''
 
 if (-not $PreviousTag) {
+    # Run git on its OWN line, not piped into Select-Object. Piping a native command straight
+    # into `Select-Object -First 1` lets Select-Object stop the pipeline the moment it has its
+    # single item, and PowerShell tears the pipeline down before it records the process exit
+    # code -- so $LASTEXITCODE is never set. Under Set-StrictMode -Version Latest, reading an
+    # unset $LASTEXITCODE on the next line then throws "cannot be retrieved because it has not
+    # been set" (git describe is the first native command in this fresh pwsh session, so nothing
+    # set it earlier). Capturing to a variable first makes git run to completion and sets it.
     # 2>$null so "no names found" is not treated as script failure under $ErrorActionPreference=Stop.
-    $PreviousTag = (git describe --tags --abbrev=0 "$CurrentTag^" 2>$null | Select-Object -First 1)
+    $describe = git describe --tags --abbrev=0 "$CurrentTag^" 2>$null
 
     # $LASTEXITCODE is only meaningful HERE, immediately after the git call. The previous
     # version tested it even when -PreviousTag had been supplied and git had never run, so the
     # branch was decided by whatever command happened to have run last in the session.
     if ($LASTEXITCODE -ne 0) {
         $PreviousTag = $null
+    } else {
+        # git describe returns a single line; Select-Object -First 1 is a defensive guard, now
+        # in its own pipeline where stopping it early cannot swallow git's exit code.
+        $PreviousTag = $describe | Select-Object -First 1
     }
 }
 
