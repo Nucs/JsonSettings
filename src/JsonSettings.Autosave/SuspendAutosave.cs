@@ -1,4 +1,13 @@
-﻿using System;
+﻿// This project deliberately does NOT set <Nullable>enable</Nullable> -- doing so project-wide
+// is deferred work with its own warning wave (see the note in Directory.Build.targets). This
+// file moved here from the base JsonSettings project, which DOES enable nullable, so its
+// _settings field carries a `?` annotation. Turn on just the annotation context for this one
+// file so the annotation stays legal without opting the project into flow analysis. Without it
+// the compiler raises CS8632, which TreatWarningsAsErrors promotes to a build-breaking error
+// (CS8632 is absent from the WarningsNotAsErrors allowlist in Directory.Build.targets).
+#nullable enable annotations
+
+using System;
 
 namespace Nucs.JsonSettings.Autosave {
     /// <summary>

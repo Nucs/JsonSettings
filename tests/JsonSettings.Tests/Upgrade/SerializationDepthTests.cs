@@ -1,3 +1,9 @@
+// The test project does not enable nullable, but OnDeepStack below uses a `?` annotation.
+// Enable just the annotation context here so it stays legal without a project-wide nullable
+// wave; otherwise the compiler raises CS8632 (a warning only, since the test project is
+// IsPackable=false and thus exempt from TreatWarningsAsErrors -- kept clean regardless).
+#nullable enable annotations
+
 using System;
 using System.Collections.Generic;
 using System.IO;
