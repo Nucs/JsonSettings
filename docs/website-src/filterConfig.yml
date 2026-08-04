@@ -1,0 +1,28 @@
+# DocFX API Filter Configuration
+# https://dotnet.github.io/docfx/docs/dotnet-api-docs.html#filter-apis
+#
+# Wired into docfx.json via `"filter": "filterConfig.yml"` on the metadata entry.
+# The default DocFX filter already hides non-public members; the rules below trim a few
+# things the default keeps.
+
+apiRules:
+  # Compiler-emitted members are noise in an API reference.
+  - exclude:
+      hasAttribute:
+        uid: System.Runtime.CompilerServices.CompilerGeneratedAttribute
+      type: Member
+
+  # Internal helpers that ship inside the assembly but are not part of the Nucs.JsonSettings
+  # public contract; ReflectionHelpers lives under a Microsoft.Xna.* namespace. (The former
+  # third-party Rijndael256 namespace was removed when encryption moved onto
+  # System.Security.Cryptography. EncryptionModule under Nucs.JsonSettings.Modulation is now the
+  # supported entry point, and EncryptionAlgorithm/KeySize are documented public enums.)
+  - exclude:
+      uidRegex: ^Microsoft\.Xna
+      type: Namespace
+
+  # Uncomment to also hide the path/file helpers if you want the reference to cover only the
+  # settings API surface:
+  # - exclude:
+  #     uidRegex: ^Nucs\.JsonSettings\.Inline
+  #     type: Namespace

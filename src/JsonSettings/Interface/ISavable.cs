@@ -83,7 +83,7 @@ namespace Nucs.JsonSettings {
         event BeforeDeserializeHandler? BeforeDeserialize;
 
         /// <summary>
-        ///     Invoked after deserialization of <see cref="this"/> was successful.
+        ///     Invoked after deserialization of this instance was successful.
         /// </summary>
         event AfterDeserializeHandler? AfterDeserialize;
 

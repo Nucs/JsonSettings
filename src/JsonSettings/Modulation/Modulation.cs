@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 
 namespace Nucs.JsonSettings.Modulation {
     /// <summary>
@@ -78,7 +79,7 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         public void Attach(Module t) {
-            if (_isdisposed)
+            if (Volatile.Read(ref _isdisposed) != 0)
                 throw new ObjectDisposedException("Can't attach, this object is already disposed.");
             t.Attach(_settings);
             lock (_modules)
@@ -92,7 +93,7 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         /// <summary>
-        ///     Will invoke attach to a freshly new object of type <see cref="T"/>.
+        ///     Will invoke attach to a freshly new object of type <typeparamref name="T"/>.
         /// </summary>
         /// <typeparam name="T">A module class</typeparam>
         /// <param name="args">The arguments that'll be passed to the constructor</param>
@@ -102,12 +103,15 @@ namespace Nucs.JsonSettings.Modulation {
             return (T) t;
         }
 
-        private bool _isdisposed = false;
+        //0 = live, 1 = disposed. int (not bool) so the check-and-set is a single atomic
+        //Interlocked.CompareExchange: a concurrent or repeat Dispose() must not tear down -- and
+        //double-Dispose every module -- a second time. Dispose is fire-and-forget, so a loser just
+        //returns; no lock/wait is needed here (unlike the configure guard, which callers must wait on).
+        private int _isdisposed;
 
         public void Dispose() {
-            if (_isdisposed)
+            if (Interlocked.CompareExchange(ref _isdisposed, 1, 0) != 0)
                 return;
-            _isdisposed = true;
             foreach (var module in _modules.ToArray()) {
                 module.Dispose();
             }

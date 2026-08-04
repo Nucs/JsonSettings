@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters;
 using System.Text;
+using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Nucs.JsonSettings.Autosave;
@@ -62,7 +63,26 @@ namespace Nucs.JsonSettings {
             ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
             NullValueHandling = NullValueHandling.Include,
             ContractResolver = new FileNameIgnoreResolver(),
-            TypeNameHandling = TypeNameHandling.Auto
+            TypeNameHandling = TypeNameHandling.Auto,
+            //Set explicitly rather than inherited. Json.NET 13 changed the default MaxDepth from null
+            //(unlimited) to 64; upgrading Newtonsoft.Json 12->13 in 2.1.0 therefore silently capped how
+            //deeply a settings object could be nested. The cap is asymmetric in the worst way - SAVING
+            //is not depth-limited - so an application could write a file it then failed to read back on
+            //next start, with nothing warning at the point the deep object was persisted. 2.0.x placed
+            //no limit at all.
+            //
+            //128 restores the capability for every realistic settings graph while staying a WORKING
+            //backstop against a pathological deeply-nested file, and "working" is the operative word and
+            //the reason it is not larger. This reader is recursive and, with TypeNameHandling.Auto on, it
+            //exhausts the thread's stack at roughly 0.42 levels per KB - measured at depth ~110 on a
+            //256KB stack, ~230 on 512KB, ~430 on a 1MB thread. A limit converts that uncatchable stack
+            //overflow into a catchable JsonSettingsException only if it fires BELOW the overflow depth;
+            //512 sits above it on every ordinary stack and so would never run. 128 clears any real
+            //settings graph (they are rarely more than a dozen deep) yet still fires before the stack
+            //goes on a 512KB-or-larger thread. A consumer who genuinely needs deeper can set this to null
+            //for the pre-2.1.0 unlimited behaviour; one hardening against hostile input on a small stack
+            //can lower it further.
+            MaxDepth = 128
         };
 
         #endregion
@@ -99,16 +119,14 @@ namespace Nucs.JsonSettings {
         protected JsonSettings(string fileName) {
             #pragma warning restore 8618
             _childtype = GetType();
-            if (_childtype.GetCustomAttribute<ProxyGeneratedAttribute>() == null) {
-                Modulation = new ModuleSocket(this);
-                // ReSharper disable once VirtualMemberCallInConstructor
-                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                if (fileName != null)
-                    FileName = fileName;
+            Modulation = new ModuleSocket(this);
+            // ReSharper disable once VirtualMemberCallInConstructor
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            if (fileName != null)
+                FileName = fileName;
 
-                if (!_childtype.HasDefaultConstructor())
-                    throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
-            }
+            if (!_childtype.HasDefaultConstructor())
+                throw new JsonSettingsException($"Can't initiate a settings object with class that doesn't have empty public constructor.");
         }
 
         /// <summary>
@@ -174,7 +192,10 @@ namespace Nucs.JsonSettings {
             try {
                 lock (o) {
                     o.OnBeforeSave(ref filename);
-                    stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+                    //@throw: true so a sharing violation (another handle holds the file -- e.g. a
+                    //concurrent reader) surfaces as the IOException the catch below wraps into a
+                    //JsonSettingsException, instead of a swallowed null that then NREs on SetLength(0).
+                    stream = Files.AttemptOpenFile(filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, @throw: true);
                     o.FileName = filename;
                     o.OnBeforeSerialize();
                     var json = o.ToJson(serializeAsType: inType);
@@ -210,7 +231,7 @@ namespace Nucs.JsonSettings {
         }
 
         public void Load(string filename) {
-            if (filename == null)
+            if (filename is null)
                 throw new ArgumentNullException(nameof(filename));
             Load(this, (Action) null!, filename);
         }
@@ -254,7 +275,20 @@ namespace Nucs.JsonSettings {
         }
 
         public virtual void LoadJson(string json, JsonSerializerSettings? settings = null) {
-            JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
+            //Populating sets every property through its (woven) setter. If autosave is enabled on
+            //this instance -- e.g. a Load()/LoadDefault() reload after EnableAutosave() -- each of
+            //those writes would otherwise commit an autosave and persist the half-loaded object.
+            //Suppress autosave for the duration of the populate; the writes come from disk, not the
+            //user. Modules are few and this is not a hot path, so the scan is cheap.
+            var autosave = Modulation?.GetModules<AutosaveModule>().FirstOrDefault();
+            if (autosave != null)
+                autosave.IsLoading = true;
+            try {
+                JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
+            } finally {
+                if (autosave != null)
+                    autosave.IsLoading = false;
+            }
         }
 
         public virtual string ToJson(JsonSerializerSettings? settings = null, Type? serializeAsType = null, Formatting? formatting = null) {
@@ -269,7 +303,7 @@ namespace Nucs.JsonSettings {
         /// <param name="configure">Configurate the settings instance prior to loading - called after OnConfigure</param>
         /// <returns>The loaded or freshly new saved object</returns>
         public void Load(string filename, Action<JsonSettings>? configure) {
-            if (filename == null)
+            if (filename is null)
                 throw new ArgumentNullException(nameof(filename));
             Load(this, configure, filename);
         }
@@ -317,7 +351,7 @@ namespace Nucs.JsonSettings {
         /// <returns>The loaded or freshly new saved object</returns>
         public static T Load<T>(string filename, Action<T>? configure, object[] args) where T : ISavable {
             T o = (T) typeof(T).CreateInstance(args);
-            return Load(o, configure == null ? null : () => configure?.Invoke(o), filename);
+            return Load(o, configure is null ? null : () => configure?.Invoke(o), filename);
         }
 
         /// <summary>
@@ -422,7 +456,7 @@ namespace Nucs.JsonSettings {
                 }
             }
 
-            if (instance == null)
+            if (instance is null)
                 throw new ArgumentNullException(nameof(instance));
 
             JsonSettings o = (JsonSettings) (ISavable) instance;
@@ -430,63 +464,71 @@ namespace Nucs.JsonSettings {
             o.EnsureConfigured();
             configure?.Invoke();
 
-            o.OnBeforeLoad(ref filename);
+            //Load takes the SAME lock Save does, so a load and a save on this instance are mutually
+            //exclusive rather than colliding on the file (which surfaced as an unwrapped IOException in
+            //Load and a NullReferenceException in Save) and rather than tearing the object as one
+            //thread's PopulateObject raced the other's ToJson. Monitor is reentrant, so the nested
+            //o.Save(filename) below -- and any Save/LoadDefault a recovery/versioning handler runs --
+            //re-enters this lock instead of deadlocking.
+            lock (o) {
+                o.OnBeforeLoad(ref filename);
 
-            if (File.Exists(filename)) {
-                try {
-                    byte[] bytes;
-                    using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-                        bytes = ReadAllBytes(fs);
-
-                    o.OnDecrypt(ref bytes);
-                    o.OnAfterDecrypt(ref bytes);
-
-                    var fc = Encoding.GetString(bytes);
-                    if (string.IsNullOrEmpty(fc) || string.IsNullOrEmpty(fc.Replace("\r", "").Replace("\n", "").Trim())) {
-                        bool recovered = false; //by default we ignore
-                        bool handled = false; //by default we ignore
-                        o.OnTryingRecover(filename, null, ref recovered, ref handled);
-                        if (!recovered)
-                            throw new JsonSettingsException("The settings file is empty!");
-
-                        o.OnRecovered();
-                        o.OnAfterLoad(false);
-                        o.FileName = filename;
-                        return o;
-                    }
-
-                    o.OnBeforeDeserialize(ref fc);
-
+                if (File.Exists(filename)) {
                     try {
-                        o.LoadJson(fc);
-                    } catch (JsonException e) {
-                        bool recovered = false; //by default we ignore
-                        bool handled = false; //by default we ignore
-                        o.OnTryingRecover(filename, e, ref recovered, ref handled);
+                        byte[] bytes;
+                        using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                            bytes = ReadAllBytes(fs);
 
-                        if (!recovered)
-                            throw new JsonSettingsException($"Unable to parse file '{filename}', see inner exception...", e);
+                        o.OnDecrypt(ref bytes);
+                        o.OnAfterDecrypt(ref bytes);
 
-                        o.OnRecovered();
-                        o.OnAfterLoad(false);
+                        var fc = Encoding.GetString(bytes);
+                        if (string.IsNullOrEmpty(fc) || string.IsNullOrEmpty(fc.Replace("\r", "").Replace("\n", "").Trim())) {
+                            bool recovered = false; //by default we ignore
+                            bool handled = false; //by default we ignore
+                            o.OnTryingRecover(filename, null, ref recovered, ref handled);
+                            if (!recovered)
+                                throw new JsonSettingsException("The settings file is empty!");
+
+                            o.OnRecovered();
+                            o.OnAfterLoad(false);
+                            o.FileName = filename;
+                            return o;
+                        }
+
+                        o.OnBeforeDeserialize(ref fc);
+
+                        try {
+                            o.LoadJson(fc);
+                        } catch (JsonException e) {
+                            bool recovered = false; //by default we ignore
+                            bool handled = false; //by default we ignore
+                            o.OnTryingRecover(filename, e, ref recovered, ref handled);
+
+                            if (!recovered)
+                                throw new JsonSettingsException($"Unable to parse file '{filename}', see inner exception...", e);
+
+                            o.OnRecovered();
+                            o.OnAfterLoad(false);
+                            o.FileName = filename;
+                            return o;
+                        }
+
+                        o.OnAfterDeserialize();
                         o.FileName = filename;
+                        o.OnAfterLoad(true);
                         return o;
+                    } catch (InvalidOperationException e) when (e.Message.Contains("Cannot convert")) {
+                        throw new JsonSettingsException("Unable to deserialize settings file, value<->type mismatch. see inner exception", e);
+                    } catch (ArgumentException e) when (e.Message.StartsWith("Invalid")) {
+                        throw new JsonSettingsException("Settings file is corrupt.");
                     }
-
-                    o.OnAfterDeserialize();
+                } else {
+                    //empty file
+                    o.OnAfterLoad(false);
                     o.FileName = filename;
-                    o.OnAfterLoad(true);
-                    return o;
-                } catch (InvalidOperationException e) when (e.Message.Contains("Cannot convert")) {
-                    throw new JsonSettingsException("Unable to deserialize settings file, value<->type mismatch. see inner exception", e);
-                } catch (ArgumentException e) when (e.Message.StartsWith("Invalid")) {
-                    throw new JsonSettingsException("Settings file is corrupt.");
+                    o.Save(filename);
                 }
-            } else {
-                //empty file
-                o.OnAfterLoad(false);
-                o.FileName = filename;
-                o.Save(filename);
             }
 
             return o;
@@ -566,7 +608,7 @@ namespace Nucs.JsonSettings {
                 throw new JsonSettingsException("Could not resolve path because 'FileName' is null or empty.");
 
             if (filename == "<DEFAULT>") {
-                if (o.FileName == null) //param filename is default and o.FileName are null.
+                if (o.FileName is null) //param filename is default and o.FileName are null.
                     return null;
                 filename = o.FileName; //load from instance.
             }
@@ -641,22 +683,64 @@ namespace Nucs.JsonSettings {
 
         #endregion
 
-        private bool _hasconfigured = false;
+        //Configuration runs exactly once per instance, and a concurrent caller must WAIT for it to
+        //finish rather than race ahead against a half-configured object -- e.g. a Save that beat the
+        //encryption module being attached would write plaintext. Three states, not a bool: the middle
+        //one, Configuring, is what makes a second thread block instead of either re-running configure
+        //(the old "Can't run configure twice!" throw, which was an unsynchronized-bootstrap race) or
+        //proceeding on an object that is only half set up.
+        private enum ConfigurationState : byte {
+            NotConfigured = 0,
+            Configuring = 1,
+            Configured = 2
+        }
+
+        //A byte-backed enum cannot be Interlocked.CompareExchange'd (there is no byte/enum overload),
+        //and the hard parts here are the WAIT and reentrancy rather than the claim -- so a monitor
+        //guards the transition. Monitor being reentrant is exactly what OnConfigure needs: its
+        //Configurate callback is user code that may call back into Save/Load (hence EnsureConfigured)
+        //on this same thread, and that re-entry must fall straight through, not deadlock waiting on
+        //itself. `volatile` gives the lock-free fast path its acquire read, so everything OnConfigure
+        //publishes before the Configured write is visible to any thread that observes Configured.
+        private volatile ConfigurationState _configureState = ConfigurationState.NotConfigured;
+        private readonly object _configureGate = new object();
 
         /// <summary>
         ///     Configurate properties of this JsonSettings, for example - call <see cref="FluentJsonSettings.WithBase64{T}"/> on this.<br></br>
         /// </summary>
+        /// <remarks>
+        ///     Run-once and reentrancy are enforced by <see cref="EnsureConfigured"/>; an override should
+        ///     call <c>base.OnConfigure()</c> to fire the fluent <see cref="Configurate"/> handlers.
+        /// </remarks>
         protected virtual void OnConfigure() {
-            if (_hasconfigured)
-                throw new InvalidOperationException("Can't run configure twice!");
-            _hasconfigured = true;
             Configurate?.Invoke(this);
         }
 
+        /// <summary>
+        ///     Runs <see cref="OnConfigure"/> exactly once for this instance, blocking any concurrent
+        ///     caller until it completes. Safe to call from multiple threads, and re-entrant from within
+        ///     <see cref="OnConfigure"/> itself (the configuring thread falls through rather than blocking).
+        /// </summary>
         protected internal void EnsureConfigured() {
-            if (_hasconfigured)
-                return;
-            OnConfigure();
+            if (_configureState == ConfigurationState.Configured)
+                return; //fast path: a single volatile read, no lock.
+
+            lock (_configureGate) {
+                //Configured by another thread while we waited on the gate, or we are the reentrant owner
+                //already mid-configure (Configuring on this same thread): either way, nothing to do here.
+                if (_configureState != ConfigurationState.NotConfigured)
+                    return;
+
+                _configureState = ConfigurationState.Configuring; //a same-thread reentrant call now returns above
+                try {
+                    OnConfigure();
+                } catch {
+                    _configureState = ConfigurationState.NotConfigured; //failed: let a later call retry rather than wedge
+                    throw;
+                }
+
+                _configureState = ConfigurationState.Configured;
+            }
         }
 
         protected internal virtual void OnBeforeLoad(ref string destinition) {
@@ -728,6 +812,8 @@ namespace Nucs.JsonSettings {
 
         #region IDisposable
 
+        private int _disposed;
+
         protected virtual void Dispose(bool disposing) {
             if (disposing) {
                 Modulation?.Dispose();
@@ -735,6 +821,12 @@ namespace Nucs.JsonSettings {
         }
 
         public void Dispose() {
+            //Idempotent and thread-safe: the first caller wins the 0->1 transition and runs the dispose
+            //chain (the virtual Dispose(bool), including any subclass override) exactly once; a concurrent
+            //or repeat Dispose() returns. No lock -- dispose is fire-and-forget, so a second caller just
+            //leaves rather than waiting: the 2-state Interlocked guard, not the configure-style lock.
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
             Dispose(true);
             GC.SuppressFinalize(this);
         }

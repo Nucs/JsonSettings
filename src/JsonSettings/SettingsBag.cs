@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using Nucs.JsonSettings.Autosave;
@@ -12,10 +11,16 @@ namespace Nucs.JsonSettings {
     /// <summary>
     ///     A dynamic settings class, adds settings as you go.
     /// </summary>
-    /// <remarks>SettingsBag is threadsafe by using <see cref="ConcurrentDictionary{TKey,TValue}"/>.</remarks>
+    /// <remarks>
+    ///     The value store is thread-safe: it is backed by a <see cref="ConcurrentDictionary{TKey,TValue}"/>
+    ///     (through <see cref="SafeDictionary{TKey,TValue}"/>), so concurrent <see cref="Get{T}"/>,
+    ///     <see cref="Set"/>, <see cref="Remove"/> and enumeration of <see cref="Data"/> neither corrupt
+    ///     state nor lose entries. Autosave-on-write (when <see cref="Autosave"/> is enabled) is a
+    ///     separate concern: the persistence path is not fully synchronized across threads, so drive
+    ///     saves from a single writer or coalesce a burst inside a SuspendAutosave scope.
+    /// </remarks>
     public sealed class SettingsBag : JsonSettings {
         private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
-        private readonly SafeDictionary<string, PropertyInfo> PropertyData = new SafeDictionary<string, PropertyInfo>();
         private AutosaveModule? _autosaveModule; //TODO: this potentially can support WPF binding
         private bool _autosave;
 
@@ -57,7 +62,7 @@ namespace Nucs.JsonSettings {
 
                 _autosave = value;
 
-                if (value && _autosaveModule == null)
+                if (value && _autosaveModule is null)
                     Modulation.Attach(_autosaveModule = new AutosaveModule());
                 else if (!value && _autosaveModule != null) {
                     Modulation.Deattach(_autosaveModule);
@@ -70,12 +75,6 @@ namespace Nucs.JsonSettings {
 
         public SettingsBag(string fileName) {
             FileName = fileName;
-            if (this.GetType() != typeof(SettingsBag))
-                foreach (var pi in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
-                    if ((pi.CanRead && pi.CanWrite) == false)
-                        continue;
-                    PropertyData.Add(pi.Name, pi);
-                }
         }
 
         public object? this[string key] {
@@ -84,32 +83,46 @@ namespace Nucs.JsonSettings {
         }
 
         /// <summary>
-        ///     Gets the value corresponding to the given <paramref name="key"/> or returns <see cref="default(T)"/>
+        ///     Gets the value for <paramref name="key"/>, converting it to <typeparamref name="T"/>, or
+        ///     returns <paramref name="default"/> when the key is missing or its value is <c>null</c>.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="key"></param>
-        /// <param name="default"></param>
-        /// <returns></returns>
+        /// <remarks>
+        ///     A value stored under one numeric width comes back under another after a round-trip --
+        ///     Newtonsoft deserializes a JSON integer as <see cref="long"/>, so a value set as
+        ///     <see cref="int"/> is a boxed <c>long</c> once reloaded. A hard <c>(T)</c> unbox threw
+        ///     <see cref="InvalidCastException"/> on that, and a <c>null</c> value threw
+        ///     <see cref="NullReferenceException"/>. This coerces through <see cref="Convert.ChangeType(object,System.Type)"/>
+        ///     after the exact/assignable fast path, and treats a null the same as a missing key.
+        /// </remarks>
         public T? Get<T>(string key, T @default = default(T)) {
-            if (PropertyData.TryGetValue(key, out var prop))
-                return (T) prop.GetValue(this, null);
+            if (!_data.TryGetValue(key, out var value) || value is null)
+                return @default;
 
-            if (_data.TryGetValue(key, out var value))
-                return (T) value;
+            //Exact type, an assignable reference, or T == object: hand it back untouched.
+            if (value is T typed)
+                return typed;
 
-            return default;
+            //Bridge numeric (and other IConvertible) width mismatches, e.g. the Int64 a JSON integer
+            //deserializes back into for a Get<int>. Nullable is unwrapped so Get<int?> resolves too.
+            var target = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+            //Enums are not directly convertible from their underlying integral via Convert.ChangeType
+            //(it throws InvalidCastException), yet a round-trip stores an enum exactly that way -- as the
+            //boxed Int64 a JSON integer deserializes to, or as its name when a string-enum converter is
+            //used. Coerce both forms back to the enum so Get<TEnum> survives a save/load like Get<int>.
+            if (target.IsEnum) {
+                return value is string enumName
+                    ? (T) Enum.Parse(target, enumName, ignoreCase: true)
+                    : (T) Enum.ToObject(target, Convert.ChangeType(value, Enum.GetUnderlyingType(target)));
+            }
+
+            return (T) Convert.ChangeType(value, target);
         }
 
         /// <summary>
         ///     Sets or adds a value.
         /// </summary>
         public void Set(string key, object value) {
-            if (PropertyData.TryGetValue(key, out var prop)) {
-                prop.SetValue(this, value);
-                TrySave();
-                return;
-            }
-
             _data[key] = value;
             TrySave();
         }
@@ -123,11 +136,20 @@ namespace Nucs.JsonSettings {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TrySave() {
-            if (Autosave && _autosaveModule!.AutosavingState != AutosavingState.SuspendedChanged) {
+            if (Autosave && !_autosaveModule!.IsLoading && _autosaveModule.AutosavingState != AutosavingState.SuspendedChanged) {
                 if (_autosaveModule.UpdatesSuspended) {
                     _autosaveModule.AutosavingState = AutosavingState.SuspendedChanged;
-                } else
-                    Save();
+                } else if (!_autosaveModule.IsSaving) {
+                    //Same reentrancy guard the woven path uses: a write made from inside this Save
+                    //(e.g. an AfterSave handler that touches the bag) must not re-enter and recurse
+                    //until the stack overflows. The value is kept; it persists on the next save.
+                    _autosaveModule.IsSaving = true;
+                    try {
+                        Save();
+                    } finally {
+                        _autosaveModule.IsSaving = false;
+                    }
+                }
             }
         }
 

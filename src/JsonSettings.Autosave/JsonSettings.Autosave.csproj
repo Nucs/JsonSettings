@@ -1,11 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	  <Summary>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Summary>
-    <Description>An extension to JsonSettings that allows to wrap a class via transparent proxy that autosaves. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged.</Description>
+	  <Summary>An extension to JsonSettings that saves automatically when a property changes, using compile-time IL weaving. Native AOT compatible. Support for Autosaving on INotifyPropertyChanged/INotifyCollectionChanged. To raise INotifyPropertyChanged from your setters for data binding, add the sibling Nucs.JsonSettings.NotifyChanges package.</Summary>
+    <Description>An extension to JsonSettings that saves automatically when a property changes. Mark your settings class [Autosave] and every setter commits a save - no proxy, no virtual requirement, and nothing generated at runtime, so it works under Native AOT.</Description>
     <TargetFrameworks>netstandard2.0;net48;net6.0;net8.0;net10.0</TargetFrameworks>
     <RootNamespace>Nucs.JsonSettings.Autosave</RootNamespace>
     <PackageId>Nucs.JsonSettings.Autosave</PackageId>
+    <!-- Ship as Nucs.JsonSettings.Autosave.dll so assembly identity = PackageId = namespace; the
+         short .csproj/folder name is source layout only. See the note in JsonSettings.csproj. -->
+    <AssemblyName>Nucs.JsonSettings.Autosave</AssemblyName>
     <Title>Nucs.JsonSettings.Autosave</Title>
     <!-- GeneratePackageOnBuild is deliberately absent; see the note in JsonSettings.csproj.
          In short: on a multi-targeted project it makes `dotnet pack` from a clean tree fail
@@ -13,12 +16,43 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Castle.Core" Version="5.1.1" />
+    <!-- Minimum 13.0.3, no upper bound - same [13.0.3, ) range and rationale as
+         JsonSettings.csproj; kept in step with the version this package references
+         transitively through that project. -->
+    <PackageReference Include="Newtonsoft.Json" Version="[13.0.3, )" />
+
+    <!-- Replaces Castle.Core 5.1.1. DynamicProxy builds proxy types at runtime with
+         System.Reflection.Emit, which a Native AOT binary has no code generator to execute —
+         `EnableAutosave()` died with PlatformNotSupportedException there and no annotation or
+         descriptor could fix it (see docs/AOT.md). AspectInjector does the same job at compile
+         time and emits nothing at runtime.
+
+         NOT marked PrivateAssets="all" ON PURPOSE. The weaving has to happen in the assembly
+         that DECLARES the settings class, which is the consumer's, not ours. AspectInjector
+         ships buildTransitive/ targets that are byte-identical to its build/ ones precisely so
+         they reach a project that references it indirectly, and its own targets additionally
+         force PrivateAssets="None" on itself. Suppressing the flow here would leave consumers
+         with an [Autosave] attribute that compiles and never does anything. -->
+    <PackageReference Include="AspectInjector" Version="2.9.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\JsonSettings\JsonSettings.csproj" />
+  </ItemGroup>
+
+  <!-- Ship the re-signing targets to consumers. build/ covers a direct reference;
+       buildTransitive/ covers a consumer who picks this package up through another package.
+       Same file in both, matching how AspectInjector ships its own. -->
+  <ItemGroup>
+    <None Include="build\Nucs.JsonSettings.Autosave.targets" Pack="true" PackagePath="build\" Visible="false" />
+    <None Include="build\Nucs.JsonSettings.Autosave.targets" Pack="true" PackagePath="buildTransitive\" Visible="false" />
+  </ItemGroup>
+
+  <!-- See the note on the same item group in JsonSettings.csproj: declared as an item so the
+       public key comes from $(PublicKey) in Directory.Build.props rather than being pasted
+       here as a literal. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="JsonSettings.Tests" />
   </ItemGroup>
 
 </Project>

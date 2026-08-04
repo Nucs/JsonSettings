@@ -15,6 +15,7 @@ using Nucs.JsonSettings.Modulation;
 using Nucs.JsonSettings.Modulation.Recovery;
 
 namespace Nucs.JsonSettings.Examples {
+    [Autosave]
     public class RecoverableSettings : JsonSettings{
         public override string FileName { get; set; } = "somename.json";
         /*public virtual Version Version { get; set; } = new Version(1, 0, 0, 6);*/

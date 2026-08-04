@@ -1,31 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System;
 using System.Diagnostics;
-using System.Diagnostics.Tracing;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using Castle.DynamicProxy;
 using Nucs.JsonSettings.Examples;
-using BindingFlags = System.Reflection.BindingFlags;
 
 namespace Nucs.JsonSettings.Autosave {
-    internal static class TypeValidation<T> where T : JsonSettings {
-        // ReSharper disable once StaticMemberInGenericType
-        private static bool _validated;
-
-        public static void ValidateAllVirtual() {
-            if (_validated || !typeof(T).IsInterface && typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                                                 .Where(p => AutosaveModule._frameworkParameters.All(av => !p.Name.Equals(av)))
-                                                                 .All(p => p.GetGetMethod().IsVirtual)) {
-                _validated = true;
+    /// <summary>
+    ///     Validates that a settings type was actually woven before autosave is enabled on it.
+    /// </summary>
+    /// <remarks>
+    ///     The old implementation could not silently fail: if a class had no virtual properties,
+    ///     Castle produced a proxy that ignored every write, so the library threw up front rather
+    ///     than let a user believe their settings were being persisted. The failure mode under
+    ///     weaving is different but just as quiet -- a class with no <see cref="AutosaveAttribute"/>
+    ///     is simply never woven, so <c>EnableAutosave()</c> would attach a module that nothing
+    ///     ever calls -- and it deserves the same treatment.
+    /// </remarks>
+    internal static class TypeValidation {
+        public static void ValidateWoven(Type settingsType) {
+            if (settingsType.GetCustomAttribute<AutosaveAttribute>(true) != null)
                 return;
-            }
 
-            var msg = $"JsonSettings: During proxy creation of {typeof(T).Name}, any non-virtual properties will be completely ignored by the proxy object and any change to" +
-                      $" non-virtual properties will do nothing therefore all properties must be virtual in order for the proxied object to function normally " +
-                      $"or proxify with an interface which forces the property to be virtual behind the scenes (only the interface properties will be validated).";
+            var msg = $"JsonSettings: {settingsType.Name} is not marked with [Autosave], so its setters were never woven and "
+                    + $"enabling autosave on it would silently do nothing. Add [Autosave] to the class:"
+                    + Environment.NewLine + Environment.NewLine
+                    + $"    [Autosave]" + Environment.NewLine
+                    + $"    public class {settingsType.Name} : JsonSettings {{ ... }}"
+                    + Environment.NewLine + Environment.NewLine
+                    + $"[Autosave] is not inherited: weaving happens where a setter is declared, so every class in a settings "
+                    + $"hierarchy that declares properties you want saved needs its own attribute. Note that properties no "
+                    + $"longer need to be virtual -- that requirement belonged to the Castle.DynamicProxy implementation this "
+                    + $"replaces.";
             try {
                 if (Debugger.IsAttached)
                     Console.Error.WriteLine(msg);
@@ -35,90 +39,79 @@ namespace Nucs.JsonSettings.Autosave {
 
             throw new JsonSettingsException(msg);
         }
-
-        internal static class InterfaceTypeValidation<TInterface> where TInterface : class {
-            // ReSharper disable once StaticMemberInGenericType
-            // ReSharper disable once MemberHidesStaticFromOuterClass
-            private static bool _validated;
-
-            public static void ValidateInterfaceVirtual() {
-                if (_validated || typeof(TInterface).IsInterface
-                    && typeof(TInterface).IsAssignableFrom(typeof(T))) {
-                    _validated = true;
-                    return;
-                }
-
-                var msg = $"JsonSettings: During proxy creation of {typeof(T).Name}, any non-virtual properties will be completely ignored by the proxy object and any change to" +
-                          $" non-virtual properties will do nothing therefore all properties must be virtual in order for the proxied object to function normally " +
-                          $"or proxify with an interface which forces the property to be virtual behind the scenes (only the interface properties will be validated).";
-                try {
-                    if (Debugger.IsAttached)
-                        Console.Error.WriteLine(msg);
-                } catch (Exception) {
-                    //swallow
-                }
-
-                throw new JsonSettingsException(msg);
-            }
-        }
     }
 
     public static class JsonSettingsAutosaveExtensions {
-        // ReSharper disable once FieldCanBeMadeReadOnly.Global
-        public static ProxyGenerationOptions Options;
-
-        private static ProxyGenerator _generator;
-
-        static JsonSettingsAutosaveExtensions() {
-            Options = new ProxyGenerationOptions();
-            Options.AdditionalAttributes.Add(new CustomAttributeInfo(typeof(ProxyGeneratedAttribute).GetConstructor(Array.Empty<Type>()), Array.Empty<object>()));
-        }
-
         /// <summary>
-        ///     Enables automatic saving when changing any <b>virtual properties</b>.
+        ///     Enables automatic saving when changing any property of a class marked
+        ///     <see cref="AutosaveAttribute"/>.
         /// </summary>
         /// <typeparam name="TSettings">A settings class implementing <see cref="JsonSettings"/></typeparam>
-        /// <param name="settings">The settings class to wrap in a proxy.</param>
-        /// <returns></returns>
-        /// <exception cref="JsonSettingsException">When <typeparamref name="TSettings"/> has no virtual properties.</exception>
+        /// <param name="settings">The settings instance to enable autosaving on.</param>
+        /// <returns>
+        ///     <paramref name="settings"/> itself. Unlike the previous Castle-based implementation
+        ///     this is neither a proxy nor a copy -- the returned reference is the one that was
+        ///     passed in, so every other reference to the same instance autosaves too.
+        /// </returns>
+        /// <exception cref="JsonSettingsException">When <typeparamref name="TSettings"/> is not marked <see cref="AutosaveAttribute"/>.</exception>
         public static TSettings EnableAutosave<TSettings>(this TSettings settings) where TSettings : JsonSettings {
-            if (settings == null)
+            if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
-            TypeValidation<TSettings>.ValidateAllVirtual();
 
-            _generator ??= new ProxyGenerator();
+            //SettingsBag has its own dictionary-backed autosave and is not woven. Its instance
+            //EnableAutosave() hides this extension when called on a SettingsBag-typed reference, but
+            //a JsonSettings-typed one resolves to the extension instead -- so without this the same
+            //object would autosave through one reference and throw "not marked [Autosave]" through
+            //another. Route it to the bag's own autosave so both behave identically.
+            if (settings is SettingsBag bag) {
+                bag.EnableAutosave();
+                return settings;
+            }
 
-            return _generator.CreateClassProxyWithTarget<TSettings>(settings, Options ?? ProxyGenerationOptions.Default, ApplicableInterceptors(settings).ToArray());
+            //the concrete type, not TSettings: the caller may well hold a base-typed reference.
+            var type = settings.GetType();
+            TypeValidation.ValidateWoven(type);
+
+            //Idempotent. Under Castle every call returned a fresh proxy, so calling twice simply
+            //produced two proxies; here there is one instance and enabling twice would attach a
+            //second AutosaveModule to it. The woven advice only ever consults the first module, so
+            //the extra one would sit unused -- except on a NotifiyingJsonSettings, where it also
+            //spins up a second NotificationBinder that subscribes to PropertyChanged and is never
+            //disposed. Returning early keeps a repeated EnableAutosave() a harmless no-op.
+            if (settings.Modulation.IsAttachedOfType<AutosaveModule>())
+                return settings;
+
+            var module = new AutosaveModule();
+            module.SetMonitoredProperties(AutosaveRuntime.ResolveMonitoredProperties(type));
+            if (settings is NotifiyingJsonSettings notifiying)
+                module.NotificationsHandler = new NotificationBinder(notifiying);
+
+            settings.Modulation.Attach(module);
+            return settings;
         }
 
         /// <summary>
-        ///     Enables automatic saving when changing any <b>virtual properties</b> returning the interface of <typeparamref name="ISettings"/>.
+        ///     Enables automatic saving and returns the settings as <typeparamref name="ISettings"/>.
         /// </summary>
-        /// <typeparam name="ISettings">An interface, your <see cref="JsonSettings"/> is implementing</typeparam>
-        /// <typeparam name="TSettings">The JsonSettings type, aka proxy victim</typeparam>
-        /// <param name="settings">The settings class to wrap in a proxy.</param>
-        /// <returns>The interface specified which will save on every set</returns>
-        /// <exception cref="JsonSettingsException">When <typeparamref name="TSettings"/> has no virtual properties.</exception>
+        /// <typeparam name="ISettings">An interface your <see cref="JsonSettings"/> class implements</typeparam>
+        /// <typeparam name="TSettings">The JsonSettings type</typeparam>
+        /// <param name="settings">The settings instance to enable autosaving on.</param>
+        /// <returns>The instance, as the requested interface.</returns>
+        /// <remarks>
+        ///     Retained for source compatibility. Under Castle this built a genuinely different
+        ///     object -- an interface proxy forwarding to the original -- which was the only way to
+        ///     intercept a class whose properties were not virtual. Weaving rewrites the setters
+        ///     themselves, so the interface buys nothing beyond the cast and
+        ///     <see cref="EnableAutosave{TSettings}"/> is now equivalent and clearer.
+        /// </remarks>
+        /// <exception cref="JsonSettingsException">When <typeparamref name="TSettings"/> is not marked <see cref="AutosaveAttribute"/>.</exception>
         public static ISettings EnableIAutosave<TSettings, ISettings>(this TSettings settings) where TSettings : JsonSettings, ISettings where ISettings : class {
-            if (settings == null)
+            if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
             if (!typeof(ISettings).IsInterface)
-                throw new ArgumentNullException(nameof(settings), "Target Type must be interface");
-            TypeValidation<TSettings>.InterfaceTypeValidation<ISettings>.ValidateInterfaceVirtual();
+                throw new ArgumentException("Target type must be an interface", nameof(settings));
 
-            _generator ??= new ProxyGenerator();
-            return _generator.CreateInterfaceProxyWithTarget<ISettings>((ISettings) (object) settings, Options ?? ProxyGenerationOptions.Default, ApplicableInterceptors(settings).ToArray());
-        }
-
-        public static IEnumerable<IInterceptor> ApplicableInterceptors<TSettings>(this TSettings settings) where TSettings : JsonSettings {
-            //if it doesn't contain any virtual methods, throw for the developer to know about it.
-            IInterceptor interceptor;
-            if (settings is NotifiyingJsonSettings notifiying)
-                interceptor = new JsonSettingsAutosaveNotificationInterceptor(settings, new NotificationBinder(notifiying));
-            else
-                interceptor = new JsonSettingsAutosaveInterceptor(settings);
-
-            yield return interceptor;
+            return (ISettings) (object) settings.EnableAutosave();
         }
 
         /// <summary>
@@ -127,7 +120,7 @@ namespace Nucs.JsonSettings.Autosave {
         /// </summary>
         /// <returns>A suspend state tracker that can be Disposed for a using block</returns>
         public static SuspendAutosave SuspendAutosave<TSettings>(this TSettings settings) where TSettings : JsonSettings {
-            return settings.Modulation.GetModule<AutosaveModule>().SuspendAutosave();
+            return new SuspendAutosave(settings.Modulation.GetModule<AutosaveModule>());
         }
     }
 }

@@ -14,14 +14,14 @@ namespace Nucs.JsonSettings.Modulation {
         protected WeakReference<JsonSettings>? Socket { get; private set; }
 
         public virtual void Attach(JsonSettings socket) {
-            if (socket == null) throw new ArgumentNullException(nameof(socket));
+            if (socket is null) throw new ArgumentNullException(nameof(socket));
             if (_isattached) throw new ModularityException("The module is already attached.");
             Socket = new WeakReference<JsonSettings>(socket);
             _isattached = true;
         }
 
         public virtual void Deattach(JsonSettings socket) {
-            if (Socket == null) throw new ModularityException("The module is not attached.");
+            if (Socket is null) throw new ModularityException("The module is not attached.");
             Socket = null;
         }
 

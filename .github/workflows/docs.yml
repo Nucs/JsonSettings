@@ -1,0 +1,105 @@
+name: Deploy Docs
+
+# Builds the DocFX site under docs/website-src and publishes it to GitHub Pages.
+#
+# Pull requests build the site but do NOT deploy: that catches a broken doc, a bad xref target or a
+# malformed docfx.json on the PR that introduces it, without a fork PR ever needing the write-scoped
+# Pages token. Only pushes to the default branch (and manual runs) deploy.
+#
+# ONE-TIME SETUP: in the repository settings, Pages -> Build and deployment -> Source must be set to
+# "GitHub Actions" for the deploy job to have somewhere to publish.
+
+on:
+  push:
+    branches: ["master", "main"]
+    paths:
+      - 'src/**'
+      - 'docs/website-src/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: ["master", "main"]
+    paths:
+      - 'src/**'
+      - 'docs/website-src/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+# Least privilege by default. Only the deploy job opts into the Pages/OIDC write scopes it needs; the
+# build job reads the repo and nothing more.
+permissions:
+  contents: read
+
+# Never run two Pages deployments at once. cancel-in-progress is false: a half-finished deploy that
+# gets killed can leave the live site in a partial state, so let the current one finish.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # ---------------------------------------------------------------------------------------
+  # Build the static site. Runs on every push AND pull request, so a doc change that breaks
+  # the DocFX build fails the PR instead of the deploy.
+  #
+  # DocFX's metadata step compiles the two shipped projects to read their XML docs. It is pinned to
+  # the net8.0 target framework via docfx.json (`metadata.properties.TargetFramework`), so the 8.0.x
+  # SDK is all that is needed here even though the projects also target net10.0.
+  # ---------------------------------------------------------------------------------------
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install DocFX
+        run: dotnet tool install -g docfx
+
+      - name: Build docs
+        run: docfx docs/website-src/docfx.json
+
+      - name: Generate AI-friendly docs (llms.txt)
+        run: |
+          cd docs/website-src
+          chmod +x scripts/generate-llms-txt.sh
+          ./scripts/generate-llms-txt.sh ../website
+
+      # Upload the built site as the Pages artifact, only on a real deploy. On a PR the deploy job is
+      # skipped, so there is nothing to upload for.
+      #
+      # There is deliberately no actions/configure-pages step here: DocFX emits root-relative links,
+      # so the site needs no build-time base path, and Pages is enabled once via the repository
+      # setting noted at the top of this file. Skipping it keeps this job on contents:read only —
+      # configure-pages calls the Pages API and would need the write scope that just the deploy job
+      # holds. Uploading the artifact needs no Pages scope.
+      - name: Upload artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs/website'
+
+  # ---------------------------------------------------------------------------------------
+  # Publish. Only for pushes to the default branch and manual runs; skipped entirely on PRs.
+  # ---------------------------------------------------------------------------------------
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

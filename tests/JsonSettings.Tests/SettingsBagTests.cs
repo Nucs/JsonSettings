@@ -40,7 +40,7 @@ namespace Nucs.JsonSettings.Tests {
         public void SettingsBag_Passless() {
             using var f = new TempFile();
             var o = JsonSettings.Configure<SettingsBag>().WithEncryption((string)null).WithFileName(f.FileName).LoadNow();
-            ((RijndaelModule) o.Modulation.Modules[0]).Password.Should().BeEquivalentTo(SecureStringExt.EmptyString);
+            ((EncryptionModule) o.Modulation.Modules[0]).Password.Should().BeEquivalentTo(SecureStringExt.EmptyString);
             o.Autosave = false;
             o["lol"] = "xoxo";
             o["loly"] = 2;
@@ -107,6 +107,50 @@ namespace Nucs.JsonSettings.Tests {
             o.Save();
             var x = JsonSettings.Load<ModuleLoadingSttings>(f);
             x.someprop.Should().Be("1");
+        }
+
+        // ---- SettingsBag.Get<T> tolerance: long->int, null, and the @default parameter ----------
+
+        [TestMethod]
+        public void Get_IntStoredAsLong_ReturnsInt() {
+            var bag = new SettingsBag();
+            bag["n"] = 5L; //a long, exactly as Newtonsoft deserializes a JSON integer
+            bag.Get<int>("n").Should().Be(5);
+        }
+
+        [TestMethod]
+        public void Get_IntAfterRoundTrip_Works() {
+            using var f = new TempFile();
+            var o = JsonSettings.Load<SettingsBag>(f);
+            o["n"] = 7;
+            o.Save();
+
+            var x = JsonSettings.Load<SettingsBag>(f);
+            x.Get<int>("n").Should().Be(7, "integers deserialize back as Int64, but a typed Get<int> must still work after a round-trip");
+        }
+
+        [TestMethod]
+        public void Get_NullValue_ReturnsDefault_DoesNotThrow() {
+            var bag = new SettingsBag();
+            bag["z"] = null;
+            bag.Get<int>("z").Should().Be(0);
+            bag.Get<int>("z", 99).Should().Be(99);
+            bag.Get<string>("z").Should().BeNull();
+        }
+
+        [TestMethod]
+        public void Get_MissingKey_HonoursProvidedDefault() {
+            var bag = new SettingsBag();
+            bag.Get<int>("missing", 42).Should().Be(42, "the @default parameter must be honoured for a missing key");
+        }
+
+        [TestMethod]
+        public void Get_ExactAndReferenceTypes_Unchanged() {
+            var bag = new SettingsBag();
+            bag["s"] = "hello";
+            bag.Get<string>("s").Should().Be("hello");
+            bag["i"] = 3;
+            bag.Get<int>("i").Should().Be(3);
         }
 
         class FilterFileNameSettings : JsonSettings {

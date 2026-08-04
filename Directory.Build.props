@@ -43,8 +43,89 @@
     <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
 
     <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
-         builds from a source archive rather than a tag. -->
-    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.1.0</VersionPrefix>
+         builds from a source archive rather than a tag. 2.2.0 is the next release: it strong-names
+         both packages (a breaking assembly-identity change - see docs/SIGNING.md), adds binary
+         WithEncryption(byte[]) and WithEncryptionRawKey(byte[]), restores three behaviours 2.1.0
+         broke (a custom module inside encryption, RecoveryModule over a short encrypted file, and
+         the JsonSettingsException catch contract), and bounds the inherited Newtonsoft-13 depth cap
+         at a working 128. See PackageReleaseNotes below and docs/UPGRADE-2.0.x-to-2.1.0.md. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.2.0</VersionPrefix>
+  </PropertyGroup>
+
+  <!-- ====================================================================================
+       Strong-name signing — ONE place for every project in the repository.
+
+       WHAT THE KEY IS. `Open.snk` at the repo root is Microsoft's *published* open-source
+       strong-name key: 596 bytes, sha256
+       b897629e0b20090c9219ac80392c037fa4cfcc2bdc21d3c45d9bf74b8df0f671, byte-for-byte
+       identical to dotnet/arcade's `src/Microsoft.DotNet.Arcade.Sdk/tools/snk/Open.snk`.
+       Its public key token `cc7b13ffcd2ddd51` is the one carried by `netstandard`,
+       `System.Memory`, `System.Buffers` and `System.Text.Json` — Microsoft strong-names
+       those with this key and publishes the PRIVATE half so that open-source builds can
+       produce strong-named output without access to its real signing infrastructure.
+       Committing it here is not a leaked secret; a key whose private half is published by
+       its owner has exactly one intended use, and this is it.
+
+       SO THIS IS IDENTITY, NOT AUTHENTICITY. An .snk is a bare RSA key pair: no
+       certificate, no subject, no issuer, no chain. It lets the loader tell this
+       `Nucs.JsonSettings` from someone else's and bind versions; it attests NOTHING about
+       origin, and because the private half is public, anyone can mint an assembly bearing
+       our identity. Real authenticity is Authenticode on the DLLs plus NuGet author
+       signing; both need a code-signing certificate, are entirely separate from this file,
+       and do not exist in this repository. See README -> "Strong naming".
+       => Do NOT read `InternalsVisibleTo` below as an access control. It is not one.
+
+       WHY WE SIGN AT ALL, GIVEN THE ABOVE. A strong-named consumer cannot reference a
+       weak-named assembly. Shipping unsigned excluded this library outright from every
+       signed codebase — the .NET Framework line-of-business applications that are exactly
+       the audience for a settings file library. That is the whole reason, and it is a
+       packaging concern rather than a security one.
+
+       WHY THIS KEY AND NOT ONE OF OUR OWN. A self-minted key committed next to the source
+       would carry identical security (none) with worse provenance: readers would have to
+       work out whether the private half being in the tree was deliberate. A key whose
+       publication is documented by its owner cannot be mistaken for an accident. If this
+       project ever obtains a code-signing certificate, that is layered ON TOP of this and
+       does not replace it.
+
+       WHERE THE KEY IS ENFORCED. `Open.snk` decides what gets signed; the
+       $(PublicKey) literal below only names that same identity for anything that has to
+       write it down. They are two copies of one fact and could drift, so they are checked
+       against each other rather than trusted:
+         - tests/JsonSettings.Tests/StrongNameTests.cs asserts, at runtime and against the
+           built assemblies, that the token and full public key are these values and that
+           friend access actually resolves.
+         - .github/check-strong-name.ps1 asserts the same over every DLL in the built output
+           and, at release time, over every lib/ DLL inside the produced .nupkg.
+
+       Opt out per project with `<SignAssembly>false</SignAssembly>` — Directory.Build.props
+       is imported BEFORE the project body, so a project's own value wins. Nothing opts out
+       today: the test project MUST be signed for the friend references below to resolve,
+       and JsonSettings.Examples is signed only for uniformity.
+       ==================================================================================== -->
+  <PropertyGroup>
+    <SignAssembly Condition="'$(SignAssembly)' == ''">true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Open.snk</AssemblyOriginatorKeyFile>
+
+    <!-- We hold the private half, so sign for real. Not delay-signed, which leaves the
+         signature blank and needs skip-verification registration on .NET Framework, and not
+         public-signed, an OSS-build shortcut that stamps the public key without ever
+         producing a valid signature. Both are stated rather than left to default because
+         both produce a file that LOOKS signed to a casual check. -->
+    <DelaySign>false</DelaySign>
+    <PublicSign>false</PublicSign>
+
+    <!-- $(PublicKey) is read by the SDK's GenerateAssemblyInfo targets: every
+         <InternalsVisibleTo Include="..."/> item that does not carry its own Key gets this
+         one appended as `, PublicKey=...`. That is what keeps this 320-character literal
+         written down ONCE for the whole repository instead of once per friend declaration.
+
+         It has to be written down at all because strong-naming makes a keyless
+         `InternalsVisibleTo` a hard CS1726, and there is no MSBuild function that derives a
+         public key from an .snk. Supported by the 6.0, 8.0 and 10.0 SDKs alike, so a
+         contributor who has not upgraded still gets keyed friend attributes. -->
+    <PublicKey>00240000048000009400000006020000002400005253413100040000010001004b86c4cb78549b34bab61a3b1800e23bfeb5b3ec390074041536a7e3cbd97f5f04cf0f857155a8928eaa29ebfd11cfbbad3ba70efea7bda3226c6a8d370a4cd303f714486b6ebc225985a638471e6ef571cc92a4613c00b8fa65d61ccee0cbe5f36330c9a01f4183559f1bef24cc2917c6d913e3a541333a1d05d9bed22b38cb</PublicKey>
+    <StrongNamePublicKeyToken>cc7b13ffcd2ddd51</StrongNamePublicKeyToken>
   </PropertyGroup>
 
   <!-- ====================================================================================
@@ -69,7 +150,6 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>nucs config file newtonsoft settings json configuration preferences</PackageTags>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
   <!-- ====================================================================================
@@ -156,7 +236,7 @@
        NuGetAudit is on by default, but its default MODE is 'direct': only packages this
        repository names itself are checked, and anything they drag in is not. That is the
        same blind spot Dependabot has, because Dependabot reads manifests too. A
-       vulnerability reaching us through Castle.Core or the test SDK would be invisible to
+       vulnerability reaching us through AspectInjector or the test SDK would be invisible to
        both.
 
        'all' audits the whole restored graph, transitive included, and 'low' means nothing
@@ -178,7 +258,148 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageReleaseNotes>2.1.0
+    <PackageReleaseNotes>2.2.0
+
+Breaking changes
+- Both shipped packages are now strong-named (PublicKeyToken=cc7b13ffcd2ddd51) AND their assemblies
+  are renamed to match their package ids and namespaces: JsonSettings.dll -> Nucs.JsonSettings.dll and
+  JsonSettings.Autosave.dll -> Nucs.JsonSettings.Autosave.dll. (The new Nucs.JsonSettings.NotifyChanges
+  package follows the same rule but has no prior release to break.) Everything published up to and
+  including 2.1.0 shipped unsigned, which meant a strong-named assembly could not reference this library
+  at all - a strong-named consumer cannot reference a weak-named dependency, and there was no workaround
+  short of repackaging the DLL. The key is Microsoft's published open-source key, the same one
+  netstandard, System.Memory and System.Buffers carry; its private half is published by design, so this
+  is assembly IDENTITY and not a security property. It does not attest that a file came from this
+  project, and InternalsVisibleTo is not an access control. Verify origin with the SHA-256 checksums
+  published on each GitHub release.
+  UPGRADING: the assembly identity changes in two ways - a strong-name token where there was none, and a
+  new simple name (Nucs.JsonSettings[.Autosave]). A bindingRedirect written against the old unsigned
+  identity will not match the new one and should be removed rather than edited, and anything that
+  hardcodes a full assembly display name needs the name and token updated. Recompiling is otherwise
+  enough. See docs/SIGNING.md.
+- Autosave now requires an [Autosave] attribute on the settings class. Nucs.JsonSettings.Autosave
+  no longer proxies with Castle.DynamicProxy; it rewrites the property setters at compile time
+  with AspectInjector. An existing EnableAutosave()/EnableIAutosave() call now throws until the
+  class is marked [Autosave] - the missing attribute is checked at runtime rather than silently
+  never saving. In exchange the old proxy restrictions are gone: properties no longer need to be
+  virtual, sealed classes are supported, and EnableAutosave() returns the very instance it was
+  given rather than a proxy, so a reference captured before the call autosaves too. SettingsBag is
+  unaffected - its autosave is dictionary-backed, not woven. MIGRATION: add [Autosave] to the
+  class; opt a property out with [IgnoreAutosave]. See docs/AOT.md.
+- Encryption moved onto System.Security.Cryptography directly and the vendored third-party Rijndael256
+  helper was removed. RijndaelModule was renamed to EncryptionModule; RijndaelModule is kept as an
+  [Obsolete] shim that forwards to it, so existing code still compiles. The KeySize enum moved from the
+  Rijndael256 namespace to Nucs.JsonSettings - source-compatible through a `using Nucs.JsonSettings;`,
+  but a binary namespace change. The default algorithm, the PBKDF2-SHA1 key derivation and the on-disk
+  format are unchanged; files from every earlier version stay readable, verified against a pre-migration
+  ciphertext and an independent BCL-only reimplementation of the format.
+
+New features
+- Encryption accepts binary secrets, not only a text password:
+  - WithEncryption(byte[]) - a binary password, PBKDF2-stretched exactly like a text password.
+    It is a DIFFERENT credential from the text password whose UTF-8 bytes match it.
+  - WithEncryptionRawKey(byte[]) - a raw AES key used verbatim, no derivation, 16/24/32 bytes,
+    for callers who already hold key material.
+  Each has value, Func&lt;byte[]&gt; and Func&lt;T,byte[]&gt; overloads. The on-disk format is
+  unchanged and the text-password path is byte-for-byte compatible with every earlier version.
+- Encryption can use algorithms beyond the default AES-256-CBC, all from System.Security.Cryptography:
+  authenticated AES-CBC-HMAC (every target framework), and the AEAD ciphers AES-GCM, AES-CCM and
+  ChaCha20-Poly1305 (.NET 6.0+). Select one by passing an EncryptionAlgorithm to WithEncryption,
+  WithEncryption(byte[]) or WithEncryptionRawKey. The authenticated algorithms reject a tampered file
+  outright rather than relying on the AES-CBC UTF-8 heuristic; the default stays AES-256-CBC, unchanged
+  on disk.
+
+Notifications and data binding (new package Nucs.JsonSettings.NotifyChanges)
+- New package Nucs.JsonSettings.NotifyChanges produces INotifyPropertyChanged from your setters for data
+  binding, split out of Nucs.JsonSettings.Autosave so a class can notify without autosaving or the
+  reverse. Mark a class [NotifyChanges] (with a NotifiyingJsonSettings base or a convention raiser) or
+  [NotifyChangesMixin] (no base - the interface is injected) and every setter raises PropertyChanged with
+  no hand-written OnPropertyChanged, including on auto-properties. Compile-time IL weaving like
+  [Autosave], Native AOT-safe, and framework-neutral: it depends only on System.ComponentModel, so the
+  same class binds under WPF, WinForms, WinUI, MAUI, Avalonia and Uno. To both save and notify, reference
+  both packages. These aspects never shipped in a release, so the move is not a breaking change.
+- NotificationGuard (OnlyChanged default, SkipNullOrDefault, Always; [Flags]) decides when a setter
+  notifies, per class or per property. [IgnoreNotify] silences a property, independent of [IgnoreAutosave].
+- Also raises INotifyPropertyChanging before the assignment: NotifiyingJsonSettings now implements it, a
+  convention OnPropertyChanging/RaisePropertyChanging is recognised, and [NotifyChangesMixin] injects it
+  alongside INotifyPropertyChanged.
+- [NotifyChangesFor(nameof(Other))] fans a change out to a computed property so its binding refreshes -
+  the counterpart to CommunityToolkit.Mvvm's [NotifyPropertyChangedFor].
+- EnableNotificationMarshaling() captures the UI thread's SynchronizationContext and posts notifications
+  back to it, so a settings object written from a background thread still raises PropertyChanged on the UI
+  thread. Opt-in, off by default, and depends on no UI framework.
+- Performance: the reflection left on hot and per-instance paths is now cached through a new
+  Nucs.JsonSettings.Reflection.ReflectionHelper accessor cache. Every woven [NotifyChanges] setter read the
+  property's previous value with PropertyInfo.GetValue and called a convention raiser with MethodInfo.Invoke
+  on each write; both now use a delegate compiled once per member (with a reflective fallback under Native
+  AOT, so nothing changes there). The nested-notifier binder and the per-instance constructor discovery in
+  Activation (HasDefaultConstructor / CreateInstance) are cached likewise. Behaviour is unchanged.
+
+Autosave (see the breaking-change note above for the [Autosave] requirement)
+- Native AOT compatible. AspectInjector emits nothing at runtime, so EnableAutosave() works under
+  Native AOT, where the Castle.DynamicProxy path threw PlatformNotSupportedException and no
+  annotation could fix it. Nucs.JsonSettings.Autosave no longer depends on Castle.Core.
+- Removed the vestigial public ProxyGeneratedAttribute. It tagged Castle.DynamicProxy-generated
+  types so the JsonSettings constructor could skip re-creating their ModuleSocket; with the proxy
+  path gone nothing applies it and the constructor guard that read it was always taken, so the
+  attribute and the guard were both deleted.
+- Autosave machinery no longer ships inside the base package. IgnoreAutosaveAttribute,
+  NotificationBinder and the SuspendAutosave struct, plus the property opt-in rules, moved from
+  Nucs.JsonSettings.dll to Nucs.JsonSettings.Autosave.dll where they are actually wired up; the
+  Nucs.JsonSettings.Autosave namespace is unchanged, so a project that references the Autosave
+  package sees no difference while a base-only project no longer sees types that did nothing
+  without it. AutosaveModule stays in the base package as the shared save-suspension state that
+  SettingsBag's dictionary autosave and LoadJson drive with the base package alone; its
+  SuspendAutosave() method is removed (call the settings.SuspendAutosave() extension) and its
+  NotificationsHandler is now typed IDisposable.
+- The package re-signs the woven assembly after the weave (shipped build/ and buildTransitive/
+  targets), because weaving invalidates the strong-name signature the compiler applied and
+  AspectInjector 2.9.0 retired its own re-signing. If sn.exe is unavailable the build warns
+  (NJS1001) rather than failing; the assembly still loads on .NET 5+. See docs/SIGNING.md.
+- Fixed: a load after EnableAutosave() wrote the object back to disk once per populated property,
+  persisting a half-loaded object mid-load. Load, LoadDefault and versioning reloads no longer
+  count as user writes, and the framework-written IVersionable.Version is no longer monitored.
+- Fixed: nested SuspendAutosave is reference-counted - an inner scope's Dispose no longer ends the
+  outer scope early and commits the save it was batching.
+- Fixed: [IgnoreAutosave] is honoured for inline-initialised INotify* collections, which the
+  binder previously subscribed and saved on regardless of the attribute.
+- Fixed (SettingsBag/DynamicSettingsBag): a write made inside AfterSave no longer recurses to a
+  stack overflow, and EnableAutosave() reached through a JsonSettings-typed reference now behaves
+  the same as through a SettingsBag-typed one instead of throwing.
+
+Bug fixes (regressions introduced in 2.1.0)
+- A custom module inside the encryption layer is readable again. 2.1.0's wrong-password UTF-8
+  check ran on that module's still-encoded output, so a compressing or otherwise binary module
+  attached before WithEncryption rejected a correct password; the check now runs on the final
+  plaintext. Files 2.0.x wrote through such a chain load again.
+- RecoveryModule absorbs a short or zero-length encrypted file again. 2.1.0 threw from the
+  decrypt stage before recovery could run, so a zero-byte file - the usual result of an
+  interrupted save - was no longer recoverable.
+- A file too short to hold an initialization vector is a JsonSettingsException again, rather
+  than an EndOfStreamException escaping catch (JsonSettingsException).
+- Serialization depth: Newtonsoft.Json 13 capped nesting at 64 by default, inherited silently
+  in 2.1.0. MaxDepth is now set explicitly to 128 - past any realistic settings graph, yet low
+  enough to remain a working backstop, since the reader is recursive and exhausts the stack
+  before a larger limit could fire. Set SerializationSettings.MaxDepth = null for the pre-2.1.0
+  unlimited behaviour. See docs/UPGRADE-2.0.x-to-2.1.0.md.
+
+Testing
+- Cross-version file compatibility is now pinned by a full producer x consumer matrix. One JSON
+  fixture is captured per shipped target (net472 standing in for netstandard2.0, plus net48, net6.0,
+  net8.0 and net10.0) holding the exact bytes that framework serializes, and every target loads all
+  of them on every ordinary test run. A settings file written on .NET Framework is proven to read
+  back identically on modern .NET and the reverse, including the floating-point formatting that
+  differs between the two - net48 renders a round-trippable double with "R" while .NET Core renders
+  the shortest round-trippable string. Regenerate the fixtures with JSONSETTINGS_REGEN_CROSSVERSION=1.
+- Added targeted edge-case and unhappy-flow coverage across the core and modules, chosen from a line
+  coverage pass: Save translating a read-only or exclusively-held file into a catchable
+  JsonSettingsException (rather than an UnauthorizedAccessException/IOException or a null-stream NRE), a
+  corrupt file surfacing as the same, the configure-state guard rolling back so an instance whose
+  OnConfigure threw can be loaded again, attaching a versioning module to a non-IVersionable socket,
+  the invalid-action defensive arms, the notification-marshalling argument guards, and
+  AutosaveModule.TryTriggerSave.
+
+2.1.0
 
 Bug fixes
 - SuspendAutosave: fixed silent data loss. A change made inside a suspension scope defers

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.IO;
+using System.Threading;
 using Newtonsoft.Json;
 
 namespace Nucs.JsonSettings.Modulation.Recovery {
@@ -9,7 +9,11 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
     public class RecoveryModule : Module {
         public RecoveryAction RecoveryAction { get; set; }
         protected string loadedPath; //the attempted load path
-        protected volatile int internalCalls; //guard for event handling
+        //Reentrancy guard for event handling. ++/-- is a read-modify-write, so it goes through
+        //Interlocked to stay atomic under concurrent load of one instance; the field is therefore NOT
+        //`volatile`, because passing a volatile field by ref to Interlocked warns CS0420 (the ref would
+        //not be treated as volatile anyway).
+        protected int internalCalls;
 
         /// <summary>
         ///     The parameters that'll be passed to the constructor of JsonSettings that were passed.
@@ -48,40 +52,15 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
             switch (action) {
                 case RecoveryAction.Throw: throw new JsonSettingsRecoveryException($"Loading {sender._childtype.Name} settings{(sender is IVersionable v ? $" version '{v.Version}'" : "")}");
                 case RecoveryAction.RenameAndLoadDefault: {
-                    if (loadedPath == null)
+                    if (loadedPath is null)
                         throw new ArgumentNullException(nameof(loadedPath));
 
-                    //parse current name
-                    var versionMatch = VersioningModule.VersionMatcher.Match(loadedPath);
-                    int fileVersion = versionMatch.Success ? int.Parse(versionMatch.Groups[2].Value) + 1 : 0;
-                    var cleanName = loadedPath;
-                    if (!string.IsNullOrEmpty(versionMatch.Groups[0].Value))
-                        cleanName = cleanName.Replace(versionMatch.Groups[0].Value, "");
-                    var lastIdx = cleanName.LastIndexOf('.');
-                    if (lastIdx == -1)
-                        lastIdx = loadedPath.Length;
-
-                    //figure naming of existing and rename
-                    string newFileName = cleanName;
-                    if (File.Exists(newFileName)) {
-                        do {
-                            newFileName = cleanName.Insert(lastIdx, $".{(sender is IVersionable versionable ? $"{versionable.Version}-{fileVersion++}" : fileVersion++)}");
-                        } while (File.Exists(newFileName));
-
-                        try {
-                            File.Move(cleanName, newFileName);
-                        } catch (Exception) {
-                            // swallow
-                            try {
-                                File.Delete(loadedPath);
-                            } catch (Exception) {
-                                // swallow
-                            }
-                        }
-                    }
+                    //Sender may or may not be versionable: pass the version label when it is (".{version}-{n}"),
+                    //or null when it isn't so only the archive counter is stamped (".{n}").
+                    var cleanName = VersioningModule.RenameToArchive(loadedPath, sender is IVersionable versionable ? (versionable.Version?.ToString() ?? string.Empty) : null);
 
                     //save
-                    internalCalls++;
+                    Interlocked.Increment(ref internalCalls);
                     try {
                         sender.FileName = loadedPath = cleanName;
                         sender.LoadDefault(ConstructingParameters);
@@ -89,7 +68,7 @@ namespace Nucs.JsonSettings.Modulation.Recovery {
                         recovered = true;
                         handled = true;
                     } finally {
-                        internalCalls--;
+                        Interlocked.Decrement(ref internalCalls);
                     }
 
                     return;

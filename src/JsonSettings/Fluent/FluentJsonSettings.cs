@@ -46,13 +46,13 @@ namespace Nucs.JsonSettings.Fluent {
         /// </summary>
         /// <returns>Self</returns>
         public static T WithDefaultValues<T>(this T _instance, Action<T> @do) where T : JsonSettings {
-            if (@do == null) throw new ArgumentNullException(nameof(@do));
+            if (@do is null) throw new ArgumentNullException(nameof(@do));
             @do(_instance);
             return _instance;
         }
 
         /// <summary>
-        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        ///     Attaches an <see cref="EncryptionModule"/> (AES-256-CBC by default).
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_instance"></param>
@@ -63,18 +63,32 @@ namespace Nucs.JsonSettings.Fluent {
         }
 
         /// <summary>
-        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        ///     Attaches an <see cref="EncryptionModule"/> using <paramref name="algorithm"/> and
+        ///     <paramref name="keySize"/> instead of the default AES-256-CBC. See
+        ///     <see cref="EncryptionAlgorithm"/> for the available algorithms and their availability per
+        ///     target framework.
+        /// </summary>
+        /// <param name="password">The password source.</param>
+        /// <param name="algorithm">The symmetric algorithm to use.</param>
+        /// <param name="keySize">The AES key size (ignored by ChaCha20-Poly1305). Defaults to 256-bit.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, string password, EncryptionAlgorithm algorithm, KeySize keySize = KeySize.Aes256) where T : JsonSettings {
+            return _instance.WithModule<T>(new EncryptionModule(password) { Algorithm = algorithm, KeySize = keySize });
+        }
+
+        /// <summary>
+        ///     Attaches an <see cref="EncryptionModule"/> (AES-256-CBC by default).
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_instance"></param>
         /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
         /// <returns>Self</returns>
         public static T WithEncryption<T>(this T _instance, SecureString password) where T : JsonSettings {
-            return _instance.WithModule<T>(new RijndaelModule(password));
+            return _instance.WithModule<T>(new EncryptionModule(password));
         }
 
         /// <summary>
-        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        ///     Attaches an <see cref="EncryptionModule"/> (AES-256-CBC by default).
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_instance"></param>
@@ -85,18 +99,18 @@ namespace Nucs.JsonSettings.Fluent {
         }
 
         /// <summary>
-        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        ///     Attaches an <see cref="EncryptionModule"/> (AES-256-CBC by default).
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_instance"></param>
         /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
         /// <returns>Self</returns>
         public static T WithEncryption<T>(this T _instance, Func<SecureString> password) where T : JsonSettings {
-            return _instance.WithModule<T>(new RijndaelModule(password));
+            return _instance.WithModule<T>(new EncryptionModule(password));
         }
 
         /// <summary>
-        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        ///     Attaches an <see cref="EncryptionModule"/> (AES-256-CBC by default).
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_instance"></param>
@@ -107,14 +121,107 @@ namespace Nucs.JsonSettings.Fluent {
         }
 
         /// <summary>
-        ///     Attaches <see cref="RijndaelModule"/> that uses custom Rijndael256 library.
+        ///     Attaches an <see cref="EncryptionModule"/> (AES-256-CBC by default).
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_instance"></param>
         /// <param name="password">A fetcher/getter/generator/action-pointer to the password source</param>
         /// <returns>Self</returns>
         public static T WithEncryption<T>(this T _instance, Func<T, SecureString> password) where T : JsonSettings {
-            return _instance.WithModule<T>(new RijndaelModule((Func<SecureString>) (() => password?.Invoke(_instance)!)));
+            return _instance.WithModule<T>(new EncryptionModule((Func<SecureString>) (() => password?.Invoke(_instance)!)));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="EncryptionModule"/> using a binary password. The bytes are stretched
+        ///     into a key with the same PBKDF2 construction as a text password, so this is salted and
+        ///     iterated - but it is a DIFFERENT credential from the text password whose UTF-8 encoding
+        ///     equals these bytes. To use bytes verbatim as the key instead, see
+        ///     <see cref="WithEncryptionRawKey{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="password">The binary password.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, byte[] password) where T : JsonSettings {
+            return _instance.WithModule<T>(new EncryptionModule(password));
+        }
+
+        /// <summary>
+        ///     Attaches an <see cref="EncryptionModule"/> using a binary password with
+        ///     <paramref name="algorithm"/> and <paramref name="keySize"/> instead of the default
+        ///     AES-256-CBC. See <see cref="WithEncryption{T}(T,byte[])"/> and <see cref="EncryptionAlgorithm"/>.
+        /// </summary>
+        public static T WithEncryption<T>(this T _instance, byte[] password, EncryptionAlgorithm algorithm, KeySize keySize = KeySize.Aes256) where T : JsonSettings {
+            return _instance.WithModule<T>(new EncryptionModule(password) { Algorithm = algorithm, KeySize = keySize });
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="EncryptionModule"/> using a binary password resolved on demand.
+        ///     See <see cref="WithEncryption{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="password">A fetcher for the binary password.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, Func<byte[]> password) where T : JsonSettings {
+            return _instance.WithModule<T>(new EncryptionModule(password));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="EncryptionModule"/> using a binary password resolved from the instance
+        ///     on demand. See <see cref="WithEncryption{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="password">A fetcher for the binary password, given the instance.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryption<T>(this T _instance, Func<T, byte[]> password) where T : JsonSettings {
+            return _instance.WithModule<T>(new EncryptionModule((Func<byte[]>) (() => password?.Invoke(_instance)!)));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="EncryptionModule"/> using <paramref name="key"/> verbatim as the AES
+        ///     key, with no key derivation. The key must be 16, 24 or 32 bytes (AES-128/192/256). For
+        ///     callers that already hold key material; the caller owns the key's quality, since PBKDF2
+        ///     stretching is skipped.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="key">The raw AES key, 16/24/32 bytes.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryptionRawKey<T>(this T _instance, byte[] key) where T : JsonSettings {
+            return _instance.WithModule<T>(EncryptionModule.FromRawKey(key));
+        }
+
+        /// <summary>
+        ///     Attaches an <see cref="EncryptionModule"/> using a raw key with <paramref name="algorithm"/>
+        ///     and <paramref name="keySize"/>. The key length must match the algorithm (16/24/32 bytes for
+        ///     AES; 32 for ChaCha20-Poly1305). See <see cref="WithEncryptionRawKey{T}(T,byte[])"/> and
+        ///     <see cref="EncryptionAlgorithm"/>.
+        /// </summary>
+        public static T WithEncryptionRawKey<T>(this T _instance, byte[] key, EncryptionAlgorithm algorithm, KeySize keySize = KeySize.Aes256) where T : JsonSettings {
+            var module = EncryptionModule.FromRawKey(key);
+            module.Algorithm = algorithm;
+            module.KeySize = keySize;
+            return _instance.WithModule<T>(module);
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="EncryptionModule"/> using a raw AES key resolved on demand.
+        ///     See <see cref="WithEncryptionRawKey{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="key">A fetcher for the raw AES key, 16/24/32 bytes.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryptionRawKey<T>(this T _instance, Func<byte[]> key) where T : JsonSettings {
+            return _instance.WithModule<T>(EncryptionModule.FromRawKey(key));
+        }
+
+        /// <summary>
+        ///     Attaches <see cref="EncryptionModule"/> using a raw AES key resolved from the instance on
+        ///     demand. See <see cref="WithEncryptionRawKey{T}(T,byte[])"/>.
+        /// </summary>
+        /// <param name="_instance"></param>
+        /// <param name="key">A fetcher for the raw AES key, given the instance.</param>
+        /// <returns>Self</returns>
+        public static T WithEncryptionRawKey<T>(this T _instance, Func<T, byte[]> key) where T : JsonSettings {
+            return _instance.WithModule<T>(EncryptionModule.FromRawKey((Func<byte[]>) (() => key?.Invoke(_instance)!)));
         }
 
         public static T WithBase64<T>(this T _instance) where T : JsonSettings {

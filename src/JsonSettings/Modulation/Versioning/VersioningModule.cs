@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Newtonsoft.Json;
 
 namespace Nucs.JsonSettings.Modulation {
@@ -21,6 +22,60 @@ namespace Nucs.JsonSettings.Modulation {
         ///     See https://regex101.com/r/7xXzRt/1
         /// </summary>
         public static readonly Regex VersionMatcher = new Regex(@"(\.\d+\.\d+\.\d+\.\d+(?:\.\d+)?)(?:(?=\.)|-(\d+)|$)", RegexOptions.Compiled | RegexOptions.Multiline);
+
+        /// <summary>
+        ///     Archives the settings file currently occupying <paramref name="loadedPath"/>'s clean
+        ///     (version-stripped) name by renaming it to a version-stamped side-file, then returns that
+        ///     clean name so a fresh default can be loaded/saved in its place. This is the single owner
+        ///     of the settings file-name version parsing/formatting shared by <see cref="VersioningModule{T}"/>
+        ///     and <see cref="Recovery.RecoveryModule"/>'s <c>RenameAndLoadDefault</c> handling.
+        /// </summary>
+        /// <param name="loadedPath">The path that was attempted during load; may carry a "<c>.x.y.z.w</c>" version segment and/or a "<c>-n</c>" archive counter.</param>
+        /// <param name="versionLabel">
+        ///     The version to stamp into the archived file's name (yielding "<c>.{versionLabel}-{n}</c>"), or
+        ///     <see langword="null"/> to stamp only the archive counter (yielding "<c>.{n}</c>") - the latter
+        ///     used when the settings object does not implement <see cref="IVersionable"/>.
+        /// </param>
+        /// <returns>The clean, version-stripped path the caller should now load/save against.</returns>
+        public static string RenameToArchive(string loadedPath, string? versionLabel) {
+            //parse current name
+            var versionMatch = VersionMatcher.Match(loadedPath);
+            //Groups[2] is the "-<n>" archive counter and only participates when the name already
+            //carries one; a bare "name.1.2.3.4.json" matches through the regex's lookahead branch
+            //with Groups[2] empty, so guard on its Success rather than the match's. int.Parse("")
+            //would otherwise throw a FormatException that escapes Load as a non-JsonSettingsException.
+            int fileVersion = versionMatch.Success && versionMatch.Groups[2].Success ? int.Parse(versionMatch.Groups[2].Value) + 1 : 0;
+            var cleanName = loadedPath;
+            if (!string.IsNullOrEmpty(versionMatch.Groups[0].Value))
+                cleanName = cleanName.Replace(versionMatch.Groups[0].Value, "");
+            var lastIdx = cleanName.LastIndexOf('.');
+            if (lastIdx == -1)
+                //cleanName, not loadedPath: cleanName is the shorter, version-stripped string that
+                //Insert below indexes into, so loadedPath.Length could point past its end.
+                lastIdx = cleanName.Length;
+
+            //figure naming of existing and rename
+            string newFileName = cleanName;
+            if (File.Exists(newFileName)) {
+                do {
+                    //versionLabel present -> ".{version}-{n}" archive shape; absent (non-IVersionable sender) -> ".{n}".
+                    newFileName = cleanName.Insert(lastIdx, versionLabel is null ? $".{fileVersion++}" : $".{versionLabel}-{fileVersion++}");
+                } while (File.Exists(newFileName));
+
+                try {
+                    File.Move(cleanName, newFileName);
+                } catch (Exception) {
+                    // swallow
+                    try {
+                        File.Delete(loadedPath);
+                    } catch (Exception) {
+                        // swallow
+                    }
+                }
+            }
+
+            return cleanName;
+        }
     }
 
     /// <summary>
@@ -31,7 +86,11 @@ namespace Nucs.JsonSettings.Modulation {
     public class VersioningModule<T> : Module where T : JsonSettings, IVersionable {
         // ReSharper disable once StaticMemberInGenericType
         private static VersioningPolicyHandler? _defaultPolicy;
-        protected volatile int internalCalls; //guard for event handling
+        //Reentrancy guard for event handling. ++/-- is a read-modify-write done through Interlocked to
+        //stay atomic under concurrent load of one instance, and the read below goes through Volatile.Read
+        //so every access is barrier-consistent; the field is therefore NOT `volatile`, because passing a
+        //volatile field by ref to Interlocked warns CS0420 (the ref would not be treated as volatile anyway).
+        protected int internalCalls;
         protected string? loadedPath; //the path that was passed during loading
 
         /// <summary>
@@ -78,7 +137,7 @@ namespace Nucs.JsonSettings.Modulation {
                 var attr = typeof(T).GetProperty(nameof(IVersionable.Version), BindingFlags.Instance | BindingFlags.Public)
                                    ?.GetCustomAttributes<EnforcedVersionAttribute>()
                                     .FirstOrDefault(); //get latest attribute
-                if (attr == null)
+                if (attr is null)
                     return;
 
                 if (attr.Version != null)
@@ -114,7 +173,7 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         protected virtual void SocketOnAfterLoad(JsonSettings sender, bool successfulLoad) {
-            if (internalCalls >= 1)
+            if (Volatile.Read(ref internalCalls) >= 1)
                 return;
 
             T tsender = (T) sender;
@@ -138,46 +197,21 @@ namespace Nucs.JsonSettings.Modulation {
                 case VersioningResultAction.DoNothing: return;
                 case VersioningResultAction.Throw:     throw new InvalidVersionException($"Loaded version '{sender.Version}' mismatches expected version '{ExpectedVersion}'");
                 case VersioningResultAction.RenameAndLoadDefault: {
-                    if (loadedPath == null)
+                    if (loadedPath is null)
                         throw new ArgumentNullException(nameof(loadedPath));
 
-                    //parse current name
-                    var versionMatch = VersioningModule.VersionMatcher.Match(loadedPath);
-                    int fileVersion = versionMatch.Success ? int.Parse(versionMatch.Groups[2].Value) + 1 : 0;
-                    var cleanName = loadedPath;
-                    if (!string.IsNullOrEmpty(versionMatch.Groups[0].Value))
-                        cleanName = cleanName.Replace(versionMatch.Groups[0].Value, "");
-                    var lastIdx = cleanName.LastIndexOf('.');
-                    if (lastIdx == -1)
-                        lastIdx = loadedPath.Length;
-
-                    //figure naming of existing and rename
-                    string newFileName = cleanName;
-                    if (File.Exists(newFileName)) {
-                        do {
-                            newFileName = cleanName.Insert(lastIdx, $".{sender.Version}-{fileVersion++}");
-                        } while (File.Exists(newFileName));
-
-                        try {
-                            File.Move(cleanName, newFileName);
-                        } catch (Exception) {
-                            // swallow
-                            try {
-                                File.Delete(loadedPath);
-                            } catch (Exception) {
-                                // swallow
-                            }
-                        }
-                    }
+                    //T is always IVersionable, so always stamp the version: pass the version label (never null),
+                    //falling back to "" when Version is null to preserve the historical ".{version}-{n}" shape.
+                    var cleanName = VersioningModule.RenameToArchive(loadedPath, sender.Version?.ToString() ?? string.Empty);
 
                     //save
-                    internalCalls++;
+                    Interlocked.Increment(ref internalCalls);
                     try {
                         sender.FileName = loadedPath = cleanName;
                         sender.LoadDefault(ConstructingParameters);
                         sender.Save();
                     } finally {
-                        internalCalls--;
+                        Interlocked.Decrement(ref internalCalls);
                     }
 
                     return;

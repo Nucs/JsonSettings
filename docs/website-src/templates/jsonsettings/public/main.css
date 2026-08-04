@@ -1,0 +1,371 @@
+/* Nucs.JsonSettings DocFX Custom Styles
+ * https://dotnet.github.io/docfx/docs/template.html
+ *
+ * The modern template uses Bootstrap 5.3 CSS variables.
+ * Override variables here to customize the theme.
+ */
+
+:root {
+  /* Primary brand color */
+  --bs-primary: #0d6efd;
+  --bs-primary-rgb: 13, 110, 253;
+
+  /* Link colors */
+  --bs-link-color: #0d6efd;
+  --bs-link-hover-color: #0a58ca;
+}
+
+/* Dark mode overrides */
+[data-bs-theme="dark"] {
+  --bs-link-color: #6ea8fe;
+  --bs-link-hover-color: #8bb9fe;
+}
+
+/* Logo sizing */
+#logo {
+  height: 32px;
+  width: auto;
+}
+
+/* Footer styling */
+.footer {
+  border-top: 1px solid var(--bs-border-color);
+  padding: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.footer a {
+  color: var(--bs-link-color);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+/* Code block enhancements */
+pre code {
+  font-size: 0.875em;
+}
+
+/* Table of contents sticky positioning */
+@media (min-width: 992px) {
+  .sticky-top {
+    top: 80px;
+  }
+}
+
+/* API documentation improvements */
+.api-member {
+  margin-bottom: 1.5rem;
+}
+
+.api-member h4 {
+  border-bottom: 1px solid var(--bs-border-color);
+  padding-bottom: 0.5rem;
+}
+
+/* Syntax highlighting improvements for C# */
+.hljs-keyword {
+  font-weight: 600;
+}
+
+/* Print styles */
+@media print {
+  .navbar,
+  .toc,
+  .affix,
+  .footer {
+    display: none !important;
+  }
+
+  .article {
+    max-width: 100% !important;
+  }
+}
+
+/* Homepage */
+.js-home {
+  --js-ink: #172033;
+  --js-muted: #5f6b7a;
+  --js-border: rgba(95, 107, 122, 0.22);
+  --js-surface: #ffffff;
+  --js-soft: #f6f8fb;
+  --js-blue: #2563eb;
+  --js-green: #0f8a6c;
+  --js-amber: #b7791f;
+  color: var(--js-ink);
+}
+
+[data-bs-theme="dark"] .js-home {
+  --js-ink: #eef3f8;
+  --js-muted: #b7c1cf;
+  --js-border: rgba(183, 193, 207, 0.24);
+  --js-surface: #151b24;
+  --js-soft: #101720;
+  --js-blue: #7aa7ff;
+  --js-green: #5bd0af;
+  --js-amber: #f0be63;
+}
+
+.js-home a {
+  text-decoration: none;
+}
+
+.js-home-intro {
+  padding: 56px 0 32px;
+  border-bottom: 1px solid var(--js-border);
+}
+
+.js-home-logo {
+  width: 72px;
+  height: 72px;
+  display: block;
+  margin-bottom: 22px;
+}
+
+.js-home-kicker {
+  margin: 0 0 10px;
+  color: var(--js-green);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.js-home h1 {
+  margin: 0;
+  font-size: 3rem;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.js-home-lede {
+  max-width: 760px;
+  margin: 18px 0 0;
+  color: var(--js-muted);
+  font-size: 1.16rem;
+  line-height: 1.6;
+}
+
+.js-home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.js-home-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--js-border);
+  border-radius: 8px;
+  color: var(--js-ink);
+  background: var(--js-surface);
+  font-weight: 650;
+}
+
+.js-home-button:hover,
+.js-home-button:focus-visible {
+  border-color: var(--js-blue);
+  color: var(--js-blue);
+}
+
+.js-home-button-primary {
+  background: var(--js-blue);
+  border-color: var(--js-blue);
+  color: #ffffff;
+}
+
+.js-home-button-primary:hover,
+.js-home-button-primary:focus-visible {
+  color: #ffffff;
+  background: #1d4ed8;
+}
+
+.js-home-code,
+.js-home-section {
+  padding: 34px 0;
+  border-bottom: 1px solid var(--js-border);
+}
+
+.js-home-code-head,
+.js-home-section-head {
+  max-width: 820px;
+  margin-bottom: 18px;
+}
+
+.js-home h2 {
+  margin: 0;
+  font-size: 1.55rem;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.js-home-code-head p,
+.js-home-section-head p {
+  margin: 8px 0 0;
+  color: var(--js-muted);
+}
+
+.js-code-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.35fr);
+  gap: 14px;
+}
+
+.js-code-grid pre {
+  margin: 0;
+  min-height: 100%;
+  border: 1px solid var(--js-border);
+  border-radius: 8px;
+  background: var(--js-soft);
+}
+
+.js-home-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 24px 0 10px;
+  overflow: hidden;
+  border: 1px solid var(--js-border);
+  border-radius: 8px;
+  background: var(--js-border);
+}
+
+.js-home-stats div {
+  min-width: 0;
+  padding: 18px;
+  background: var(--js-surface);
+}
+
+.js-home-stats strong,
+.js-home-stats span {
+  display: block;
+}
+
+.js-home-stats strong {
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.js-home-stats span {
+  margin-top: 4px;
+  color: var(--js-muted);
+  font-size: 0.92rem;
+}
+
+.js-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.js-doc-card {
+  min-width: 0;
+  min-height: 178px;
+  padding: 18px;
+  border: 1px solid var(--js-border);
+  border-radius: 8px;
+  color: var(--js-ink);
+  background: var(--js-surface);
+}
+
+.js-doc-card:hover,
+.js-doc-card:focus-visible {
+  border-color: var(--js-blue);
+  color: var(--js-ink);
+}
+
+.js-doc-card span {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--js-amber);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.js-doc-card strong {
+  display: block;
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+
+.js-doc-card p {
+  margin: 10px 0 0;
+  color: var(--js-muted);
+  line-height: 1.55;
+}
+
+.js-feature-list {
+  display: grid;
+  gap: 12px;
+}
+
+.js-feature-list div {
+  padding: 16px 18px;
+  border-left: 4px solid var(--js-green);
+  background: var(--js-soft);
+}
+
+.js-feature-list strong {
+  display: block;
+  line-height: 1.35;
+}
+
+.js-feature-list p {
+  margin: 6px 0 0;
+  color: var(--js-muted);
+}
+
+.js-home-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 28px 0 10px;
+}
+
+.js-home-links a {
+  color: var(--js-blue);
+  font-weight: 650;
+}
+
+@media (max-width: 991.98px) {
+  .js-home h1 {
+    font-size: 2.45rem;
+  }
+
+  .js-code-grid,
+  .js-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .js-home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .js-home-intro {
+    padding-top: 34px;
+  }
+
+  .js-home h1 {
+    font-size: 2.1rem;
+  }
+
+  .js-home-lede {
+    font-size: 1rem;
+  }
+
+  .js-home-button {
+    width: 100%;
+  }
+
+  .js-home-stats {
+    grid-template-columns: 1fr;
+  }
+}

@@ -175,6 +175,73 @@ namespace Nucs.JsonSettings.Tests {
                                   .LoadNow();
             }).Should().Throw<InvalidVersionException>();
         }
+
+        /// <summary>
+        ///     A settings file whose NAME already carries a version segment (e.g. "app.1.0.0.5.json" -
+        ///     a common convention, and the very shape the docs describe an archived file taking) must
+        ///     still be handled by RenameAndLoadDefault.
+        /// </summary>
+        /// <remarks>
+        ///     The rename parser matched the version through the <c>VersionMatcher</c> regex's
+        ///     lookahead branch (the '.' before the extension), which leaves the numeric capture group
+        ///     empty, and <c>int.Parse("")</c> threw a raw <see cref="FormatException"/> - not a
+        ///     <see cref="JsonSettingsException"/> - straight out of Load. Every load failure this
+        ///     library produces is supposed to be catchable as JsonSettingsException.
+        /// </remarks>
+        [TestMethod]
+        public void RenameAndLoadDefault_FileNameContainsVersionSegment_LoadsDefaultInsteadOfThrowing() {
+            var dir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "jsver_" + Guid.NewGuid().ToString("N")));
+            try {
+                var path = Path.Combine(dir.FullName, "app.1.0.0.5.json");
+                File.WriteAllText(path, "{\"Version\":\"1.0.0.5\",\"Value\":7}");
+
+                VersionedSettings cfg = null;
+                new Action(() => {
+                    cfg = JsonSettings.Configure<VersionedSettings>(path)
+                                      .WithVersioning(new Version(2, 0, 0, 0), VersioningResultAction.RenameAndLoadDefault)
+                                      .LoadNow();
+                }).Should().NotThrow("a version segment in the file name must not crash the rename parser");
+
+                cfg.Version.Should().Be(new Version(2, 0, 0, 0));
+                cfg.Value.Should().Be(0);
+            } finally {
+                try { dir.Delete(true); } catch { /* best effort cleanup */ }
+            }
+        }
+
+        /// <summary>
+        ///     The rename path computed its insertion index from <c>loadedPath.Length</c> while
+        ///     inserting into the SHORTER cleanName (loadedPath with the version segment stripped), so
+        ///     an extensionless, version-named file under a dot-free directory drove
+        ///     <see cref="string.Insert(int,string)"/> out of range.
+        /// </summary>
+        [TestMethod]
+        public void RenameAndLoadDefault_ExtensionlessVersionedFile_DoesNotThrowOutOfRange() {
+            var tempBase = Path.GetTempPath();
+            if (tempBase.Contains("."))
+                Assert.Inconclusive("Temp path contains '.', so the dot-free-path branch this guards cannot be exercised here.");
+
+            var dir = Directory.CreateDirectory(Path.Combine(tempBase, "jsbug2_" + Guid.NewGuid().ToString("N")));
+            try {
+                //Extensionless and already carrying the module's own ".{version}-{seq}" archive shape,
+                //so the numeric capture parses and execution reaches the faulty Insert.
+                var path = Path.Combine(dir.FullName, "config.1.0.0.5-0");
+                File.WriteAllText(path, "{\"Version\":\"1.0.0.5\",\"Value\":3}");
+                //cleanName ("<dir>/config") must already exist for the rename branch to execute.
+                File.WriteAllText(Path.Combine(dir.FullName, "config"), "seed");
+
+                VersionedSettings cfg = null;
+                new Action(() => {
+                    cfg = JsonSettings.Configure<VersionedSettings>(path)
+                                      .WithVersioning(new Version(2, 0, 0, 0), VersioningResultAction.RenameAndLoadDefault)
+                                      .LoadNow();
+                }).Should().NotThrow();
+
+                cfg.Version.Should().Be(new Version(2, 0, 0, 0));
+            } finally {
+                try { dir.Delete(true); } catch { /* best effort cleanup */ }
+            }
+        }
     }
 
     public class VersionedSettings : JsonSettings, IVersionable {

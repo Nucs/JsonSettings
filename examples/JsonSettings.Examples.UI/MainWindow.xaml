@@ -1,0 +1,365 @@
+<Window x:Class="Nucs.JsonSettings.Examples.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Window.Title}"
+        Left="{Binding Window.Left, Mode=TwoWay}"
+        Top="{Binding Window.Top, Mode=TwoWay}"
+        Width="{Binding Window.Width, Mode=TwoWay}"
+        Height="{Binding Window.Height, Mode=TwoWay}"
+        MinWidth="960" MinHeight="640">
+    <Window.Resources>
+        <Style x:Key="Note" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="#666666" />
+            <Setter Property="Margin" Value="0,4,0,4" />
+        </Style>
+        <Style x:Key="Counter" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="6,0" />
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Margin" Value="0,6,0,6" />
+            <Setter Property="Padding" Value="8" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="10,3" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- shared bottom pane: activity log + the actual file on disk -->
+        <Grid DockPanel.Dock="Bottom" Height="200" Margin="8,0,8,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+            <GroupBox Grid.Column="0" Margin="0" Header="Activity — PropertyChanging / PropertyChanged / saves, with the thread each arrived on">
+                <DockPanel>
+                    <Button DockPanel.Dock="Bottom" Content="Clear" Click="ClearLog_Click"
+                            HorizontalAlignment="Left" Margin="0,6,0,0" />
+                    <ListBox x:Name="LogList" FontFamily="Consolas" FontSize="11" />
+                </DockPanel>
+            </GroupBox>
+            <GroupBox Grid.Column="2" Margin="0" Header="The file on disk">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Right" Content="Open folder" Click="OpenFolder_Click" Margin="6,0,0,0" />
+                        <ComboBox x:Name="PreviewFileCombo" SelectionChanged="PreviewFileCombo_SelectionChanged" />
+                    </DockPanel>
+                    <TextBox x:Name="PreviewText" IsReadOnly="True" FontFamily="Consolas" FontSize="11"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
+                </DockPanel>
+            </GroupBox>
+        </Grid>
+
+        <TabControl Margin="8,8,8,4">
+
+            <!-- ============================================================================
+                 1. The window itself is the demo: chrome bound to WindowSettings.
+                 ============================================================================ -->
+            <TabItem Header="Window &amp; autosave">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="This window's Left / Top / Width / Height and Title are TwoWay-bound to WindowSettings — [Autosave, NotifyChanges] on a NotifiyingJsonSettings base. Moving or resizing the window IS the write that persists it: watch the save counter climb while you drag, then close the app and reopen it. The window comes back exactly where you left it, with zero window-state code." />
+                        <DockPanel Margin="0,6,0,0">
+                            <TextBlock Text="Window title:" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding Window.Title, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" />
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <TextBlock Text="ui.window.json saves:" VerticalAlignment="Center" />
+                            <TextBlock x:Name="WindowSavesText" Style="{StaticResource Counter}" Text="0" />
+                            <ToggleButton x:Name="SuspendWindowToggle" Margin="24,0,0,0" Padding="10,3"
+                                          Content="SuspendAutosave() while pressed"
+                                          Checked="SuspendWindow_Checked" Unchecked="SuspendWindow_Unchecked" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Note}" Margin="0,8,0,0"
+                                   Text="Every bound write is a disk write, so dragging is a burst of saves — the burst the docs warn about. Press the toggle, drag the window around, release it: the whole burst collapses into a single save when the suspension scope closes. Notifications are NOT suspended, so the title bar and bindings stay live the entire time — suspension is save-only." />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================================================================
+                 2. NotificationGuard: when a woven setter notifies (autosave has no guard).
+                 ============================================================================ -->
+            <TabItem Header="Guards">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="NotificationGuard decides when a setter NOTIFIES. Autosave has no guard — it saves every monitored write. Compare the counters: a suppressed notification still saves." TextWrapping="Wrap" Foreground="#666666" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <TextBlock Text="ui.guards.json saves:" VerticalAlignment="Center" />
+                            <TextBlock x:Name="GuardsSavesText" Style="{StaticResource Counter}" Text="0" />
+                        </StackPanel>
+
+                        <GroupBox Header="OnlyChanged (the default) — Query">
+                            <StackPanel>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Write same value" Click="QuerySame_Click" Margin="6,0,0,0" />
+                                    <Button DockPanel.Dock="Right" Content="Write new value" Click="QueryNew_Click" />
+                                    <TextBox Text="{Binding Guards.Query, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" />
+                                </DockPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="notifications:" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="QueryNotifies" Style="{StaticResource Counter}" Text="0" />
+                                    <TextBlock Text="— 'Write same value' saves (+1) but notifies (+0), the hand-written 'if (value == _field) return;' guard, woven."
+                                               Foreground="#666666" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Always — RefreshTick">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Guards.RefreshTick}" FontWeight="Bold" VerticalAlignment="Center" />
+                                <Button Content="Write the same value again" Click="TickSame_Click" Margin="12,0,0,0" />
+                                <TextBlock Text="notifications:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock x:Name="TickNotifies" Style="{StaticResource Counter}" Text="0" />
+                                <TextBlock Text="— fires on every setter access, even a no-op write" Foreground="#666666" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="OnlyChanged | SkipNullOrDefault — Filter (guards are [Flags] and combine)">
+                            <StackPanel>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Clear to null" Click="FilterNull_Click" Margin="6,0,0,0" />
+                                    <Button DockPanel.Dock="Right" Content="Write new value" Click="FilterNew_Click" />
+                                    <TextBox Text="{Binding Guards.Filter, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" />
+                                </DockPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="notifications:" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="FilterNotifies" Style="{StaticResource Counter}" Text="0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Note}"
+                                           Text="'Clear to null' writes null to disk (check the file preview — Filter is null there) but raises nothing, so the TextBox above deliberately keeps its last value: SkipNullOrDefault means clearing back to default should not disturb bindings." />
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================================================================
+                 3. [NotifyChangesFor], [IgnoreNotify], [IgnoreAutosave], INotifyPropertyChanging.
+                 ============================================================================ -->
+            <TabItem Header="Computed &amp; opt-outs">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <GroupBox Header="[NotifyChangesFor] — a computed property's binding stays live">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="First:" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="1" Text="{Binding Profile.First, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,12,0" />
+                                    <TextBlock Grid.Column="2" Text="Last:" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="3" Text="{Binding Profile.Last, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,0,0" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="FullName (computed, [JsonIgnore], no setter to weave):" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Profile.FullName}" Style="{StaticResource Counter}" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Note}"
+                                           Text="First and Last each carry [NotifyChangesFor(nameof(FullName))]: one keystroke raises PropertyChanged for the source, then for FullName — watch the pair, in that order, in the activity log. The log also shows PropertyChanging firing BEFORE each change with the old value still in place (NotifiyingJsonSettings implements INotifyPropertyChanging; the aspect raises it)." />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="[IgnoreNotify] — saves, but never notifies">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Stamp LastSavedBy" Click="Stamp_Click" />
+                                    <TextBlock Text="bound value:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Profile.LastSavedBy}" FontStyle="Italic" VerticalAlignment="Center" Margin="6,0,0,0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Note}"
+                                           Text="The stamp is written to ui.profile.json (select it in the file preview) but the binding above deliberately never refreshes — [IgnoreNotify] keeps a persisted property out of the notification stream. The log prints the value that was actually saved." />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="[IgnoreAutosave] — notifies, but never triggers a save">
+                            <StackPanel>
+                                <DockPanel>
+                                    <TextBlock Text="SearchText (UI state):" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding Profile.SearchText, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" />
+                                </DockPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="notifications:" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="SearchNotifies" Style="{StaticResource Counter}" Text="0" />
+                                    <TextBlock Text="ui.profile.json saves:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="ProfileSavesText" Style="{StaticResource Counter}" Text="0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Note}"
+                                           Text="Typing here notifies (left counter climbs) while the save counter stands still — the two opt-outs are independent: a property can save silently, notify without saving, both, or neither. Mind the boundary: [IgnoreAutosave] controls TRIGGERING, not serialization — type here, then edit First above, and the file preview shows SearchText's value riding along in that save. Add [JsonIgnore] as well for a property that never reaches the file (like FullName above)." />
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================================================================
+                 4. Nested ObservableCollection autosave + SuspendAutosave bursts.
+                 ============================================================================ -->
+            <TabItem Header="Collections &amp; bursts">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <GroupBox Grid.Column="0" Header="Nested ObservableCollection — autosave reacts inside the graph">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Style="{StaticResource Note}"
+                                           Text="EnableAutosave() on a NotifiyingJsonSettings attaches the NotificationBinder: Add/Remove saves (nested CollectionChanged), and replacing the whole collection saves AND rebinds the new instance — so 'Add book' keeps saving after a replace." />
+                                <WrapPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                                    <Button Content="Add book" Click="AddBook_Click" Margin="0,0,6,0" />
+                                    <Button Content="Remove selected" Click="RemoveBook_Click" Margin="0,0,6,0" />
+                                    <Button Content="Replace collection" Click="ReplaceBooks_Click" />
+                                </WrapPanel>
+                                <ListBox x:Name="BooksList" ItemsSource="{Binding Library.Books}" MinHeight="140" />
+                            </DockPanel>
+                        </GroupBox>
+
+                        <StackPanel Grid.Column="2">
+                            <GroupBox Header="Burst coalescing — SuspendAutosave()">
+                                <StackPanel>
+                                    <Button Content="Add 20 books in ONE save" Click="AddBatch_Click" HorizontalAlignment="Left" />
+                                    <TextBlock Style="{StaticResource Note}"
+                                               Text="20 CollectionChanged events inside a using (settings.SuspendAutosave()) scope commit as one save when the scope closes; the 20 list updates still render immediately, because suspension is save-only." />
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="A live burst — slider">
+                                <StackPanel>
+                                    <Slider Minimum="0.5" Maximum="3" Value="{Binding Library.Zoom, Mode=TwoWay}" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Zoom:" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Library.Zoom, StringFormat=F2}" Style="{StaticResource Counter}" />
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource Note}"
+                                               Text="Dragging writes on every tick and each write is a save — watch the counter. This is the burst to wrap in SuspendAutosave() in a real app." />
+                                </StackPanel>
+                            </GroupBox>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="ui.library.json saves:" VerticalAlignment="Center" />
+                                <TextBlock x:Name="LibrarySavesText" Style="{StaticResource Counter}" Text="0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================================================================
+                 5. Mixin (no base), raiser conventions, and the interface seam.
+                 ============================================================================ -->
+            <TabItem Header="No base &amp; conventions">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <GroupBox Header="[NotifyChangesMixin] — sealed class, no base, interface injected at compile time">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Endpoint:" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="1" Text="{Binding Quick.Endpoint, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,12,0" />
+                                    <TextBlock Grid.Column="2" Text="Port:" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="3" Text="{Binding Quick.Port, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,12,0" />
+                                    <CheckBox Grid.Column="4" Content="TLS" IsChecked="{Binding Quick.UseTls}" VerticalAlignment="Center" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="(object)settings is INotifyPropertyChanged:" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="MixinInterfaceText" Style="{StaticResource Counter}" />
+                                    <TextBlock Text="ui.quick.json saves:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="QuickSavesText" Style="{StaticResource Counter}" Text="0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Note}"
+                                           Text="QuickSettings derives plain JsonSettings, declares no interface and is sealed — the mixin injects INotifyPropertyChanged + INotifyPropertyChanging and raises them from every setter, so WPF binds to it directly. Code-behind subscribes through an (object) cast, since the compiler cannot see the injected interface." />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Convention raiser — your own base with Prism-style RaisePropertyChanged, NOTIFY-ONLY">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Host:" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="1" Text="{Binding Proxy.Host, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,12,0" />
+                                    <TextBlock Grid.Column="2" Text="Port:" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="3" Text="{Binding Proxy.Port, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,0,0" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <Button Content="Save now" Click="ProxySave_Click" />
+                                    <TextBlock Text="notifications:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="ProxyNotifies" Style="{StaticResource Counter}" Text="0" />
+                                    <TextBlock Text="ui.proxy.json saves:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="ProxySavesText" Style="{StaticResource Counter}" Text="0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Note}"
+                                           Text="ProxySettings carries [NotifyChanges] but NOT [Autosave]: the aspect finds the base's RaisePropertyChanged(string) purely by naming convention (OnPropertyChanged / RaisePropertyChanged / NotifyOfPropertyChange — the CommunityToolkit, Prism and Caliburn house styles). Bindings refresh on every keystroke while the file only changes on the explicit Save() — the two packages are independent." />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="EnableIAutosave — the same instance behind an interface (DI seam)">
+                            <StackPanel>
+                                <DockPanel>
+                                    <TextBlock Text="DisplayName:" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding App.DisplayName, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" />
+                                </DockPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="LaunchCount (incremented through the interface on every start):" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding App.LaunchCount}" Style="{StaticResource Counter}" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Note}"
+                                           Text="Demos.App is typed IAppSettings, an interface extending INotifyPropertyChanged. EnableIAutosave&lt;AppSettings, IAppSettings&gt;() returns the very same woven instance as that interface — since 2.2.0 there is no proxy, just a cast — so a consumer can depend on the abstraction while binding, saving and notifying keep working." />
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================================================================
+                 6. Off-thread writes and SynchronizationContext marshalling.
+                 ============================================================================ -->
+            <TabItem Header="Threading">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Settings are often written from background work. EnableNotificationMarshaling() captures the UI thread's SynchronizationContext and posts each PropertyChanged (and its [NotifyChangesFor] dependents) back to it — the one primitive every UI stack shares. The activity log stamps every notification with the thread it arrived on: run the job with the box checked, then unchecked, and compare." />
+                        <CheckBox x:Name="MarshalToggle" IsChecked="True" Margin="0,4,0,0"
+                                  Content="EnableNotificationMarshaling() — post this object's notifications to the UI thread"
+                                  Checked="MarshalToggle_Checked" Unchecked="MarshalToggle_Unchecked" />
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="RunJobButton" Content="Run background job (writes Progress + Status off-thread)" Click="RunJob_Click" />
+                            <Button Content="Replace bound collection from background thread" Click="ReplaceResults_Click" Margin="8,0,0,0" />
+                        </StackPanel>
+                        <ProgressBar Height="18" Maximum="100" Value="{Binding Worker.Progress, Mode=OneWay}" Margin="0,8,0,0" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="Status:" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Worker.Status}" Style="{StaticResource Counter}" />
+                            <TextBlock Text="ui.worker.json saves:" Margin="12,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="WorkerSavesText" Style="{StaticResource Counter}" Text="0" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding Worker.Results}" MinHeight="90" Margin="0,6,0,0" />
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Notes: PropertyChanging is never marshalled (it must precede the write), so its log lines always show the worker thread — compare them with the changed lines. WPF itself forgives some of this by marshalling property-BINDING updates, so the ProgressBar moves either way; marshalling is for everything WPF does not cover — your own PropertyChanged handlers that touch UI (like this log), other UI stacks, and a collection REPLACEMENT reaching ItemsSource. An in-place Add on a bound collection from a worker raises CollectionChanged from the collection itself, which nothing marshals — for that, use BindingOperations.EnableCollectionSynchronization or a Dispatcher call. Autosave runs on the writing thread either way: the saves here happen off the UI thread." />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

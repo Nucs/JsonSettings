@@ -86,4 +86,23 @@
 
   </PropertyGroup>
 
+  <!-- ====================================================================================
+       Apply the packaged re-signing targets to this repository's own projects too.
+
+       src/JsonSettings.Autosave and src/JsonSettings.NotifyChanges each declare aspects, and
+       tests/JsonSettings.Tests consumes both, so all three are rewritten by AspectInjector after
+       CoreCompile and lose the strong-name signature the compiler applied. Consumers get these
+       files from each nupkg's build/ and buildTransitive/ folders; our own build has no nupkg to
+       get them from, so they are imported directly. One copy each, both paths.
+
+       Importing both unconditionally into every project is safe: every target inside is either
+       conditioned on signing being active or hooked to AfterTargets="AspectInjector_InjectAspects",
+       and MSBuild ignores AfterTargets naming a target that a given project never defines. The two
+       files use disjoint target/property names (NucsAutosave_* vs NucsNotifyChanges_*), so a woven
+       project simply runs both re-sign targets; sn -R is idempotent, so the second is a harmless
+       no-op over the assembly the first already re-signed.
+       ==================================================================================== -->
+  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.Autosave\build\Nucs.JsonSettings.Autosave.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.NotifyChanges\build\Nucs.JsonSettings.NotifyChanges.targets" />
+
 </Project>

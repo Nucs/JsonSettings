@@ -40,7 +40,7 @@ namespace Nucs.JsonSettings.Inline {
 /// </summary>
 /// <returns></returns>
 private static string GetModuleFileNameLongPath() {
-    if (_moduleFileNameLongPath == null) {
+    if (_moduleFileNameLongPath is null) {
         StringBuilder buffer = new StringBuilder(MAX_PATH);
         int noOfTimes = 1;
         int length = 0;

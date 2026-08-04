@@ -1,28 +1,73 @@
-# <img src="assets/icon.png" width="25" style="margin: 5px 0px 0px 10px"/> JsonSettings
+﻿# <img src="assets/icon.png" width="25" style="margin: 5px 0px 0px 10px"/> JsonSettings
 [![Nuget version](https://img.shields.io/nuget/vpre/Nucs.JsonSettings.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![Nuget downloads](https://osscdn.nucs.workers.dev/jsonsettings-downloads-ujVrxmtCZN.svg)](https://www.nuget.org/packages/nucs.JsonSettings/)
 [![GitHub license](https://img.shields.io/github/license/Nucs/JsonSettings.svg)](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-nucs.github.io%2FJsonSettings-2563eb)](https://nucs.github.io/JsonSettings)
 
 This library aims to simplify the process of creating configuration for your C# app/service 
 by utilizing the serialization capabilities of [Json.NET](https://www.newtonsoft.com/json/help/html/SerializationGuide.htm)
 to serialize nested (custom) objects, dictionaries and lists as simply as by creating a `POCO` and inheriting `JsonSettings` class.<br/>
 
+> 📖 **Full documentation & API reference:** [nucs.github.io/JsonSettings](https://nucs.github.io/JsonSettings)
+
 
 ### Installation
 ```sh
 dotnet add package Nucs.JsonSettings
-dotnet add package Nucs.JsonSettings.Autosave   # optional, only for EnableAutosave()
+dotnet add package Nucs.JsonSettings.Autosave        # optional, for EnableAutosave()
+dotnet add package Nucs.JsonSettings.NotifyChanges   # optional, for [NotifyChanges] data binding
 ```
 ```sh
 PM> Install-Package Nucs.JsonSettings
 PM> Install-Package Nucs.JsonSettings.Autosave
+PM> Install-Package Nucs.JsonSettings.NotifyChanges
 ```
 
-Both packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`.
-The `netstandard2.0` asset covers everything without an exact match, including
-`net472`+, `netcoreapp3.1`, `net5.0`, `net7.0`, `net9.0`, Unity and Xamarin.
+All three packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`.
+The `netstandard2.0` asset covers frameworks without a closer match — `net472`+,
+`netcoreapp3.1`, `net5.0`, Unity and Xamarin; a newer runtime with no exact match resolves to
+the nearest lower asset instead (`net7.0`→`net6.0`, `net9.0`→`net8.0`).
+
+> **Native AOT / trimming:** none of the packages are trim-safe yet. Under `PublishTrimmed` or
+> `PublishAot` a settings file can still be silently written back as `{}` with no exception,
+> because Newtonsoft.Json's reflection is invisible to the trimmer.
+> `Nucs.JsonSettings.Autosave` no longer blocks AOT on its own: it is built on compile-time
+> IL weaving and emits nothing at runtime, where it previously used `Castle.DynamicProxy`
+> and threw `PlatformNotSupportedException`.
+> See [docs/AOT.md](https://github.com/Nucs/JsonSettings/blob/master/docs/AOT.md) for the
+> measurements, the causes and the workarounds.
+
+### Strong naming
+
+All packages are strong-named, so they can be referenced from a strong-named assembly:
+
+```
+Nucs.JsonSettings,               PublicKeyToken=cc7b13ffcd2ddd51
+Nucs.JsonSettings.Autosave,      PublicKeyToken=cc7b13ffcd2ddd51
+Nucs.JsonSettings.NotifyChanges, PublicKeyToken=cc7b13ffcd2ddd51
+```
+
+The key is Microsoft's [published open-source signing key](https://github.com/dotnet/arcade/blob/main/src/Microsoft.DotNet.Arcade.Sdk/tools/snk/Open.snk)
+— the same one `netstandard`, `System.Memory` and `System.Buffers` carry. Microsoft publishes
+its private half so that open-source projects can ship strong-named assemblies without running
+signing infrastructure.
+
+> **This is identity, not authenticity.** Anyone can sign an assembly with that key, so a
+> strong name here tells the runtime which assembly this is and lets it bind versions — it does
+> **not** attest that the file came from this project. None of the packages are Authenticode-signed
+> or NuGet author-signed, and `InternalsVisibleTo` is not an access control. If you need to verify
+> origin, verify the SHA-256 checksums published with each
+> [GitHub release](https://github.com/Nucs/JsonSettings/releases).
+
+Versions up to and including 2.1.0 shipped **unsigned** (`PublicKeyToken=null`); 2.2.0 is the first
+signed release. Upgrading across that boundary changes assembly identity, so a binding redirect
+written against the old unsigned identity will not match — remove it rather than editing it.
+
+See [docs/SIGNING.md](https://github.com/Nucs/JsonSettings/blob/master/docs/SIGNING.md) for how
+to verify it yourself and what the build enforces.
 
 ## Table of Contents
+- [📖 Documentation Website](https://nucs.github.io/JsonSettings)
 - [Features Overview](#features-overview)
 - [The Basics](#the-basics)
 - [Modules](#recovery)
@@ -31,12 +76,13 @@ The `netstandard2.0` asset covers everything without an exact match, including
     - [Encryption](#encryption)
     - [Autosave](#autosave)
       - [Suspend Saving](#suspend-autosave)
-      - [WPF Support with INotificationChanged/INotificationCollectionChanged](#wpf-support-with-inotificationchangedinotificationcollectionchanged)
+      - [WPF Support with INotifyPropertyChanged/INotifyCollectionChanged](#wpf-support-with-inotifypropertychangedinotifycollectionchanged)
       - [Throttled Save](#throttled-save)
 - [Dynamic Settings Bag](#dynamic-settings-bag)
 - [Changing JsonSerializerSettings](#changing-jsonserializersettings)
 - [Converters](#converters)
 - [Modulation Api](#modulation-api)
+- [Native AOT and Trimming](https://github.com/Nucs/JsonSettings/blob/master/docs/AOT.md)
 - [License](https://github.com/Nucs/JsonSettings/blob/master/LICENSE)
 
 
@@ -46,8 +92,8 @@ Features Overview
  - Cross-platform, multi-targeting `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`
  - Modularity allowing easy extension and high control over behavior on a per-object level  <span style='font-size:11px; padding-left: 3px' >[read more](#modulation-api)</span>
  - Autosaving on changes  <span style='font-size:11px; padding-left: 3px' >[read more](#autosave)</span>
-   - Via `INotificationChanged`/`INotificationCollectionChanged` allowing WPF binding (with interval throttling support to avoid cpu overload)  <span style='font-size:11px; padding-left: 3px' >[read more](#inotificationchanged-and-wpf-support)</span>
-   - Via `Castle.DynamicProxy` generated wrapper  <span style='font-size:11px; padding-left: 3px' >[read more](#proxification)</span>
+   - Via `INotifyPropertyChanged`/`INotifyCollectionChanged` allowing WPF binding  <span style='font-size:11px; padding-left: 3px' >[read more](#wpf-support-with-inotifypropertychangedinotifycollectionchanged)</span>
+   - Via compile-time IL weaving of the property setters, marked with `[Autosave]`  <span style='font-size:11px; padding-left: 3px' >[read more](#autosave)</span>
  - Versioning control  <span style='font-size:11px; padding-left: 3px' >[read more](#versioning)</span>
    - Offers protection mechanisms such as renaming file and loading default
    - By changing version, it allows to introduce any kind of changes to the settings class
@@ -113,34 +159,53 @@ Settings["key2"] = 123;
 dynamic dyn = Settings.AsDynamic();
 if ((int?)dyn.key2==123)
     Console.WriteLine("explode");
-dyn.Save(); /* or */ Settings.Save();
+Settings.Save();
 ```
 * **Encrypted settings**
-    * Uses AES/Rijndael
+    * Uses AES via `System.Security.Cryptography` (the .NET BCL); optional AES-GCM, AES-CCM, ChaCha20-Poly1305 or authenticated AES-CBC-HMAC.
     * Can be applied to any settings class because it is a module.
+    * The secret can be a text password, a binary password, or a raw key.
 ```C#
 MySettings Settings = JsonSettings.Load<MySettings>("config.json", q=>q.WithEncryption("mysecretpassword"));
 SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json", q=>q.WithEncryption("mysecretpassword"));
 //or
 MySettings Settings = JsonSettings.Configure<MySettings>("config.json")
                      .WithEncryption("mysecretpassword")
-               //or: .WithModule<RijndaelModule>("pass");
+               //or: .WithModule<EncryptionModule>("pass");
                      .LoadNow();
 
 SettingsBag Settings = JsonSettings.Configure<SettingsBag>("config.json")
                      .WithEncryption("mysecretpassword")
-               //or: .WithModule<RijndaelModule>("pass");
+               //or: .WithModule<EncryptionModule>("pass");
                      .LoadNow();
+```
+The secret can also be supplied as bytes. A `byte[]` **password** is stretched into the key with
+the same PBKDF2 derivation as a text password (salted and iterated); a **raw key** is used verbatim
+and must be 16, 24 or 32 bytes (AES-128/192/256):
+```C#
+// binary password - PBKDF2-derived, like a text password but with arbitrary bytes.
+// Note: NOT the same credential as the text password whose UTF-8 bytes equal these.
+byte[] password = Encoding.UTF8.GetBytes("mysecretpassword");
+var a = JsonSettings.Configure<MySettings>("config.json").WithEncryption(password).LoadNow();
+
+// raw AES key - used as-is, no derivation. You own the key's quality.
+byte[] key = RandomNumberGenerator.GetBytes(32); // or from an env var / HSM / another KDF
+var b = JsonSettings.Configure<MySettings>("config.json").WithEncryptionRawKey(key).LoadNow();
+
+// both accept a fetcher, incl. one that receives the instance:
+var c = JsonSettings.Configure<MySettings>("config.json")
+                    .WithEncryptionRawKey(() => LoadKeyFromVault())
+                    .LoadNow();
 ```
 
 * **Hardcoded Settings with Autosave**
-    * Automatic save will occur when changes detected on virtual properties
-    * All properties have to be virtual
-    * Requires package `nucs.JsonSettings.Autosave` that uses `Castle.Core`.
+    * Automatic save will occur when any property changes
+    * Works on any property — `virtual` is not required (as of 2.2.0); opt a property out with `[IgnoreAutosave]`
+    * Requires package `nucs.JsonSettings.Autosave` and an `[Autosave]` attribute on the class.
 ```C#
 Settings x  = JsonSettings.Load<Settings>().EnableAutosave(); //call after loading
 //or:
-ISettings x = JsonSettings.Load<Settings>().EnableIAutosave<ISettings>(); //Settings implements interface ISettings
+ISettings x = JsonSettings.Load<Settings>().EnableIAutosave<Settings, ISettings>(); //Settings implements interface ISettings
 
 x.Property = "value"; //Saved!
 ```
@@ -151,7 +216,6 @@ x.Property = "value"; //Saved!
 ```C#
 //Step 1:
 SettingsBag Settings = JsonSettings.Load<SettingsBag>("config.json").EnableAutosave(); //call after loading
-//Unavailable for hardcoded settings yet! (ty netstandard2.0 for not being awesome on proxies)
 //Step 2:
 Settings.AsDynamic().key = "wow"; //Saved!
 Settings["key"] = "wow two"; //Saved!
@@ -170,7 +234,7 @@ On a scenario of exception/failure, one of the following actions can take place:
   Default settings will be loaded and saved to disk immediately.
 - **RecoveryAction.RenameAndLoadDefault**<br/>
   Will append the version to the end of the faulty file's name and load the default settings and save to disk.<br/>
-  i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5.json` if it fails on parsing and the new default settings will be saved as the original filename.
+  i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5-0.json` if it fails on parsing (the trailing `-0` is a collision counter — a second archive becomes `-1`, and so on) and the new default settings will be saved as the original filename.
 
 All recovery properties and methods are suited for inheritance so extending is quite easy.
 
@@ -190,7 +254,7 @@ a user-defined action can take place. Any of the following actions can be taken:
   Default settings will be loaded and saved to disk immediately.
 - **VersioningResultAction.RenameAndLoadDefault**<br/>
   Will append the version to the end of the faulty file's name and load the default settings and save to disk.<br/>
-  i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5.json` if it fails on parsing and the new default settings will be saved as the original filename.
+  i.e. `myfile.json` versioned `1.0.0.5` will be renamed to `myfile.1.0.0.5-0.json` if it fails on parsing (the trailing `-0` is a collision counter — a second archive becomes `-1`, and so on) and the new default settings will be saved as the original filename.
 
 There are two ways to specify which version to enforce.
 1. Pass the version when calling `WithVersioning`.
@@ -201,8 +265,8 @@ There are two ways to specify which version to enforce.
 //TODO: example
 
 #### Policy
-A comparison between versions is done by the `Policy` which is a `Func<Version, Version, bool>` passed during the construction of `VersioningModule<T>` or fallbacks to `static VersioningModule.DefaultPolicy` which can be changed.<br/>
-It is possible to change the static default policy by changing `VersioningModule.DefaultPolicy` although each `VersioningModule<T>` can be assigned its own policy.<br/>
+A comparison between versions is done by the `Policy` which is a `VersioningPolicyHandler` delegate (`(Version, Version) => bool`) passed during the construction of `VersioningModule<T>` or falls back to `static VersioningModule<T>.DefaultPolicy` which can be changed.<br/>
+It is possible to change the static default policy by changing `VersioningModule<T>.DefaultPolicy` although each `VersioningModule<T>` can be assigned its own policy.<br/>
 By default the versions must match exactly:<br/>
 ```C# 
 static bool DefaultEqualPolicy(Version version, Version expectedVersion) {
@@ -211,29 +275,138 @@ static bool DefaultEqualPolicy(Version version, Version expectedVersion) {
 ```
 Encryption
 ---
-The encryption used is AES256, the parsed json is decoded to UTF8 bytes, converted to encrypted bytes and then to base64 string encoding.<br/>
-The decision to save it as base64 is to make it easily copiable as a string.
+The default is **AES-256-CBC** over the serialized JSON (UTF-8 bytes), using only `System.Security.Cryptography` (the .NET base class library) &mdash; no third-party cryptography. The file holds a random IV followed by the AES-CBC ciphertext. Add `WithBase64()` to additionally store the result as copy-pasteable base64 text.
 
-//TODO: example
+The secret comes in three forms:
 
-Special thanks to [Rijndael256](https://github.com/2Toad/Rijndael256) for their AES encryption implementation. 
+| Call | Secret | How it becomes the key |
+|---|---|---|
+| `WithEncryption(string)` / `WithEncryption(SecureString)` | text password | PBKDF2 (salted, iterated) |
+| `WithEncryption(byte[])` | binary password | the same PBKDF2 derivation, over the raw bytes |
+| `WithEncryptionRawKey(byte[])` | raw AES key (16/24/32 bytes) | used verbatim, no derivation |
+
+Each also has `Func<...>` and `Func<T, ...>` overloads for resolving the secret lazily (e.g. from a
+vault or an environment variable).
+
+Notes:
+- A `byte[]` **password** is a *different credential* from the text password whose UTF-8 encoding
+  equals those bytes — the text derivation folds in the string's character length, which raw bytes
+  do not carry. Pick one form per file.
+- A **raw key** skips PBKDF2, so its strength is entirely the key you provide; supply high-entropy
+  key material (e.g. `RandomNumberGenerator.GetBytes(32)`), not a low-entropy value.
+- The on-disk format is identical across all three (a random IV followed by AES-CBC blocks), and the
+  text-password path is byte-for-byte compatible with every earlier version.
+
+```C#
+// text password (classic)
+JsonSettings.Configure<MySettings>("config.json").WithEncryption("mysecretpassword").LoadNow();
+
+// binary password (PBKDF2-derived)
+JsonSettings.Configure<MySettings>("config.json").WithEncryption(passwordBytes).LoadNow();
+
+// raw key (verbatim, 16/24/32 bytes for AES)
+JsonSettings.Configure<MySettings>("config.json").WithEncryptionRawKey(key32).LoadNow();
+```
+
+The default `AesCbc` is unauthenticated and on-disk compatible with every earlier version. Pass an
+`EncryptionAlgorithm` to choose another &mdash; including authenticated algorithms that detect a
+tampered file, not only keep it confidential:
+
+```C#
+// authenticated AEAD (.NET 6.0+)
+JsonSettings.Configure<MySettings>("config.json").WithEncryption("password", EncryptionAlgorithm.AesGcm).LoadNow();
+JsonSettings.Configure<MySettings>("config.json").WithEncryptionRawKey(key32, EncryptionAlgorithm.ChaCha20Poly1305).LoadNow();
+```
+
+`AesCbc` and `AesCbcHmac` are available on every target framework; `AesGcm`, `AesCcm` and
+`ChaCha20Poly1305` require .NET 6.0+. There is no algorithm marker in the file, so read it back with
+the same algorithm it was written with; only `AesCbc` reads files from older versions. Encryption runs
+entirely on `System.Security.Cryptography` &mdash; there is no third-party cryptographic dependency.
 
 Autosave
 ---
-Autosaving detects changes in all virtual properties by creating a proxy wrapper using Castle.Core. <br/>
-The requirement for the class to be autosaved is for all public properties have to be virtual and the class to be non-sealed.
-Any properties that are not marked virtual will not work properly (not just won't autosave), therefore an `JsonSettingsException` is thrown if during proxification a non-virtual property is detected.
+Autosaving appends a save to the end of every property setter of a class marked `[Autosave]`.
+This happens at compile time, via IL weaving ([AspectInjector](https://github.com/pamidur/aspect-injector)),
+in the assembly that declares the class. Nothing is generated at runtime.
+
+```C#
+[Autosave]
+public class MySettings : JsonSettings {
+    public override string FileName { get; set; } = "config.json";
+    public string Name { get; set; }        // no 'virtual' required
+    public int    Count { get; set; }
+}
+
+var settings = JsonSettings.Load<MySettings>("config.json").EnableAutosave();
+settings.Name = "changed";   // saved
+```
+
+#### What changed in 2.2.0
+Autosave used to build a runtime proxy with `Castle.Core`, which forced three restrictions
+that are now gone:
+
+| Before (Castle.DynamicProxy) | Now (compile-time weaving) |
+|---|---|
+| Every public property had to be `virtual` | Ordinary properties work; `virtual` is irrelevant |
+| The class could not be `sealed` | `sealed` classes work |
+| `EnableAutosave()` returned a **different** object, so a reference captured beforehand silently did not autosave | Returns the same instance; every reference to it autosaves |
+| Impossible under Native AOT (`System.Reflection.Emit`) | No runtime codegen at all |
+
+In exchange there is one new requirement: the class must carry `[Autosave]`. Calling
+`EnableAutosave()` on a class without it throws `JsonSettingsException` rather than
+silently doing nothing.
+
+`[Autosave]` is **not inherited**. A setter is woven where it is declared, so every class in
+a settings hierarchy that declares properties you want saved needs its own attribute.
+
+Two smaller behavioural notes for anyone migrating from 2.1.0:
+
+- **`virtual` is no longer an opt-out.** Under the proxy, a non-virtual property was silently
+  skipped; some code relied on that to keep a property out of autosaving. Every setter is now
+  woven regardless of `virtual`, so a property that must **not** autosave has to say so with
+  `[IgnoreAutosave]` (or `[JsonIgnore]`).
+- **`EnableAutosave()` is idempotent.** Calling it twice on the same instance returns that
+  instance and does not attach a second autosave module.
+
+The Castle-era `JsonSettingsAutosaveExtensions.Options` field (a `Castle.DynamicProxy.ProxyGenerationOptions`)
+is removed, since the type it exposed no longer exists in the dependency graph.
 
 #### Attributes
-Properties can be marked with `IgnoreAutosaveAttribute`  (`IgnoreJsonAttribute` will also work) to be excluded from the monitored properties for changes.<br/>
-All proxy wrapper classes generated with `ProxyGeneratedAttribute`.
+Properties can be marked with `IgnoreAutosaveAttribute` (`JsonIgnoreAttribute` will also work)
+to be excluded from the monitored properties for changes. This applies to collections too: an
+`[IgnoreAutosave]` `ObservableCollection` does not save when its contents change.
+
+#### Behaviour notes
+- **Indexers are not monitored.** Writing `settings[key] = value` does not autosave — an indexer
+  is not a serializable property. Use a normal property or call `Save()`.
+- **Reentrancy is safe.** Writing a monitored property from inside an `AfterSave` handler does not
+  trigger another save (it would otherwise recurse); the value is kept in memory and persists on
+  the next save.
+- **`SuspendAutosave` nests.** Nested suspension scopes are reference-counted and collapse into a
+  single save when the outermost scope closes; an inner scope closing does not end suspension.
+- **A failing save surfaces at the assignment.** If the triggered `Save()` throws, the exception
+  propagates out of the property assignment (the new value is already set in memory).
+- **Disposing the settings unbinds autosave**, including handlers attached to nested collections.
+- **Loading does not autosave.** `Load()`, `LoadDefault()` and a versioning reload populate the
+  object from disk through its setters; those writes are not user edits and do not save back
+  (autosave resumes normally afterward).
+- **`IVersionable.Version` is not monitored.** It is framework metadata managed by the versioning
+  module and rides along in every ordinary save, so changing it does not by itself autosave. (A
+  property named `Version` on a class that does *not* implement `IVersionable` is ordinary user
+  data and is monitored.)
 
 #### Requirements
-- All public properties must be virtual
 - Install `nucs.JsonSettings.Autosave` nuget package
+- Mark the settings class `[Autosave]`
 - Call `mySettings.EnableAutosave()` extension after calling `Load`
 
-//TODO: example
+#### Strong-named consumers
+IL weaving rewrites the assembly after the compiler has signed it, and AspectInjector 2.9.0
+[retired its re-signing feature](https://github.com/pamidur/aspect-injector/releases/tag/2.9.0).
+The package therefore ships MSBuild targets that re-sign the assembly with your own
+`$(AssemblyOriginatorKeyFile)` after the weave. If `sn.exe` cannot be found the build warns
+(`NJS1001`) rather than failing; opt out entirely with
+`<NucsAutosaveResignAfterWeaving>false</NucsAutosaveResignAfterWeaving>`.
 
 #### Suspend Autosave
 In some scenarios, there might be multiple close changes to the configuration object. Normally that would trigger multiple save calls.
@@ -243,25 +416,75 @@ If there were no changes between the allocation of `SuspendAutosave` object and 
 
 //TODO: example
 
-WPF Support with INotificationChanged/INotificationCollectionChanged
+WPF Support with INotifyPropertyChanged/INotifyCollectionChanged
 ---
 Any settings class can turn into a ViewModel with full autosave support making window settings and state persistence much simpler.
 
-When your settings class inherits `INotifyPropertyChanged`, upon calling `EnableAutosave`, 
-a different interceptor with `NotificationBinder` will be attached to the generated proxy object that'll listen to the settings class's:
+When your settings class inherits `INotifyPropertyChanged`, upon calling `EnableAutosave`,
+a `NotificationBinder` is attached to the settings object that'll listen to the settings class's:
 - `event PropertyChanged` calls
 - All properties that implement `INotifyPropertyChanged` will bind to their `event PropertyChanged`
-- All properties that implement `INotificationCollectionChanged` such as `ObservableCollection<T>`  will bind to their `event CollectionChanged`
-- All virtual properties that do not answer to the criteria above.
+- All properties that implement `INotifyCollectionChanged` such as `ObservableCollection<T>`  will bind to their `event CollectionChanged`
+- All other properties save through their woven setter (`virtual` is not required as of 2.2.0).
 
 So evidently, objects inside ObservableCollection or other nested properties that are not in the settings class are not monitored for changes.<br/><br/>
-Any properties that are not marked virtual will not work properly (not just won't autosave), therefore a `JsonSettingsException` is thrown if during proxification if a non-virtual property is detected.
+Saving on a plain property write is handled by the woven setter, so a hand-written setter that
+raises `OnPropertyChanged` and an auto-implemented one behave identically. The
+`NotificationBinder` is what re-binds nested `INotifyPropertyChanged` /
+`INotifyCollectionChanged` objects when the property holding them is replaced.
 
 #### Requirements
-- Settings class inherit `INotifyPropertyChanged`
-- All public properties must be virtual
+- Settings class inherit `INotifyPropertyChanged` (e.g. by deriving `NotifiyingJsonSettings`)
+- Mark the settings class `[Autosave]`
 - Install `nucs.JsonSettings.Autosave` nuget package
 - Call `mySettings.EnableAutosave()` extension after calling `Load`
+
+#### Producing notifications for the View — `[NotifyChanges]`
+The above makes autosave *react* to `PropertyChanged`. To make a setter *raise* it — so a binding
+(WPF, WinForms, Avalonia, WinUI, MAUI, Uno) refreshes — without hand-writing `OnPropertyChanged()` in
+every setter, including on **auto-properties** (which otherwise save but never notify), install the
+separate **`Nucs.JsonSettings.NotifyChanges`** package and mark the class `[NotifyChanges]`:
+
+```C#
+[Autosave, NotifyChanges]                     // [Autosave] from Nucs.JsonSettings.Autosave,
+public class WindowSettings : NotifiyingJsonSettings {   // [NotifyChanges] from Nucs.JsonSettings.NotifyChanges
+    public override string FileName { get; set; } = "window.json";
+    public double Width { get; set; }   // binds two-way, saves, and notifies — no boilerplate
+    public string Title { get; set; }
+}
+```
+
+- Compile-time weave like `[Autosave]`, **not inherited**, and composes with it (one write saves and
+  notifies once). Put it on auto-properties — a hand-written setter that already calls
+  `OnPropertyChanged()` would notify twice. Framework-neutral: depends only on `System.ComponentModel`,
+  not on WPF.
+- `NotificationGuard` controls when it fires, per class or per property: `OnlyChanged` (default),
+  `SkipNullOrDefault`, `Always` — and they combine (`[Flags]`).
+- Silence a property with `[IgnoreNotify]` (independent of `[IgnoreAutosave]` — a property can save
+  without notifying, or the reverse); framework `FileName`/`Modulation`/`Version` never notify.
+- The class must own the event: `NotifiyingJsonSettings`, or an MVVM base recognised by convention
+  (`OnPropertyChanged` / `RaisePropertyChanged` / `NotifyOfPropertyChange`). For a class with **no**
+  base, `[NotifyChangesMixin]` injects `INotifyPropertyChanged` for you (per-instance; best for a single
+  class — a hierarchy should use `NotifiyingJsonSettings` + `[NotifyChanges]`).
+- Also raises **`INotifyPropertyChanging`** before the change (on `NotifiyingJsonSettings`, a convention
+  raiser, or the mixin), fans a change out to a computed property with **`[NotifyChangesFor(nameof(…))]`**,
+  and marshals notifications onto the UI thread for off-thread writes via
+  **`EnableNotificationMarshaling()`**.
+
+See the [Notifications & Data Binding guide](docs/website-src/docs/notifications.md) for the guard
+details, the mixin, `INotifyPropertyChanging`, `[NotifyChangesFor]`, `SynchronizationContext`
+marshalling, nested-collection autosave, threading, and a comparison with Fody `PropertyChanged`,
+CommunityToolkit.Mvvm and ReactiveUI.
+
+For a runnable tour, [`examples/JsonSettings.Examples.UI`](examples/JsonSettings.Examples.UI) is a
+WPF app in which every control is a bound settings property — the window's own position/size/title
+persist through the binding, and one tab per integration (guards, `[NotifyChangesFor]`, the
+opt-outs, nested collections, the mixin, raiser conventions, `EnableIAutosave`, marshalling) shows
+its save/notification counters, an activity log and the JSON file on disk, live:
+
+```sh
+dotnet run --project examples/JsonSettings.Examples.UI -f net8.0-windows
+```
 
 Throttled Save
 ---
@@ -273,7 +496,25 @@ SettingsBag internally stores a key-value dictionary.
 Any type of Value can be passed as long as Json.NET knows how to serialize it. <br/>
 SettingsBag has built-in feature for autosaving that can be enabled by calling EnableAutosave without WPF binding support. <br/>
 
-//TODO: add example
+```C#
+var bag = JsonSettings.Load<SettingsBag>("bag.json").EnableAutosave();
+bag["Name"] = "value";           // saved
+bag.Remove("Name");              // saved
+dynamic d = bag.AsDynamic();
+d.Other = 42;                    // saved (routes through the bag)
+```
+
+This is a **separate** autosave from the `[Autosave]` weaving used for typed classes — it is
+dictionary-backed, needs no attribute, and is what `SettingsBag.EnableAutosave()` (the instance
+method) turns on. It shares the same `AutosaveModule`, so it inherits the same guarantees:
+`SuspendAutosave()` (including nesting), reentrancy safety (writing the bag inside an `AfterSave`
+handler does not recurse), and `Remove`/`RemoveWhere` autosave like an index write.
+
+Notes:
+- Calling the `EnableAutosave()` extension on a `JsonSettings`-typed reference to a bag routes to
+  the bag's own autosave, so it behaves the same as calling the instance method.
+- `AsDynamic()` returns a disposable wrapper; using it after `Dispose()` throws
+  `ObjectDisposedException`.
 
 Changing JsonSerializerSettings
 ---
@@ -284,7 +525,8 @@ public static JsonSerializerSettings SerializationSettings { get; set; } = new J
     ReferenceLoopHandling = ReferenceLoopHandling.Ignore, 
     NullValueHandling = NullValueHandling.Include, 
     ContractResolver = new FileNameIgnoreResolver(), 
-    TypeNameHandling = TypeNameHandling.Auto
+    TypeNameHandling = TypeNameHandling.Auto, 
+    MaxDepth = 128
 };
 ```
 
@@ -360,7 +602,7 @@ event DecryptHandler Decrypt(JsonSettings sender, ref byte[] data);
 event AfterDecryptHandler AfterDecrypt(JsonSettings sender, ref byte[] data);
 event BeforeDeserializeHandler BeforeDeserialize(JsonSettings sender, ref string data);
 event AfterDeserializeHandler AfterDeserialize(JsonSettings sender);
-event AfterLoadHandler AfterLoad(JsonSettings sender);
+event AfterLoadHandler AfterLoad(JsonSettings sender, bool successfulLoad);
 ```
 And in a case of `JsonException` during `LoadJson`
 ```C#
