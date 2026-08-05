@@ -14,57 +14,11 @@ to serialize nested (custom) objects, dictionaries and lists as simply as by cre
 ### Installation
 ```sh
 dotnet add package Nucs.JsonSettings
-dotnet add package Nucs.JsonSettings.Autosave        # optional, for EnableAutosave()
+dotnet add package Nucs.JsonSettings.Autosave        # optional, for [AutoSave] and EnableAutosave()
 dotnet add package Nucs.JsonSettings.NotifyChanges   # optional, for [NotifyChanges] data binding
 ```
-```sh
-PM> Install-Package Nucs.JsonSettings
-PM> Install-Package Nucs.JsonSettings.Autosave
-PM> Install-Package Nucs.JsonSettings.NotifyChanges
-```
 
-All three packages target `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`.
-The `netstandard2.0` asset covers frameworks without a closer match — `net472`+,
-`netcoreapp3.1`, `net5.0`, Unity and Xamarin; a newer runtime with no exact match resolves to
-the nearest lower asset instead (`net7.0`→`net6.0`, `net9.0`→`net8.0`).
-
-> **Native AOT / trimming:** none of the packages are trim-safe yet. Under `PublishTrimmed` or
-> `PublishAot` a settings file can still be silently written back as `{}` with no exception,
-> because Newtonsoft.Json's reflection is invisible to the trimmer.
-> `Nucs.JsonSettings.Autosave` no longer blocks AOT on its own: it is built on compile-time
-> IL weaving and emits nothing at runtime, where it previously used `Castle.DynamicProxy`
-> and threw `PlatformNotSupportedException`.
-> See [docs/AOT.md](https://github.com/Nucs/JsonSettings/blob/master/docs/AOT.md) for the
-> measurements, the causes and the workarounds.
-
-### Strong naming
-
-All packages are strong-named, so they can be referenced from a strong-named assembly:
-
-```
-Nucs.JsonSettings,               PublicKeyToken=cc7b13ffcd2ddd51
-Nucs.JsonSettings.Autosave,      PublicKeyToken=cc7b13ffcd2ddd51
-Nucs.JsonSettings.NotifyChanges, PublicKeyToken=cc7b13ffcd2ddd51
-```
-
-The key is Microsoft's [published open-source signing key](https://github.com/dotnet/arcade/blob/main/src/Microsoft.DotNet.Arcade.Sdk/tools/snk/Open.snk)
-— the same one `netstandard`, `System.Memory` and `System.Buffers` carry. Microsoft publishes
-its private half so that open-source projects can ship strong-named assemblies without running
-signing infrastructure.
-
-> **This is identity, not authenticity.** Anyone can sign an assembly with that key, so a
-> strong name here tells the runtime which assembly this is and lets it bind versions — it does
-> **not** attest that the file came from this project. None of the packages are Authenticode-signed
-> or NuGet author-signed, and `InternalsVisibleTo` is not an access control. If you need to verify
-> origin, verify the SHA-256 checksums published with each
-> [GitHub release](https://github.com/Nucs/JsonSettings/releases).
-
-Versions up to and including 2.1.0 shipped **unsigned** (`PublicKeyToken=null`); 2.2.0 is the first
-signed release. Upgrading across that boundary changes assembly identity, so a binding redirect
-written against the old unsigned identity will not match — remove it rather than editing it.
-
-See [docs/SIGNING.md](https://github.com/Nucs/JsonSettings/blob/master/docs/SIGNING.md) for how
-to verify it yourself and what the build enforces.
+All packages are signed and supported runtimes are: `netstandard2.0`, `net48`, `net6.0`, `net8.0` and `net10.0`.
 
 ## Table of Contents
 - [📖 Documentation Website](https://nucs.github.io/JsonSettings)
