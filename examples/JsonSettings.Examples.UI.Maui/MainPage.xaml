@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Nucs.JsonSettings.Examples.UI.Maui.MainPage">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30,24" Spacing="18">
+
+            <Label
+                Text="Nucs.JsonSettings + [Autosave] on .NET MAUI"
+                Style="{StaticResource Headline}"
+                SemanticProperties.HeadingLevel="Level1" />
+
+            <Label
+                Text="Every value below is stored in a JSON file. Change it, close the app, reopen — it comes back. Nothing here calls Save(): the woven setters do it."
+                Style="{StaticResource SubHeadline}" />
+
+            <Label x:Name="LaunchLabel" />
+
+            <Button
+                x:Name="CounterBtn"
+                Text="Click me"
+                SemanticProperties.Hint="Increments a counter that is persisted across launches"
+                Clicked="OnCounterClicked"
+                HorizontalOptions="Fill" />
+
+            <Label Text="A note (saved on every keystroke):" />
+            <Entry
+                x:Name="NoteEntry"
+                Placeholder="type something, then relaunch"
+                TextChanged="OnNoteChanged" />
+            <Label x:Name="NoteEcho" />
+
+            <Label
+                x:Name="PathLabel"
+                FontSize="11"
+                TextColor="Gray" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

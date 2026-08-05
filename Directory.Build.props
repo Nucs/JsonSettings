@@ -98,9 +98,12 @@
            and, at release time, over every lib/ DLL inside the produced .nupkg.
 
        Opt out per project with `<SignAssembly>false</SignAssembly>` — Directory.Build.props
-       is imported BEFORE the project body, so a project's own value wins. Nothing opts out
-       today: the test project MUST be signed for the friend references below to resolve,
-       and JsonSettings.Examples is signed only for uniformity.
+       is imported BEFORE the project body, so a project's own value wins. The test project
+       MUST be signed for the friend references below to resolve; JsonSettings.Examples is
+       signed only for uniformity. The one opt-out is the MAUI example
+       (examples/JsonSettings.Examples.UI.Maui): the Microsoft.Maui.* assemblies are not
+       strong-named, so signing that app produces a CS8002 wall for zero benefit — see the
+       note in its csproj.
        ==================================================================================== -->
   <PropertyGroup>
     <SignAssembly Condition="'$(SignAssembly)' == ''">true</SignAssembly>
