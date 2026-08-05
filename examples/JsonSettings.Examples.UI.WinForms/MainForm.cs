@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Drawing;
+using System.Text;
 using System.Windows.Forms;
 using Nucs.JsonSettings.Autosave;
 
@@ -15,17 +16,19 @@ namespace Nucs.JsonSettings.Examples.UI.WinForms;
 /// </summary>
 public sealed class MainForm : Form {
     private readonly AppSettings _settings = AppSettings.Instance;
+    private readonly VaultSettings _vault = VaultSettings.Instance;
     private readonly BindingSource _binding;
     private readonly PropertyGrid _grid;
     private readonly ToolStripStatusLabel _saveLabel;
     private readonly TextBox _serverBox;
     private readonly TextBox _portBox;
+    private readonly TextBox _rawBox;
     private int _saveCount;
 
     public MainForm() {
         Text = "Nucs.JsonSettings — WinForms";
-        MinimumSize = new Size(760, 460);
-        ClientSize = new Size(860, 480);
+        MinimumSize = new Size(760, 620);
+        ClientSize = new Size(880, 660);
 
         // ---- left: the zero-code settings dialog -------------------------------------------
         _grid = new PropertyGrid {
@@ -63,11 +66,30 @@ public sealed class MainForm : Form {
         _serverBox = serverBox;
         _portBox = portBox;
 
+        // ---- encrypted vault: the same grid UX over a ciphertext file ----------------------
+        var vaultGrid = new PropertyGrid {
+            Dock = DockStyle.Fill,
+            SelectedObject = _vault,
+            HelpVisible = false,
+            ToolbarVisible = false,
+        };
+
+        var rawBtn = new Button { Text = "Show raw files on disk (plain vs encrypted)", Dock = DockStyle.Fill };
+        rawBtn.Click += OnShowRawFiles;
+        _rawBox = new TextBox {
+            Dock = DockStyle.Fill,
+            Multiline = true,
+            ReadOnly = true,
+            ScrollBars = ScrollBars.Vertical,
+            Font = new Font(FontFamily.GenericMonospace, 8.25f),
+            Text = "click the button above after editing something on either grid",
+        };
+
         var right = new TableLayoutPanel {
             Dock = DockStyle.Fill,
             Padding = new Padding(12),
             ColumnCount = 2,
-            RowCount = 9,
+            RowCount = 13,
         };
         right.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
         right.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -80,6 +102,10 @@ public sealed class MainForm : Form {
         AddRow(right, "Server", serverBox);
         AddRow(right, "Port", portBox);
         AddRow(right, "", applyBtn);
+        AddRow(right, "Encrypted vault (WithEncryption):", null, bold: true);
+        AddRow(right, "", vaultGrid, rowHeight: 130);
+        AddRow(right, "", rawBtn);
+        AddRow(right, "", _rawBox, rowHeight: 120);
 
         var split = new SplitContainer {
             Dock = DockStyle.Fill,
@@ -109,8 +135,12 @@ public sealed class MainForm : Form {
 
         // Every write above also SAVED (the [Autosave] weave); count them to make the batching
         // demo measurable. All writes in this demo happen on the UI thread, so no marshalling.
+        // Both settings objects feed the same counter — the destination path tells them apart,
+        // and a vault edit visibly saves the ENCRYPTED file.
         _settings.AfterSave += (_, destination) =>
             _saveLabel.Text = $"save #{++_saveCount} → {destination}";
+        _vault.AfterSave += (_, destination) =>
+            _saveLabel.Text = $"save #{++_saveCount} → {destination} (encrypted)";
 
         UpdateTitle();
     }
@@ -134,9 +164,28 @@ public sealed class MainForm : Form {
         }
     }
 
-    private static void AddRow(TableLayoutPanel panel, string label, Control? control, bool bold = false) {
+    private void OnShowRawFiles(object? sender, EventArgs e) {
+        // The point of the whole vault demo, made visible: two files written by the SAME code
+        // path (a woven setter followed by a module pipeline), one readable, one ciphertext.
+        static string Preview(string path) {
+            if (!File.Exists(path))
+                return "(no file yet — change something first)";
+            var bytes = File.ReadAllBytes(path);
+            var head = new byte[Math.Min(bytes.Length, 64)];
+            Array.Copy(bytes, head, head.Length);
+            var looksText = head.All(b => b is 9 or 10 or 13 or (>= 32 and < 127));
+            return looksText
+                ? Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 220)).Replace("\r", " ").Replace("\n", " ")
+                : BitConverter.ToString(head).Replace("-", " ") + " …";
+        }
+
+        _rawBox.Text = $"plain  {_settings.FileName}:\r\n{Preview(_settings.FileName)}\r\n\r\n" +
+                       $"vault  {_vault.FileName}:\r\n{Preview(_vault.FileName)}";
+    }
+
+    private static void AddRow(TableLayoutPanel panel, string label, Control? control, bool bold = false, int rowHeight = 0) {
         var row = panel.RowStyles.Count;   // rows are appended in order, so the next index is the count
-        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(rowHeight > 0 ? new RowStyle(SizeType.Absolute, rowHeight) : new RowStyle(SizeType.AutoSize));
         var lbl = new Label {
             Text = label,
             Dock = DockStyle.Fill,

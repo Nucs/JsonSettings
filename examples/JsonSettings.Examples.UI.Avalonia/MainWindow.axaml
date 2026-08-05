@@ -43,8 +43,16 @@
             <ListBox x:Name="TagsList" MinHeight="110" MaxHeight="160"
                      ItemsSource="{Binding Tags}" />
 
-            <!-- footer: save feedback + file location -->
+            <!-- resilience: RecoveryModule surviving a corrupt file, on demand -->
+            <TextBlock FontWeight="SemiBold" Text="Resilience (RecoveryModule)" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                       Text="This button vandalizes the settings file on disk with invalid JSON, then calls Load(). WithRecovery(RenameAndLoadDefault) sets the broken file aside and reloads defaults — the app never sees the exception." />
+            <Button Content="Corrupt the file on disk, then reload" Click="OnCorruptAndRecover" />
+            <TextBlock x:Name="RecoveryStatus" Opacity="0.7" Text="file is healthy" TextWrapping="Wrap" />
+
+            <!-- footer: save feedback, INotifyPropertyChanging log, file location -->
             <TextBlock x:Name="SaveStatus" Opacity="0.7" Text="not saved yet" />
+            <TextBlock x:Name="ChangingLog" Opacity="0.5" FontSize="11" Text="(INotifyPropertyChanging log)" TextWrapping="Wrap" />
             <TextBlock x:Name="PathLabel" Opacity="0.5" FontSize="11" TextWrapping="Wrap" />
 
         </StackPanel>

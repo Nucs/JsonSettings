@@ -406,11 +406,11 @@ to be excluded from the monitored properties for changes. This applies to collec
 - Mark the settings class `[Autosave]`
 - Call `mySettings.EnableAutosave()` extension after calling `Load`
 
-#### How the weave runs (out of process, since 2.2.1)
+#### How the weave runs (out of process, since 2.3.0)
 AspectInjector's stock in-process MSBuild task leaks file handles into the MSBuild node, which
 deterministically failed small **executable** consumers at the SDK's `CreateAppHost` step
 (`MSB4018` / *"The process cannot access the file '&lt;App&gt;.dll' because it is being used by
-another process"*) — merely referencing the package was enough. Since 2.2.1 the shipped build
+another process"*) — merely referencing the package was enough. Since 2.3.0 the shipped build
 targets run the identical weaver task in a short-lived child MSBuild process instead, so every
 leaked handle is closed at child exit before `CreateAppHost` runs; weaving behaviour and
 incrementality are unchanged. Opt back into the in-process weave with

@@ -1,7 +1,7 @@
 # Bug: AspectInjector 2.9.0 leaves the woven assembly locked → `CreateAppHost` fails for executable consumers
 
-Status: **FIXED in 2.2.1 by a package-side out-of-process weave** (see [The fix shipped in
-2.2.1](#the-fix-shipped-in-221) below). The upstream handle leak is still present in
+Status: **FIXED in 2.3.0 by a package-side out-of-process weave** (see [The fix shipped in
+2.3.0](#the-fix-shipped-in-230) below). The upstream handle leak is still present in
 AspectInjector 2.9.0 — the exact undisposed objects are pinpointed in
 [Root cause](#root-cause), which is written to be liftable into an upstream issue.
 Filed from: `Nucs.JsonSettings.Autosave` 2.2.0. Root cause is upstream in AspectInjector 2.9.0.
@@ -184,10 +184,10 @@ satisfy it.
   the handle is not reclaimed by a GC issued from within the same build (the weaver task instance is
   still rooted by MSBuild at that point).
 
-## The fix shipped in 2.2.1
+## The fix shipped in 2.3.0
 
 Of the candidate directions, **run the weave in a separate process** is the one that holds up, and
-it is what `Nucs.JsonSettings.Autosave` and `Nucs.JsonSettings.NotifyChanges` 2.2.1 ship. The other
+it is what `Nucs.JsonSettings.Autosave` and `Nucs.JsonSettings.NotifyChanges` 2.3.0 ship. The other
 two candidates die on the facts established above: the atomic swap cannot work because the leaked
 handle is `FileShare.Read` **without** `FILE_SHARE_DELETE`, so the locked file can be neither
 renamed nor deleted (the swap has nowhere to put the fresh copy); and "block until the handle is
@@ -223,7 +223,7 @@ disables weaving outright; `AspectInjector_Location` is honoured. New diagnostic
 MSBuild process per weave-needing build (~1–2 s), skipped entirely when the assembly is up to date
 and in design-time builds.
 
-Validated (2.2.1 packages from a local feed, .NET SDK 10.0.101):
+Validated (2.3.0 packages from a local feed, .NET SDK 10.0.101):
 
 | Scenario | Result |
 |---|---|
@@ -241,7 +241,7 @@ The correct fix remains upstream: `FluentIL.PatcherBase.Process` must dispose th
 `WriteAssembly` disposes it), dispose the `KnownReferencesAssemblyResolver`'s cached modules in
 every path, and stop parking state in the static `CutEvents.OnModify`. See related history:
 pamidur/aspect-injector #141 (".pdb … used by another process"), #239 ("cannot re‑sign assembly,
-try rebuild"). Until then the 2.2.1 out‑of‑process weave sidesteps the entire class of leaks.
+try rebuild"). Until then the 2.3.0 out‑of‑process weave sidesteps the entire class of leaks.
 
 ## References
 

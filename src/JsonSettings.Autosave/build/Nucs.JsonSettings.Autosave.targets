@@ -46,7 +46,7 @@
              (Only safe if the project declares no [Autosave]/[NotifyChanges] classes —
              they would compile and silently never work.)
          <NucsJsonSettingsOutOfProcWeave>false</NucsJsonSettingsOutOfProcWeave>
-             opts back into AspectInjector's stock in-process weave (the pre-2.2.1
+             opts back into AspectInjector's stock in-process weave (the pre-2.3.0
              behaviour, subject to the lock bug above). Shared by this package and
              Nucs.JsonSettings.NotifyChanges so one property governs the one weave.
          <AspectInjector_Location>...</AspectInjector_Location>

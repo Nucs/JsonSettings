@@ -4,7 +4,7 @@
        A .NET MAUI demo, sibling to the WPF JsonSettings.Examples.UI project. It exercises
        JsonSettings + [Autosave] IL weaving from a real MAUI (WinUI-hosted) app, and it served
        as one of the probes that pinned down the AspectInjector 2.9.0 CreateAppHost file-lock
-       (fixed in 2.2.1 — see README.md here and docs/aspectinjector-2.9.0-apphost-lock.md).
+       (fixed in 2.3.0 — see README.md here and docs/aspectinjector-2.9.0-apphost-lock.md).
 
        Windows head only. The apphost/CreateAppHost failure this project helped probe is
        Windows-specific, and restricting the target keeps the example restorable/buildable
@@ -48,7 +48,7 @@
     <ApplicationVersion>1</ApplicationVersion>
 
     <!-- Unpackaged: produces a plain apphost .exe, which is exactly the CreateAppHost path
-         that the AspectInjector weave used to collide with (fixed in 2.2.1). -->
+         that the AspectInjector weave used to collide with (fixed in 2.3.0). -->
     <WindowsPackageType>None</WindowsPackageType>
 
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
@@ -91,16 +91,16 @@
        (error MSB4018 / "…<app>.dll is being used by another process"). This app never lost
        that race — a MAUI build is heavy enough that the leaked handle was reclaimed before
        CreateAppHost ran — which was itself a documented data point; the small console and
-       WinUI repros failed deterministically. The bug is fixed in 2.2.1 by running the weave
+       WinUI repros failed deterministically. The bug is fixed in 2.3.0 by running the weave
        out of process.
 
        The versions below are 2.2.0, the latest PUBLISHED packages, so the switch stays
-       restorable; bump them when 2.2.1 is on nuget.org. Building from INSIDE this repository
-       the 2.2.0 packages are shielded anyway: Directory.Build.targets imports the 2.2.1 weave
+       restorable; bump them when 2.3.0 is on nuget.org. Building from INSIDE this repository
+       the 2.2.0 packages are shielded anyway: Directory.Build.targets imports the 2.3.0 weave
        targets into every project here, including this one (the package's own same-named
        re-sign targets, imported later via nuget.g.targets, override the repo's — inert either
        way for this unsigned-relevance demo). Outside this repository, 2.2.0 remains broken
-       for small executable consumers; use 2.2.1.
+       for small executable consumers; use 2.3.0.
        ===================================================================================== -->
   <PropertyGroup>
     <UseNugetPackages Condition="'$(UseNugetPackages)' == ''">false</UseNugetPackages>
@@ -109,6 +109,7 @@
   <ItemGroup Condition="'$(UseNugetPackages)' == 'true'">
     <PackageReference Include="Nucs.JsonSettings" Version="2.2.0" />
     <PackageReference Include="Nucs.JsonSettings.Autosave" Version="2.2.0" />
+    <PackageReference Include="Nucs.JsonSettings.NotifyChanges" Version="2.2.0" />
   </ItemGroup>
 
   <!-- AspectInjector is intentionally NOT referenced here; it flows transitively through the
@@ -117,6 +118,7 @@
   <ItemGroup Condition="'$(UseNugetPackages)' != 'true'">
     <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
     <ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.NotifyChanges\JsonSettings.NotifyChanges.csproj" />
   </ItemGroup>
 
 </Project>

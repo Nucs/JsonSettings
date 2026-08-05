@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -25,6 +27,22 @@ public partial class MainWindow : Window {
         // ourselves.
         _settings.AfterSave += (_, destination) => Dispatcher.UIThread.Post(() =>
             SaveStatus.Text = $"save #{++_saveCount} → {destination}");
+
+        // The recovery pipeline reports through events, not exceptions: Recovered fires after
+        // WithRecovery has already renamed the broken file aside and repopulated defaults.
+        _settings.Recovered += _ => Dispatcher.UIThread.Post(() =>
+            RecoveryStatus.Text = "file was corrupt → renamed aside for post-mortem, defaults loaded. " +
+                                  "The bindings above refreshed themselves: a recovery load runs through " +
+                                  "the same woven setters, and loads deliberately do not autosave.");
+
+        // [NotifyChangesMixin] also injects INotifyPropertyChanging — it fires BEFORE the
+        // assignment, while the property still holds the OLD value, which is what makes
+        // undo/audit patterns one subscription instead of a shadow-copy of the object.
+        ((INotifyPropertyChanging)(object)_settings).PropertyChanging += (_, e) => {
+            var old = typeof(DemoSettings).GetProperty(e.PropertyName!)?.GetValue(_settings);
+            Dispatcher.UIThread.Post(() =>
+                ChangingLog.Text = $"PropertyChanging: {e.PropertyName} (was '{old}')");
+        };
 
         Opened += (_, _) => {
             // Captures the UI thread's SynchronizationContext, so a PropertyChanged raised by a
@@ -54,6 +72,15 @@ public partial class MainWindow : Window {
     private void OnRemoveTag(object? sender, RoutedEventArgs e) {
         if (TagsList.SelectedItem is string tag)
             _settings.Tags.Remove(tag);
+    }
+
+    private void OnCorruptAndRecover(object? sender, RoutedEventArgs e) {
+        // Vandalize the file the way real life does: a half-written save after a power cut, a
+        // hand edit gone wrong. Then reload — the RecoveryModule attached by WithRecovery
+        // intercepts the parse failure inside Load(), renames the evidence aside and
+        // repopulates defaults; the Recovered handler above narrates the result.
+        File.WriteAllText(_settings.FileName, "{ \"this is\" definitely _not_ valid json ::: ");
+        _settings.Load();
     }
 
     protected override void OnClosing(WindowClosingEventArgs e) {

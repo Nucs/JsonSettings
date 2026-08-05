@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using Nucs.JsonSettings.Autosave;
+using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings.Modulation.Recovery;
 using Nucs.JsonSettings.NotifyChanges;
 
 namespace Nucs.JsonSettings.Examples.UI.Avalonia;
@@ -63,6 +65,14 @@ public sealed class DemoSettings : JsonSettings {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                                "JsonSettings.Examples");
         Directory.CreateDirectory(dir);
-        return JsonSettings.Load<DemoSettings>(Path.Combine(dir, "avalonia-demo.json")).EnableAutosave();
+        // The fluent pipeline instead of the plain Load<T>: WithRecovery attaches the
+        // RecoveryModule, so a file that fails to PARSE — hand-edited, truncated by a crash,
+        // corrupted on disk — never brings the app down. RenameAndLoadDefault sets the broken
+        // file aside (keeping the evidence) and starts from defaults; the window's
+        // "corrupt the file" button triggers exactly this path on purpose.
+        return JsonSettings.Configure<DemoSettings>(Path.Combine(dir, "avalonia-demo.json"))
+                           .WithRecovery(RecoveryAction.RenameAndLoadDefault)
+                           .LoadNow()
+                           .EnableAutosave();
     }
 }

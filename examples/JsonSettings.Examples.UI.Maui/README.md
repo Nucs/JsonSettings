@@ -1,25 +1,37 @@
 # JsonSettings.Examples.UI.Maui
 
-A small .NET MAUI app that stores its state with **Nucs.JsonSettings** and the `[Autosave]`
-weaver. Sibling to the WPF [`JsonSettings.Examples.UI`](../JsonSettings.Examples.UI), which tours
-the `[NotifyChanges]` data-binding integrations; this one shows the smallest possible persistent
-MAUI app.
+A small .NET MAUI app that stores its state with **Nucs.JsonSettings**. Sibling to the WPF
+[`JsonSettings.Examples.UI`](../JsonSettings.Examples.UI), which tours every notification
+integration; this one shows the smallest possible persistent MAUI app — where the settings class
+**is** the page's `BindingContext`.
 
 The whole demo is one settings class, [`Settings/DemoSettings.cs`](Settings/DemoSettings.cs):
 
 ```csharp
-[Autosave]
+[Autosave, NotifyChangesMixin]
 public sealed class DemoSettings : JsonSettings {
     public override string FileName { get; set; } = "jsonsettings-maui-demo.json";
+
     public int LaunchCount { get; set; }
-    public int ClickCount  { get; set; }
-    public string Note      { get; set; } = "";
+
+    [NotifyChangesFor(nameof(ClickLabel))]
+    public int ClickCount { get; set; }
+    public string ClickLabel => ClickCount == 1 ? "Clicked 1 time" : $"Clicked {ClickCount} times";
+
+    [NotifyChangesFor(nameof(NoteEchoText))]
+    public string Note { get; set; } = "";
+    public string NoteEchoText => ...;
 }
 ```
 
-`MainPage` bumps `LaunchCount` on start, `ClickCount` on the button, and writes `Note` on every
-keystroke. Nothing calls `Save()` — `[Autosave]` weaves each setter so the assignment persists the
-whole object. Close and reopen the app and every value is still there.
+Every control on the page is a plain `{Binding}` against that object. `[Autosave]` weaves each
+setter to persist the whole object on assignment; `[NotifyChangesMixin]` injects
+`INotifyPropertyChanged` and raises it from the same setters, so the bindings refresh with no
+view model, no `OnPropertyChanged`, and no code-behind label updates. `[NotifyChangesFor]` fans a
+`ClickCount`/`Note` change out to the computed button caption and echo label. The Reset button
+writes two properties inside a `SuspendAutosave()` scope — the save counter in the corner goes up
+by exactly one while both bindings refresh immediately (notifications are never suspended, saving
+is). Close and reopen the app and every value is still there.
 
 The instance lives behind a `Lazy` singleton so the file is first opened once MAUI is running —
 `FileSystem.AppDataDirectory` is a platform service and is only meaningful after app start:

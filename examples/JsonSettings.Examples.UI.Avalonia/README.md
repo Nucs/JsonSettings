@@ -36,10 +36,12 @@ What each control demonstrates:
 | Dark-theme `ToggleSwitch` | a bound `bool` driving `RequestedThemeVariant` live (see `App.axaml.cs`) |
 | "+1 from a background thread" | a woven setter written off-thread; `EnableNotificationMarshaling()` posts its `PropertyChanged` back to the UI thread |
 | Tags list with Add/Remove | a nested `ObservableCollection` — `EnableAutosave()` binds its `INotifyCollectionChanged`, so `Add`/`Remove` persist with no setter involved |
+| "Corrupt the file, then reload" | the settings are loaded through `Configure<T>().WithRecovery(RenameAndLoadDefault)`: the button writes garbage over the file and calls `Load()`, the `RecoveryModule` swallows the parse failure, renames the evidence aside, reloads defaults, and the `Recovered` event narrates it — the app never sees an exception |
 | window size on close | two writes batched into one file save with `SuspendAutosave()` |
-| status line | the `AfterSave` event, posted to the UI thread by hand (settings events are not marshalled) |
+| status lines | the `AfterSave` event (posted to the UI thread by hand — settings events are not marshalled) and a live `INotifyPropertyChanging` log: the mixin injects the *changing* interface too, firing before each assignment while the property still holds the old value — the hook undo/audit patterns want |
 
-Close the app and reopen — name, theme, counter, tags and window size all come back.
+Close the app and reopen — name, theme, counter, tags and window size all come back. Corrupt the
+file by hand if you don't trust the button.
 
 ## Run it
 

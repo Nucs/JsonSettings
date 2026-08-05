@@ -43,12 +43,14 @@
     <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
 
     <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
-         builds from a source archive rather than a tag. 2.2.1 is the next release: it fixes the
+         builds from a source archive rather than a tag. 2.3.0 is the next release: it fixes the
          AspectInjector 2.9.0 file-handle leak that deterministically failed CreateAppHost for
          small executable consumers of the weaving packages ("<App>.dll ... is being used by
-         another process") by running the weave out of process. See PackageReleaseNotes below
-         and docs/aspectinjector-2.9.0-apphost-lock.md. -->
-    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.2.1</VersionPrefix>
+         another process") by running the weave out of process, plus the XamlC re-weave guard.
+         A MINOR bump rather than a patch because the fix surfaces new public build knobs
+         (NucsJsonSettingsOutOfProcWeave, AspectInjector_Location honoured, NJS1005/NJS1006).
+         See PackageReleaseNotes below and docs/aspectinjector-2.9.0-apphost-lock.md. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.3.0</VersionPrefix>
   </PropertyGroup>
 
   <!-- ====================================================================================
@@ -260,7 +262,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageReleaseNotes>2.2.1
+    <PackageReleaseNotes>2.3.0
 
 Fixed
 - Executable consumers no longer fail in CreateAppHost with "error MSB4018 ... The process cannot
@@ -290,6 +292,17 @@ Fixed
   next build, three times after the one after that). The packaged targets now re-stamp the marker
   right after XamlC, the same guard the re-sign step already applied for its own rewrite. Avalonia
   needs no guard by construction: its XAML compiler runs inside CoreCompile, before the weave.
+
+Examples (in the repository, not in the packages)
+- A UI example gallery now exercises the packages from real apps on every framework the docs name:
+  Avalonia (cross-platform: compiled bindings over the mixin-injected INotifyPropertyChanged,
+  background writes marshalled via EnableNotificationMarshaling, and corrupt-file self-healing with
+  WithRecovery(RenameAndLoadDefault) wired to a "corrupt the file" button), Windows Forms
+  (net48 + net10.0-windows: the zero-code settings dialog PropertyGrid.SelectedObject = settings,
+  BindingSource two-way binding kept in sync by the injected interface, and an encrypted vault via
+  WithEncryption shown side by side with its ciphertext on disk), .NET MAUI (the settings class as
+  the page's BindingContext, [NotifyChangesFor]-computed captions, batched SuspendAutosave reset)
+  and the existing WPF notification tour.
 
 2.2.0
 

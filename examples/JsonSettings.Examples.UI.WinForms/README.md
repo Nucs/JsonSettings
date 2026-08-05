@@ -30,9 +30,16 @@ it like any hand-written observable.
 
 Also demonstrated:
 
+- **An encrypted vault with the same zero-code UX** — a second settings object goes through
+  `Configure<VaultSettings>(path).WithEncryption("password").LoadNow().EnableAutosave()` and gets
+  its own `PropertyGrid`. The grid neither knows nor cares that the file underneath is
+  AES-256-CBC ciphertext; `[PasswordPropertyText]` masks the token while editing, pairing UI
+  masking with at-rest encryption. The **"Show raw files on disk"** button prints both files side
+  by side — the profile is readable JSON, the vault is bytes — same code path, one fluent call
+  apart.
 - **Batched saves** — the "Apply server settings" button writes `Server` and `Port` inside a
   `SuspendAutosave()` scope: two setters, one file save. The status-bar save counter (fed by the
-  `AfterSave` event) visibly goes up by exactly one.
+  `AfterSave` event of *both* settings objects) visibly goes up by exactly one.
 - **Window title following a property** — plain code subscribing to the injected interface, which
   requires a cast through `object` (`(INotifyPropertyChanged)(object)settings`) since the
   interface is not on the class in source.
