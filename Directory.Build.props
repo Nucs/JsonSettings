@@ -283,6 +283,13 @@ Fixed
   both packages); &lt;AspectInjector_Enabled&gt;false&lt;/AspectInjector_Enabled&gt; still disables weaving
   entirely. New diagnostics NJS1005/NJS1006 (error) fire if AspectInjector.dll cannot be located for
   the out-of-process weave, with the remedies in the message.
+- Incremental builds no longer stack the weave when another post-compile IL rewriter runs after it.
+  .NET MAUI's XamlC target rewrites the assembly AFTER the weave and moves its timestamp past the
+  .aspectsinjected marker, so the next incremental build re-wove the already-woven assembly - and
+  re-weaving stacks the advice (measured: a setter that saved once per write saved twice after the
+  next build, three times after the one after that). The packaged targets now re-stamp the marker
+  right after XamlC, the same guard the re-sign step already applied for its own rewrite. Avalonia
+  needs no guard by construction: its XAML compiler runs inside CoreCompile, before the weave.
 
 2.2.0
 

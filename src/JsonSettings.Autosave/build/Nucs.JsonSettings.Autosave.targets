@@ -170,6 +170,28 @@
     <Touch Files="%(IntermediateAssembly.FullPath).aspectsinjected" AlwaysCreate="true" Time="%(IntermediateAssembly.ModifiedTime)" />
   </Target>
 
+  <!-- Guard against OTHER post-compile IL rewriters breaking the stamp discipline.
+
+       .NET MAUI's XamlC target (Microsoft.Maui.Controls.targets) is AfterTargets="AfterCompile"
+       and rewrites the intermediate assembly with Cecil AFTER the weave above ran, moving the
+       assembly's timestamp past the .aspectsinjected marker. On the NEXT incremental build
+       CoreCompile is up to date and skipped, but the weave target sees assembly-newer-than-stamp
+       and re-weaves the ALREADY WOVEN assembly — and AspectInjector is not idempotent: measured
+       on a probe app, each re-weave stacks another copy of the advice, so one setter write saved
+       once after a clean build, twice after the next incremental build, three times after the one
+       after that. Re-stamping to "now" right after XamlC keeps the marker at least as new as the
+       rewritten assembly, exactly like the re-sign target below does for sn -R; a real source
+       change still moves the assembly past the marker through CoreCompile and re-weaves once, as
+       it should. Avalonia needs no such guard — its CompileAvaloniaXaml runs INSIDE CoreCompile
+       (TargetsTriggeredByCompilation), so the weave always runs after it and the stamp stays
+       authoritative. MSBuild ignores AfterTargets naming a target the project never defines, so
+       this is inert outside MAUI. -->
+  <Target Name="NucsAutosave_RestampAfterXamlC"
+          AfterTargets="XamlC"
+          Condition="'$(_NucsAutosaveWeaveMode)' != 'off' and '$(_InjectAspectsDependsOn)' != '' and '$(DesignTimeBuild)' != 'true' and '@(IntermediateAssembly)' != ''">
+    <Touch Files="@(IntermediateAssembly->'%(FullPath).aspectsinjected')" AlwaysCreate="true" />
+  </Target>
+
   <!-- ====================================================================================
        PART 2 — Restore the strong-name signature that IL weaving invalidates.
 

@@ -96,6 +96,19 @@
     <Touch Files="%(IntermediateAssembly.FullPath).aspectsinjected" AlwaysCreate="true" Time="%(IntermediateAssembly.ModifiedTime)" />
   </Target>
 
+  <!-- Guard against OTHER post-compile IL rewriters breaking the stamp discipline — rename-only
+       twin of NucsAutosave_RestampAfterXamlC; see the full rationale in
+       Nucs.JsonSettings.Autosave.targets. In short: MAUI's XamlC rewrites the assembly AFTER the
+       weave and moves it past the .aspectsinjected marker, which would make the next incremental
+       build re-weave the woven assembly — and re-weaving stacks the advice (a setter that saves
+       or notifies once per build MORE). Re-stamping right after XamlC keeps the marker
+       authoritative; inert outside MAUI. -->
+  <Target Name="NucsNotifyChanges_RestampAfterXamlC"
+          AfterTargets="XamlC"
+          Condition="'$(_NucsNCWeaveMode)' != 'off' and '$(_InjectAspectsDependsOn)' != '' and '$(DesignTimeBuild)' != 'true' and '@(IntermediateAssembly)' != ''">
+    <Touch Files="@(IntermediateAssembly->'%(FullPath).aspectsinjected')" AlwaysCreate="true" />
+  </Target>
+
   <!-- ====================================================================================
        PART 2 - Restore the strong-name signature that IL weaving invalidates. Rename-only
        twin of the Autosave file's re-sign; see the full rationale there and in
