@@ -43,13 +43,12 @@
     <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
 
     <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
-         builds from a source archive rather than a tag. 2.2.0 is the next release: it strong-names
-         both packages (a breaking assembly-identity change - see docs/SIGNING.md), adds binary
-         WithEncryption(byte[]) and WithEncryptionRawKey(byte[]), restores three behaviours 2.1.0
-         broke (a custom module inside encryption, RecoveryModule over a short encrypted file, and
-         the JsonSettingsException catch contract), and bounds the inherited Newtonsoft-13 depth cap
-         at a working 128. See PackageReleaseNotes below and docs/UPGRADE-2.0.x-to-2.1.0.md. -->
-    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.2.0</VersionPrefix>
+         builds from a source archive rather than a tag. 2.2.1 is the next release: it fixes the
+         AspectInjector 2.9.0 file-handle leak that deterministically failed CreateAppHost for
+         small executable consumers of the weaving packages ("<App>.dll ... is being used by
+         another process") by running the weave out of process. See PackageReleaseNotes below
+         and docs/aspectinjector-2.9.0-apphost-lock.md. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.2.1</VersionPrefix>
   </PropertyGroup>
 
   <!-- ====================================================================================
@@ -258,7 +257,31 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageReleaseNotes>2.2.0
+    <PackageReleaseNotes>2.2.1
+
+Fixed
+- Executable consumers no longer fail in CreateAppHost with "error MSB4018 ... The process cannot
+  access the file '&lt;App&gt;.dll' because it is being used by another process". AspectInjector 2.9.0's
+  in-process MSBuild task leaks file handles into the MSBuild node that hosts it: a ReadWrite handle
+  on obj\&lt;App&gt;.dll whenever the assembly has nothing to weave - exactly the case for an app that
+  merely references Nucs.JsonSettings.Autosave or Nucs.JsonSettings.NotifyChanges without declaring
+  an [Autosave]/[NotifyChanges] class yet - and read handles on every referenced assembly always (its
+  reference resolver is never disposed). The SDK's next step for an executable, CreateAppHost, then
+  cannot open the still-locked dll and the build dies: deterministically on small fast builds (a
+  one-project console app, a stock WinUI app), not at all on heavy ones (MAUI) purely by timing. The
+  leaked read handles also blocked REBUILDS of referenced projects for as long as a reused MSBuild
+  worker node lived. Both weaving packages now suppress the in-process task and run the identical
+  AspectInjectorTask in a short-lived child MSBuild process (a shipped .Weave.proj next to the build
+  targets); the OS closes everything the weaver leaks when the child exits, before CreateAppHost
+  runs. Weaving semantics, task parameters, incrementality (the .aspectsinjected stamp) and the
+  strong-name re-sign step are unchanged, and a consumer referencing BOTH packages still weaves
+  exactly once. Opt back into the stock in-process weave with
+  &lt;NucsJsonSettingsOutOfProcWeave&gt;false&lt;/NucsJsonSettingsOutOfProcWeave&gt; (one property, honoured by
+  both packages); &lt;AspectInjector_Enabled&gt;false&lt;/AspectInjector_Enabled&gt; still disables weaving
+  entirely. New diagnostics NJS1005/NJS1006 (error) fire if AspectInjector.dll cannot be located for
+  the out-of-process weave, with the remedies in the message.
+
+2.2.0
 
 Breaking changes
 - Both shipped packages are now strong-named (PublicKeyToken=cc7b13ffcd2ddd51) AND their assemblies

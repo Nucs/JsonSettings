@@ -150,6 +150,22 @@ bag.Remove("Name");         // saved
 bag.AsDynamic().Other = 42; // saved
 ```
 
+## How the weave runs (out of process, since 2.2.1)
+
+AspectInjector's stock in-process MSBuild task leaks file handles into the MSBuild node that hosts
+it, which deterministically broke small **executable** consumers: the SDK's `CreateAppHost` step
+could not read the still-locked `obj\...\<App>.dll` and the build failed with
+`MSB4018` / *"The process cannot access the file ... because it is being used by another process"*
+&mdash; merely referencing the package was enough, no `[Autosave]` class required. Since 2.2.1 the
+package's shipped targets suppress that in-process task and run the **identical** weaver task in a
+short-lived child MSBuild process instead; every leaked handle is closed by the OS when the child
+exits, before `CreateAppHost` runs. Weaving behaviour, parameters and incrementality are unchanged,
+and a project referencing both this package and `Nucs.JsonSettings.NotifyChanges` still weaves
+exactly once. Opt back into the stock in-process weave with
+`<NucsJsonSettingsOutOfProcWeave>false</NucsJsonSettingsOutOfProcWeave>`;
+`<AspectInjector_Enabled>false</AspectInjector_Enabled>` still disables weaving entirely (only safe
+if no class is marked `[Autosave]`/`[NotifyChanges]` &mdash; they would compile and never work).
+
 ## Strong-named consumers
 
 IL weaving rewrites the compiled assembly after it is signed, and AspectInjector 2.9.0

@@ -1,9 +1,179 @@
-﻿<Project>
+<Project>
 
   <!-- ====================================================================================
-       Restore the strong-name signature that IL weaving invalidates.
+       PART 1 — Run the AspectInjector weave OUT OF PROCESS.
 
-       WHY THIS FILE EXISTS. AspectInjector rewrites the compiled assembly after CoreCompile.
+       WHY. AspectInjector 2.9.0 registers an IN-PROCESS MSBuild task (AspectInjectorTask,
+       AfterTargets="CoreCompile") that rewrites obj\...\<App>.dll with Mono.Cecil — and leaks
+       file handles into the MSBuild node that hosts it:
+
+         - FluentIL.PatcherBase.Process opens the target assembly with
+           FileAccess.ReadWrite + FileShare.Read (Cecil ReaderParameters.ReadWrite=true) but
+           only disposes it inside WriteAssembly. When the assembly contains NO aspects or
+           injections — e.g. a consumer that merely references this package and declares no
+           [Autosave] class yet — PatchAssembly returns false, WriteAssembly never runs, and
+           the WRITE-capable handle on obj\...\<App>.dll leaks until a GC the build cannot
+           force (an in-build GC.Collect + WaitForPendingFinalizers was tried and does not
+           reclaim it in time).
+         - The KnownReferencesAssemblyResolver it creates caches an open AssemblyDefinition
+           (FileShare.Read read handle) for every resolved reference and is never disposed,
+           in any path. In a reused MSBuild worker node those handles block REBUILDS of the
+           referenced projects for minutes.
+
+       The visible symptom, deterministic on small executable consumers (console, WinUI):
+
+           error MSB4018: The "CreateAppHost" task failed unexpectedly.
+           System.IO.IOException: The process cannot access the file '...\<App>.dll'
+           because it is being used by another process.
+
+       because the SDK's _CreateAppHost runs right after the weave and reads the Win32
+       resources out of that same dll. Heavy builds (MAUI) dodge it only by timing. See
+       docs/aspectinjector-2.9.0-apphost-lock.md in the repository for the full forensics.
+
+       THE FIX. Suppress the in-process weave (AspectInjector_Enabled=false) and run the very
+       same AspectInjectorTask, with the very same parameters, in a SHORT-LIVED CHILD MSBUILD
+       PROCESS (Nucs.JsonSettings.Autosave.Weave.proj next to this file). The OS closes every
+       handle at process exit, so by the time this target returns the woven assembly is
+       provably unlocked, whatever AspectInjector forgot to dispose. The child is plain
+       MSBuild + the task dll already restored in the AspectInjector package — no extra
+       binaries are shipped and no weaving semantics change (the task weaves the whole
+       assembly, so aspects from ANY package, not just ours, are processed exactly as
+       before).
+
+       KNOBS.
+         <AspectInjector_Enabled>false</AspectInjector_Enabled>
+             still disables weaving outright, exactly as documented by AspectInjector.
+             (Only safe if the project declares no [Autosave]/[NotifyChanges] classes —
+             they would compile and silently never work.)
+         <NucsJsonSettingsOutOfProcWeave>false</NucsJsonSettingsOutOfProcWeave>
+             opts back into AspectInjector's stock in-process weave (the pre-2.2.1
+             behaviour, subject to the lock bug above). Shared by this package and
+             Nucs.JsonSettings.NotifyChanges so one property governs the one weave.
+         <AspectInjector_Location>...</AspectInjector_Location>
+             honoured here like AspectInjector's own targets honour it: it must point at
+             the AspectInjector.dll task assembly to use.
+
+       TWO PACKAGES, ONE WEAVE. Nucs.JsonSettings.NotifyChanges ships a mirror of this file
+       (NucsNotifyChanges_* names, see the note there). Whichever of the two is imported
+       FIRST sees AspectInjector_Enabled not-yet-false, claims mode 'outofproc' and flips
+       the property; the second then reads 'false', concludes 'off' and stays dormant —
+       deliberately, so the weave (and the re-sign below) runs once, not twice. Should both
+       weave targets ever run anyway (a future refactor breaking that chain), the
+       .aspectsinjected stamp comparison in Inputs/Outputs still makes the second a no-op,
+       because weaving twice would double every aspect's advice — a setter that saves twice
+       per assignment.
+       ==================================================================================== -->
+
+  <PropertyGroup>
+    <NucsJsonSettingsOutOfProcWeave Condition="'$(NucsJsonSettingsOutOfProcWeave)' == ''">true</NucsJsonSettingsOutOfProcWeave>
+
+    <!-- Duplicated from AspectInjector.targets on purpose: import order differs between a
+         NuGet consumer (their file first) and this repository's Directory.Build.targets
+         (this file first), so these may or may not be defaulted yet. The guards make the
+         duplication idempotent. -->
+    <AspectInjector_Verbose Condition="'$(AspectInjector_Verbose)' == ''">false</AspectInjector_Verbose>
+    <AspectInjector_Debug Condition="'$(AspectInjector_Debug)' == ''">false</AspectInjector_Debug>
+
+    <!-- off:       consumer (or the sibling package, see above) already disabled the
+                    in-process weave; nothing to do, and re-signing is moot.
+         inproc:    consumer opted out of the out-of-process fix; AspectInjector's stock
+                    target runs untouched.
+         outofproc: default; suppress the stock target and weave via the child process. -->
+    <_NucsAutosaveWeaveMode Condition="'$(AspectInjector_Enabled)' == 'false'">off</_NucsAutosaveWeaveMode>
+    <_NucsAutosaveWeaveMode Condition="'$(_NucsAutosaveWeaveMode)' == '' and '$(NucsJsonSettingsOutOfProcWeave)' == 'false'">inproc</_NucsAutosaveWeaveMode>
+    <_NucsAutosaveWeaveMode Condition="'$(_NucsAutosaveWeaveMode)' == ''">outofproc</_NucsAutosaveWeaveMode>
+
+    <!-- Works in both import orders: if AspectInjector.targets already ran, this overwrites
+         its 'true'; if it runs after us, its own default is conditioned on empty and keeps
+         our 'false'. -->
+    <AspectInjector_Enabled Condition="'$(_NucsAutosaveWeaveMode)' == 'outofproc'">false</AspectInjector_Enabled>
+  </PropertyGroup>
+
+  <!-- Mirrors AspectInjector_InjectAspectsCore: same anchors (AfterTargets/BeforeTargets on
+       CoreCompile/AfterCompile), same incrementality (the .aspectsinjected stamp equal to the
+       assembly's own timestamp), so mode switches never confuse the up-to-date check. The two
+       extra BeforeTargets pin this weave BEFORE either package's re-sign target — the re-signs
+       are anchored to the (suppressed, but still scheduled) AspectInjector_InjectAspects and
+       would otherwise be free to run first, restoring a signature the weave then invalidates
+       again AND touching the stamp in a way that marks this target falsely up to date. MSBuild
+       ignores Before/AfterTargets naming targets a project never defines, so naming the
+       NotifyChanges re-sign here is safe when only this package is referenced.
+
+       Condition notes:
+         - _InjectAspectsDependsOn is set unconditionally by AspectInjector.targets, so it is
+           the execution-time marker for "AspectInjector is actually in this project". This
+           repository imports the present file into EVERY project via Directory.Build.targets,
+           including ones with no weaver; without the marker they would spawn a pointless
+           child process per build.
+         - DesignTimeBuild: IDE design-time builds must stay process-cheap, and nothing
+           consumes the woven IL there. -->
+  <Target Name="NucsAutosave_WeaveOutOfProc"
+          AfterTargets="CoreCompile"
+          BeforeTargets="_TimeStampAfterCompile;AfterCompile;NucsAutosave_ResignAfterWeaving;NucsNotifyChanges_ResignAfterWeaving"
+          Condition="'$(_NucsAutosaveWeaveMode)' == 'outofproc' and '$(_InjectAspectsDependsOn)' != '' and '$(DesignTimeBuild)' != 'true' and '@(IntermediateAssembly)' != ''"
+          Inputs="@(IntermediateAssembly->'%(FullPath)')"
+          Outputs="%(IntermediateAssembly.FullPath).aspectsinjected">
+
+    <!-- Locate the AspectInjector task assembly, first existing candidate wins:
+           1. the consumer's explicit AspectInjector_Location (AspectInjector's own knob);
+           2. derived from the AspectInjector.Analyzer item the package injects into
+              @(Analyzer) — version-proof, because it follows whatever version restore
+              actually resolved: <pkg>/analyzers/dotnet/cs/ -> <pkg>/binaries/;
+           3. the NuGet cache path of the exact version this package depends on, for the
+              rare consumer that strips analyzers with ExcludeAssets. -->
+    <ItemGroup>
+      <_NucsAutosaveInjectorProbe Include="$(AspectInjector_Location)" Condition="'$(AspectInjector_Location)' != ''" />
+      <_NucsAutosaveInjectorProbe Include="@(Analyzer->'%(RootDir)%(Directory)../../../binaries/AspectInjector.dll')" Condition="'%(Analyzer.Filename)' == 'AspectInjector.Analyzer'" />
+      <_NucsAutosaveInjectorProbe Include="$(NuGetPackageRoot)aspectinjector/2.9.0/binaries/AspectInjector.dll" Condition="'$(NuGetPackageRoot)' != ''" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_NucsAutosaveInjectorDll Condition="'$(_NucsAutosaveInjectorDll)' == '' and Exists('%(_NucsAutosaveInjectorProbe.FullPath)')">%(_NucsAutosaveInjectorProbe.FullPath)</_NucsAutosaveInjectorDll>
+    </PropertyGroup>
+
+    <!-- A hard error, not a fallback to the in-process weave: silently weaving in-process
+         would re-arm the CreateAppHost lock this target exists to fix, and silently NOT
+         weaving would ship [Autosave] setters that never save. -->
+    <Error Condition="'$(_NucsAutosaveInjectorDll)' == ''"
+           Code="NJS1005"
+           Text="Nucs.JsonSettings.Autosave: cannot locate AspectInjector.dll for the out-of-process weave (probed AspectInjector_Location, the AspectInjector analyzer path, and the NuGet cache). Set &lt;AspectInjector_Location&gt; to the task assembly, or set &lt;NucsJsonSettingsOutOfProcWeave&gt;false&lt;/NucsJsonSettingsOutOfProcWeave&gt; to use AspectInjector's stock in-process weave." />
+
+    <PropertyGroup>
+      <_NucsAutosaveWeaveAssembly>@(IntermediateAssembly->'%(FullPath)')</_NucsAutosaveWeaveAssembly>
+      <_NucsAutosaveWeaveRefsFile>$(_NucsAutosaveWeaveAssembly).aspectrefs</_NucsAutosaveWeaveRefsFile>
+
+      <!-- An empty value would trip MSB1005 on the child command line; false matches the
+           task's own default. -->
+      <_NucsAutosaveWeaveOptimize>$(Optimize)</_NucsAutosaveWeaveOptimize>
+      <_NucsAutosaveWeaveOptimize Condition="'$(_NucsAutosaveWeaveOptimize)' == ''">false</_NucsAutosaveWeaveOptimize>
+
+      <!-- Self-referential host selection — no PATH assumptions: a .NET (Core) MSBuild
+           re-runs its own MSBuild.dll through the dotnet host, a Framework MSBuild (VS)
+           re-runs its own MSBuild.exe. -->
+      <_NucsAutosaveWeaveMSBuild Condition="'$(MSBuildRuntimeType)' == 'Core' and '$(DOTNET_HOST_PATH)' != ''">&quot;$(DOTNET_HOST_PATH)&quot; exec &quot;$([System.IO.Path]::Combine('$(MSBuildBinPath)','MSBuild.dll'))&quot;</_NucsAutosaveWeaveMSBuild>
+      <_NucsAutosaveWeaveMSBuild Condition="'$(MSBuildRuntimeType)' == 'Core' and '$(DOTNET_HOST_PATH)' == ''">dotnet exec &quot;$([System.IO.Path]::Combine('$(MSBuildBinPath)','MSBuild.dll'))&quot;</_NucsAutosaveWeaveMSBuild>
+      <_NucsAutosaveWeaveMSBuild Condition="'$(MSBuildRuntimeType)' != 'Core'">&quot;$([System.IO.Path]::Combine('$(MSBuildBinPath)','MSBuild.exe'))&quot;</_NucsAutosaveWeaveMSBuild>
+    </PropertyGroup>
+
+    <!-- The reference list goes through a file, not the command line: a large project's
+         references overflow the ~32K Windows command-line limit many times over. -->
+    <WriteLinesToFile File="$(_NucsAutosaveWeaveRefsFile)" Lines="@(ReferencePath->'%(FullPath)')" Overwrite="true" />
+
+    <!-- -nodeReuse:false so the child leaves no persistent worker behind — a reused node
+         holding leaked handles is the second face of this very bug. Weaver diagnostics come
+         back in canonical MSBuild error/warning format on stdout, which Exec re-logs as real
+         errors/warnings in this build; a failing weave fails the Exec (child MSBuild exits
+         non-zero) and therefore the build, same as the in-process task. -->
+    <Exec Command="$(_NucsAutosaveWeaveMSBuild) &quot;$(MSBuildThisFileDirectory)Nucs.JsonSettings.Autosave.Weave.proj&quot; -nologo -nodeReuse:false -verbosity:quiet &quot;-consoleLoggerParameters:ErrorsOnly;NoSummary&quot; &quot;-property:NucsWeaveAssembly=$(_NucsAutosaveWeaveAssembly)&quot; &quot;-property:NucsWeaveReferencesFile=$(_NucsAutosaveWeaveRefsFile)&quot; &quot;-property:NucsWeaveInjector=$(_NucsAutosaveInjectorDll)&quot; -property:NucsWeaveOptimize=$(_NucsAutosaveWeaveOptimize) -property:NucsWeaveVerbose=$(AspectInjector_Verbose) -property:NucsWeaveAttachDebugger=$(AspectInjector_Debug)" />
+
+    <!-- Same stamp discipline as AspectInjector's own target: marker time == assembly time
+         means up to date; a recompile moves the assembly past the marker and re-weaves. -->
+    <Touch Files="%(IntermediateAssembly.FullPath).aspectsinjected" AlwaysCreate="true" Time="%(IntermediateAssembly.ModifiedTime)" />
+  </Target>
+
+  <!-- ====================================================================================
+       PART 2 — Restore the strong-name signature that IL weaving invalidates.
+
+       WHY THIS EXISTS. AspectInjector rewrites the compiled assembly after CoreCompile.
        The compiler has already signed that assembly by then, so any post-compile edit leaves
        the signature describing bytes that no longer exist. AspectInjector used to re-sign the
        result itself; 2.9.0 removed the feature outright:
@@ -48,14 +218,23 @@
     <NucsAutosaveResignAfterWeaving Condition="'$(NucsAutosaveResignAfterWeaving)' == ''">true</NucsAutosaveResignAfterWeaving>
 
     <!-- Delay-signed and public-signed assemblies never carried a valid signature to begin
-         with, so there is nothing to restore and re-signing them would be wrong. -->
+         with, so there is nothing to restore and re-signing them would be wrong.
+
+         The last clause reads the weave MODE, not AspectInjector_Enabled: in the default
+         out-of-process mode Part 1 sets AspectInjector_Enabled=false as a suppression
+         mechanism while the assembly absolutely still gets woven — keying off the raw
+         property here would silently skip the re-sign exactly when it is needed. 'off'
+         (weaving truly disabled, whether by the consumer or because the sibling
+         NotifyChanges package claimed the weave first) is the one state with nothing to
+         re-sign — and when the sibling claimed it, the sibling's own re-sign target covers
+         the assembly. -->
     <_NucsAutosaveShouldResign>false</_NucsAutosaveShouldResign>
     <_NucsAutosaveShouldResign Condition="'$(NucsAutosaveResignAfterWeaving)' == 'true'
                                           and '$(SignAssembly)' == 'true'
                                           and '$(DelaySign)' != 'true'
                                           and '$(PublicSign)' != 'true'
                                           and '$(AssemblyOriginatorKeyFile)' != ''
-                                          and '$(AspectInjector_Enabled)' != 'false'">true</_NucsAutosaveShouldResign>
+                                          and '$(_NucsAutosaveWeaveMode)' != 'off'">true</_NucsAutosaveShouldResign>
   </PropertyGroup>
 
   <!-- sn.exe ships with the .NET Framework SDK and is Windows-only. The glob is evaluated
@@ -74,6 +253,10 @@
     </PropertyGroup>
   </Target>
 
+  <!-- Still anchored to AspectInjector_InjectAspects: MSBuild fires AfterTargets even for a
+       target whose Condition was false, so the suppressed stock target remains a valid
+       trigger in out-of-process mode — and the BeforeTargets on the weave target above
+       guarantees the weave has actually happened by the time this runs. -->
   <Target Name="NucsAutosave_ResignAfterWeaving"
           AfterTargets="AspectInjector_InjectAspects"
           DependsOnTargets="NucsAutosave_LocateSn"
@@ -88,7 +271,7 @@
 
     <!-- CRITICAL, and the reason this is not just an Exec.
 
-         AspectInjector's weave target is incremental on
+         The weave target is incremental on
              Inputs  = the intermediate assembly
              Outputs = <intermediate assembly>.aspectsinjected
          and it stamps that marker with the assembly's modified time, so the two come out

@@ -1,0 +1,43 @@
+<!-- The out-of-process weave host invoked by NucsAutosave_WeaveOutOfProc in
+     Nucs.JsonSettings.Autosave.targets (see the PART 1 comment there for why the weave runs
+     in a child process at all). Deliberately NOT an SDK project: no Sdk attribute means no
+     Microsoft.Common.props/targets, no Directory.Build.* pickup from the NuGet cache's
+     directory tree, no restore, no obj/ — just the one UsingTask and the one target, so the
+     child process is evaluation-cheap and cannot recurse into a real build.
+
+     Inputs, all passed as -property: on the child command line:
+       NucsWeaveInjector        full path to AspectInjector.dll (the MSBuild task assembly)
+       NucsWeaveAssembly        full path to the intermediate assembly to weave in place
+       NucsWeaveReferencesFile  file with one reference full path per line (a file, not a
+                                property, because reference lists overflow the command line)
+       NucsWeaveOptimize        AspectInjectorTask.Optimize; parent passes $(Optimize)
+       NucsWeaveVerbose         AspectInjectorTask.Verbose; parent passes $(AspectInjector_Verbose)
+       NucsWeaveAttachDebugger  AspectInjectorTask.AttachDebugger; parent passes $(AspectInjector_Debug) -->
+<Project DefaultTargets="NucsWeave">
+
+  <UsingTask TaskName="AspectInjectorTask" AssemblyFile="$(NucsWeaveInjector)" Condition="'$(NucsWeaveInjector)' != ''" />
+
+  <PropertyGroup>
+    <NucsWeaveOptimize Condition="'$(NucsWeaveOptimize)' == ''">false</NucsWeaveOptimize>
+    <NucsWeaveVerbose Condition="'$(NucsWeaveVerbose)' == ''">false</NucsWeaveVerbose>
+    <NucsWeaveAttachDebugger Condition="'$(NucsWeaveAttachDebugger)' == ''">false</NucsWeaveAttachDebugger>
+  </PropertyGroup>
+
+  <Target Name="NucsWeave">
+    <Error Condition="'$(NucsWeaveInjector)' == '' or '$(NucsWeaveAssembly)' == '' or '$(NucsWeaveReferencesFile)' == ''"
+           Text="Nucs.JsonSettings.Autosave.Weave.proj requires -property:NucsWeaveInjector, -property:NucsWeaveAssembly and -property:NucsWeaveReferencesFile. This project is an internal detail of the Nucs.JsonSettings.Autosave build targets and is not meant to be run by hand." />
+
+    <ReadLinesFromFile File="$(NucsWeaveReferencesFile)">
+      <Output TaskParameter="Lines" ItemName="_NucsWeaveReference" />
+    </ReadLinesFromFile>
+
+    <!-- Identical parameters to AspectInjector.targets' own in-process invocation; the task
+         reads %(FullPath) off each reference item, and the items are absolute already. -->
+    <AspectInjectorTask AssemblyPath="$(NucsWeaveAssembly)"
+                        References="@(_NucsWeaveReference)"
+                        Optimize="$(NucsWeaveOptimize)"
+                        AttachDebugger="$(NucsWeaveAttachDebugger)"
+                        Verbose="$(NucsWeaveVerbose)" />
+  </Target>
+
+</Project>
