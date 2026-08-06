@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection;
 using Nucs.JsonSettings.Examples;
+using Nucs.JsonSettings.Modulation;
 
 namespace Nucs.JsonSettings.Autosave {
     /// <summary>
@@ -174,8 +175,15 @@ namespace Nucs.JsonSettings.Autosave {
         ///     If changes are introduced while suspension then a save will be commited and resume or disposal.
         /// </summary>
         /// <returns>A suspend state tracker that can be Disposed for a using block</returns>
+        /// <remarks>
+        ///     Resolves the shared <see cref="SuspensionModule"/> base, which finds whichever module
+        ///     the instance carries: the woven path's <see cref="AutosaveModule"/> or the
+        ///     <see cref="SettingsBagAutosaveModule"/> a <see cref="SettingsBag"/> attaches -- so a
+        ///     bag suspends through this same extension without either package knowing the other's
+        ///     concrete type.
+        /// </remarks>
         public static SuspendAutosave SuspendAutosave<TSettings>(this TSettings settings) where TSettings : JsonSettings {
-            return new SuspendAutosave(settings.Modulation.GetModule<AutosaveModule>());
+            return new SuspendAutosave(settings.Modulation.GetModule<SuspensionModule>());
         }
     }
 }

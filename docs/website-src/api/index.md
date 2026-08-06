@@ -67,6 +67,8 @@ The per-object module system. See the [Modulation API](../docs/modulation-api.md
 | @Nucs.JsonSettings.Modulation.Base64Module | Encodes the payload as Base64. |
 | @Nucs.JsonSettings.Modulation.EncryptionModule | Symmetric encryption of the payload (AES-256-CBC by default; AES-GCM/CCM, ChaCha20-Poly1305, AES-CBC-HMAC). See [Encryption](../docs/encryption.md). |
 | @Nucs.JsonSettings.Modulation.ModularityException | Thrown on invalid module attachment/state. |
+| @Nucs.JsonSettings.Modulation.SuspensionModule | The neutral save-suspension state (gates + reference-counted suspension) both autosave paths share. |
+| @Nucs.JsonSettings.Autosave.SettingsBagAutosaveModule | The module `SettingsBag` attaches for its dictionary-backed autosave (base package). |
 
 ---
 

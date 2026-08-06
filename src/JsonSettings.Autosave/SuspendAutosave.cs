@@ -8,14 +8,20 @@
 #nullable enable annotations
 
 using System;
+using Nucs.JsonSettings.Modulation;
 
 namespace Nucs.JsonSettings.Autosave {
     /// <summary>
     ///     Suspends auto-saving until SuspendAutosave.Dispose or SuspendAutosave.Resume are called.<br/>
     ///     If changes are introduced while suspension then a save will be commited and resume or disposal.
     /// </summary>
+    /// <remarks>
+    ///     Wraps the shared <see cref="SuspensionModule"/> base rather than a concrete module, so
+    ///     the same struct suspends the woven path's <see cref="AutosaveModule"/> and
+    ///     <see cref="SettingsBag"/>'s <see cref="SettingsBagAutosaveModule"/> alike.
+    /// </remarks>
     public readonly struct SuspendAutosave : IDisposable {
-        private readonly AutosaveModule _module;
+        private readonly SuspensionModule _module;
 
         /// <summary>
         ///     A strong reference to the settings instance, held for the entire lifetime of the
@@ -25,7 +31,7 @@ namespace Nucs.JsonSettings.Autosave {
         ///     A suspension can owe a save: any change made while suspended sets
         ///     <see cref="AutosavingState.SuspendedChanged"/> and defers the write to
         ///     <see cref="Dispose"/>. The only path back to the settings instance used to be
-        ///     <see cref="AutosaveModule.TryTriggerSave"/>, which resolves the module's
+        ///     <see cref="SuspensionModule.TryTriggerSave"/>, which resolves the module's
         ///     <see cref="System.WeakReference{T}"/> socket -- and a module does not keep its
         ///     settings alive. So if nothing else referenced the settings for the duration of the
         ///     scope (which the JIT is free to arrange as soon as the caller's last use of it is
@@ -39,7 +45,7 @@ namespace Nucs.JsonSettings.Autosave {
         /// </remarks>
         private readonly JsonSettings? _settings;
 
-        public SuspendAutosave(AutosaveModule module) {
+        public SuspendAutosave(SuspensionModule module) {
             _module = module;
             _settings = module.TryGetSettings();
             module.EnterSuspension();

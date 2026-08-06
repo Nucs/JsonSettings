@@ -275,31 +275,26 @@ namespace Nucs.JsonSettings {
         }
 
         public virtual void LoadJson(string json, JsonSerializerSettings? settings = null) {
-            //Populating sets every property through its (woven) setter. If autosave is enabled on
-            //this instance -- e.g. a Load()/LoadDefault() reload after EnableAutosave() -- each of
-            //those writes would otherwise commit an autosave and persist the half-loaded object.
-            //Suppress autosave for the duration of the populate; the writes come from disk, not the
-            //user. Modules are few and this is not a hot path, so the scan is cheap.
-            var autosave = Modulation?.GetModules<AutosaveModule>().FirstOrDefault();
-            if (autosave != null)
-                autosave.IsLoading = true;
+            //Populating sets every property through its (woven) setter and replaces the instances
+            //of writable collection properties (see FileNameIgnoreResolver). The parties that must
+            //know are not named here: an attached SuspensionModule raises its loading gate so the
+            //populate's writes do not autosave the half-loaded object back to disk, and the
+            //autosave package's NotificationBinder moves its nested-change subscriptions to the
+            //replacement instances -- both self-subscribe to the repopulate events this pipeline
+            //raises. (This used to reach into the first AutosaveModule directly and pattern-match
+            //its handler slot for a resync interface; the events invert that dependency, so the
+            //load pipeline knows nothing about autosave at all.)
+            //
+            //AfterRepopulate is raised from the finally: a populate that threw halfway (the
+            //recovery path) has still replaced some values, so subscribers must observe the
+            //survivors -- and drop their loading gates -- on the unwind as well. BeforeRepopulate
+            //is raised inside the try so that AfterRepopulate balances it even if a Before
+            //subscriber itself throws.
             try {
+                BeforeRepopulate?.Invoke(this);
                 JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
             } finally {
-                if (autosave != null) {
-                    autosave.IsLoading = false;
-
-                    //Collection properties deserialize with Replace (see FileNameIgnoreResolver),
-                    //so the populate above may have swapped instances the NotificationBinder was
-                    //subscribed to -- in-place edits of the NEW collection would then never save.
-                    //Tell the binder to re-read every monitored property and move its
-                    //subscriptions to the values the properties hold now. In the finally, not
-                    //after the try: a populate that threw halfway (the recovery path) has still
-                    //replaced some values, and the binder must track the survivors either way.
-                    //Resync only rebinds; it never saves, so doing it while a failed load is
-                    //unwinding cannot write a half-loaded object to disk.
-                    (autosave.NotificationsHandler as INotificationsHandler)?.Resync();
-                }
+                AfterRepopulate?.Invoke(this);
             }
         }
 
@@ -695,6 +690,39 @@ namespace Nucs.JsonSettings {
 
         #endregion
 
+        #region Repopulate events
+
+        /// <summary>
+        ///     Raised immediately before a JSON populate rewrites this instance -- every
+        ///     <see cref="LoadJson"/>, which is where <c>Load()</c>, <c>LoadDefault()</c>, recovery
+        ///     and versioning reloads all funnel their populate.
+        /// </summary>
+        /// <remarks>
+        ///     Internal on purpose: this is the wiring seam through which autosave machinery keeps
+        ///     the load pipeline ignorant of it -- <see cref="Modulation.SuspensionModule"/> brackets
+        ///     its loading gate here (subscribed on attach), and the autosave package's
+        ///     NotificationBinder resyncs its nested-change subscriptions (friend assembly). It is
+        ///     not public lifecycle surface; <see cref="AfterLoad"/> and <see cref="AfterDeserialize"/>
+        ///     are the public signals, and promoting this later is non-breaking whereas retiring a
+        ///     public event is not. Handlers must not save: between Before and After the instance is
+        ///     half-populated, and a save would commit it to disk.
+        /// </remarks>
+        internal event Action<JsonSettings>? BeforeRepopulate;
+
+        /// <summary>
+        ///     Raised after every JSON populate of this instance, from a finally -- including a
+        ///     populate that threw halfway (the recovery path), which has still replaced some
+        ///     values that subscribers must observe while the exception unwinds.
+        /// </summary>
+        /// <remarks>
+        ///     See <see cref="BeforeRepopulate"/> for why this is internal. Handler order is
+        ///     subscription order; all in-repo subscribers are order-independent (the binder's
+        ///     resync only rebinds and never saves, the module handlers only flip the gate).
+        /// </remarks>
+        internal event Action<JsonSettings>? AfterRepopulate;
+
+        #endregion
+
         //Configuration runs exactly once per instance, and a concurrent caller must WAIT for it to
         //finish rather than race ahead against a half-configured object -- e.g. a Save that beat the
         //encryption module being attached would write plaintext. Three states, not a bool: the middle
@@ -838,8 +866,9 @@ namespace Nucs.JsonSettings {
                 //    append semantics; use a settable property where reloads must be exact.
                 //  - string is IEnumerable but scalar here; excluded.
                 //
-                //After a replace the instance a NotificationBinder subscribed to is stale;
-                //LoadJson resyncs the binder right after every populate for exactly that reason.
+                //After a replace the instance a NotificationBinder subscribed to is stale; the
+                //binder resyncs itself on the AfterRepopulate event LoadJson raises after every
+                //populate for exactly that reason.
                 if (member is PropertyInfo && prop.Writable && prop.PropertyType != null
                     && prop.PropertyType != typeof(string)
                     && typeof(System.Collections.IEnumerable).IsAssignableFrom(prop.PropertyType))

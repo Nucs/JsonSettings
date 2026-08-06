@@ -22,7 +22,7 @@ namespace Nucs.JsonSettings.Autosave {
     ///     compiled, bound and looked alive, but an in-place Add/Remove never saved.
     /// </remarks>
     [Serializable]
-    public class NotificationBinder : INotificationsHandler {
+    public class NotificationBinder : IDisposable {
         private readonly JsonSettings _settings;
 
         //The same object as _settings, through the interface every subscription goes through. Kept
@@ -86,9 +86,21 @@ namespace Nucs.JsonSettings.Autosave {
             //bind main event pipe
             _notifier.PropertyChanged += OnPropertyChanged;
 
+            //A populate replaces the instances of writable collection properties (Replace
+            //semantics), and only classes that raise PropertyChanged from their setters would
+            //report that through the pipe above -- an auto-property raises nothing while being
+            //populated. Subscribe to the load pipeline's own signal instead (a friend-assembly
+            //internal event), so every populate resyncs this binder no matter how the settings
+            //class raises its notifications, and whether or not a module carries this binder.
+            settings.AfterRepopulate += OnSettingsRepopulated;
+
             //bind the current value of each watched property
             foreach (var entry in _monitoredPropertiesTable.Values)
                 Subscribe(entry.CurrentValue);
+        }
+
+        private void OnSettingsRepopulated(JsonSettings sender) {
+            Resync();
         }
 
         private void Subscribe(object value) {
@@ -151,13 +163,15 @@ namespace Nucs.JsonSettings.Autosave {
         ///     Re-reads every monitored property and rebinds the ones whose value was replaced.
         /// </summary>
         /// <remarks>
-        ///     The load pipeline calls this (through <see cref="INotificationsHandler"/>) after every
-        ///     populate: collection properties deserialize with Replace semantics, and the replace the
-        ///     deserializer performs only reaches <see cref="OnPropertyChanged"/> when the class
-        ///     raises PropertyChanged from its setters. A plain [Autosave] class on the notifying
-        ///     base without the [NotifyChanges] aspect raises nothing during a populate and would
-        ///     otherwise be left subscribed to collections the settings object no longer holds --
-        ///     every in-place edit after a Load() silently unpersisted.
+        ///     Runs on the settings' AfterRepopulate event (subscribed in the constructor) after
+        ///     every populate: collection properties deserialize with Replace semantics, and the
+        ///     replace the deserializer performs only reaches <see cref="OnPropertyChanged"/> when
+        ///     the class raises PropertyChanged from its setters. A plain [Autosave] class on the
+        ///     notifying base without the [NotifyChanges] aspect raises nothing during a populate
+        ///     and would otherwise be left subscribed to collections the settings object no longer
+        ///     holds -- every in-place edit after a Load() silently unpersisted. Must not save: it
+        ///     runs inside the load pipeline (the event fires from a finally, so also while a
+        ///     failed populate unwinds), where a save would commit a half-loaded object.
         /// </remarks>
         public void Resync() {
             foreach (var propertyName in _properties)
@@ -240,6 +254,7 @@ namespace Nucs.JsonSettings.Autosave {
 
         public void Dispose() {
             _notifier.PropertyChanged -= OnPropertyChanged;
+            _settings.AfterRepopulate -= OnSettingsRepopulated; //a later load must not resurrect a disposed binder
 
             //unbind every nested notifier we subscribed to, so a collection held elsewhere cannot
             //keep saving through -- or keep alive -- a disposed settings object.

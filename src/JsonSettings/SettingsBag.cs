@@ -21,7 +21,7 @@ namespace Nucs.JsonSettings {
     /// </remarks>
     public sealed class SettingsBag : JsonSettings {
         private readonly SafeDictionary<string, object> _data = new SafeDictionary<string, object>();
-        private AutosaveModule? _autosaveModule; //TODO: this potentially can support WPF binding
+        private SettingsBagAutosaveModule? _autosaveModule; //TODO: this potentially can support WPF binding
         private bool _autosave;
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace Nucs.JsonSettings {
                 _autosave = value;
 
                 if (value && _autosaveModule is null)
-                    Modulation.Attach(_autosaveModule = new AutosaveModule());
+                    Modulation.Attach(_autosaveModule = new SettingsBagAutosaveModule());
                 else if (!value && _autosaveModule != null) {
                     Modulation.Deattach(_autosaveModule);
                     _autosaveModule = null;

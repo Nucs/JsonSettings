@@ -8,8 +8,9 @@ using Nucs.JsonSettings.Tests.Utils;
 namespace Nucs.JsonSettings.Tests.Autosave {
     /// <summary>
     ///     SettingsBag and DynamicSettingsBag autosave. The bag has its own dictionary-backed
-    ///     autosave (no weaving), which shares the AutosaveModule with the woven path — so the same
-    ///     reentrancy and suspension guarantees have to hold here too.
+    ///     autosave (no weaving) driven by its own SettingsBagAutosaveModule, which shares the
+    ///     SuspensionModule state machine with the woven path — so the same reentrancy and
+    ///     suspension guarantees have to hold here too.
     /// </summary>
     [TestClass]
     public class SettingsBagAutosaveTests {

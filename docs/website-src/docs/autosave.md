@@ -106,8 +106,9 @@ using (settings.SuspendAutosave()) {
 ```
 
 > [!NOTE]
-> `SuspendAutosave()` resolves the object's `AutosaveModule`, so call `EnableAutosave()` on the
-> object first.
+> `SuspendAutosave()` resolves the object's suspension module — the `AutosaveModule` on a woven
+> class, the bag's own `SettingsBagAutosaveModule` on a `SettingsBag` — so call `EnableAutosave()`
+> on the object first.
 
 ## Behaviour notes
 

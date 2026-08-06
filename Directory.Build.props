@@ -314,16 +314,15 @@ Fixed
   where previously only a NotifiyingJsonSettings base qualified. A mixin class's
   ObservableCollection compiled, bound in the UI and silently never saved on in-place Add/Remove;
   the shipped Avalonia example demonstrated exactly that without knowing it. NotificationBinder
-  gained a JsonSettings constructor overload (the NotifiyingJsonSettings one remains) and now
-  implements the new INotificationsHandler.
+  gained a JsonSettings constructor overload (the NotifiyingJsonSettings one remains).
 - Reloading no longer duplicates collection contents, and recovery genuinely resets them: writable
   collection properties deserialize with ObjectCreationHandling.Replace. Json.NET's default (Auto)
   reused the live collection and appended the file's items on every Load() (["a"] reloaded as
   ["a","a"]), grew default-seeded collections by one copy per application start, and let
   RenameAndLoadDefault keep - and re-save as the new "defaults" - the stale pre-corruption items.
-  The load pipeline resyncs the NotificationBinder after every populate, so the replacement
-  instances stay bound and keep saving; get-only collections cannot be replaced and keep the append
-  semantics.
+  The NotificationBinder resyncs itself after every populate (it subscribes to the repopulate
+  events the load pipeline raises), so the replacement instances stay bound and keep saving;
+  get-only collections cannot be replaced and keep the append semantics.
 - Nested-change saves now honour every gate the woven-setter path honours. The NotificationBinder's
   collection / nested-object handlers called Save() directly, so a populate that wrote a bound
   nested object or filled a get-only collection saved the half-loaded file from inside Load(); an
@@ -431,14 +430,26 @@ Autosave (see the breaking-change note above for the [Autosave] requirement)
   path gone nothing applies it and the constructor guard that read it was always taken, so the
   attribute and the guard were both deleted.
 - Autosave machinery no longer ships inside the base package. IgnoreAutosaveAttribute,
-  NotificationBinder and the SuspendAutosave struct, plus the property opt-in rules, moved from
-  Nucs.JsonSettings.dll to Nucs.JsonSettings.Autosave.dll where they are actually wired up; the
-  Nucs.JsonSettings.Autosave namespace is unchanged, so a project that references the Autosave
-  package sees no difference while a base-only project no longer sees types that did nothing
-  without it. AutosaveModule stays in the base package as the shared save-suspension state that
-  SettingsBag's dictionary autosave and LoadJson drive with the base package alone; its
+  NotificationBinder, the SuspendAutosave struct and AutosaveModule itself, plus the property
+  opt-in rules, moved from Nucs.JsonSettings.dll to Nucs.JsonSettings.Autosave.dll where they are
+  actually wired up; the Nucs.JsonSettings.Autosave namespace is unchanged, so a project that
+  references the Autosave package sees no difference while a base-only project no longer sees
+  types that did nothing without it. The base package keeps only the neutral state the two
+  autosave paths share - the new SuspensionModule (the IsSaving/IsLoading gates and the
+  reference-counted suspension machine) - and SettingsBag now attaches its own
+  SettingsBagAutosaveModule subclass rather than the woven path's module, so the is-AutosaveModule
+  resolution scans in the woven advice and the binder can never mistake a bag's module for a woven
+  one. The load pipeline stopped reaching into modules altogether: LoadJson raises internal
+  BeforeRepopulate/AfterRepopulate events around every populate, SuspensionModule brackets its own
+  IsLoading by subscribing to them on attach, and the NotificationBinder resyncs its nested-change
+  subscriptions the same way. SuspendAutosave targets the shared SuspensionModule base, so
+  settings.SuspendAutosave() keeps working on woven classes and bags alike, and a stand-alone
+  binder (constructed without EnableAutosave) is now resynced on loads too, which the old
+  module-slot pattern-match never did. One visible edge: resolving a bag's module by the concrete
+  AutosaveModule type no longer matches - a bag carries a SettingsBagAutosaveModule. The module's
   SuspendAutosave() method is removed (call the settings.SuspendAutosave() extension) and its
-  NotificationsHandler is now typed IDisposable.
+  NotificationsHandler is now typed IDisposable - honestly a pure lifetime slot, since nothing
+  reaches through it any more.
 - The package re-signs the woven assembly after the weave (shipped build/ and buildTransitive/
   targets), because weaving invalidates the strong-name signature the compiler applied and
   AspectInjector 2.9.0 retired its own re-signing. If sn.exe is unavailable the build warns

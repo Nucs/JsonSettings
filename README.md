@@ -446,7 +446,8 @@ settings.Width = 1024;
 suspender.Resume();  // commits the single pending save (same as Dispose); a second call is a no-op
 ```
 
-`SuspendAutosave()` resolves the object's `AutosaveModule`, so call `EnableAutosave()` first. Scopes
+`SuspendAutosave()` resolves the object's suspension module — the `AutosaveModule` on a woven
+class, the bag's own `SettingsBagAutosaveModule` on a `SettingsBag` — so call `EnableAutosave()` first. Scopes
 are reference-counted and **nest** — only the outermost one commits, once.
 
 WPF Support with INotifyPropertyChanged/INotifyCollectionChanged
@@ -539,7 +540,8 @@ d.Other = 42;                    // saved (routes through the bag)
 
 This is a **separate** autosave from the `[Autosave]` weaving used for typed classes — it is
 dictionary-backed, needs no attribute, and is what `SettingsBag.EnableAutosave()` (the instance
-method) turns on. It shares the same `AutosaveModule`, so it inherits the same guarantees:
+method) turns on. Its own `SettingsBagAutosaveModule` shares the `SuspensionModule` state
+machine with the woven path, so it inherits the same guarantees:
 `SuspendAutosave()` (including nesting), reentrancy safety (writing the bag inside an `AfterSave`
 handler does not recurse), and `Remove`/`RemoveWhere` autosave like an index write.
 

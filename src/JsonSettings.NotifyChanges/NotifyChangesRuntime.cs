@@ -114,7 +114,7 @@ namespace Nucs.JsonSettings.NotifyChanges {
         ///     <see cref="IgnoreAutosaveAttribute"/>. A property can be saved but silent
         ///     (<c>[IgnoreNotify]</c>) or observable but never persisted (<c>[JsonIgnore]</c> /
         ///     <c>[IgnoreAutosave]</c> with a setter). Only the framework's own writes are excluded,
-        ///     mirroring <see cref="AutosaveModule"/>: <see cref="JsonSettings.FileName"/> is assigned
+        ///     mirroring the autosave package's <c>AutosaveModule</c>: <see cref="JsonSettings.FileName"/> is assigned
         ///     by <c>Save()</c> itself (so notifying on it would fire on every save),
         ///     <see cref="JsonSettings.Modulation"/> is plumbing, and <see cref="IVersionable.Version"/>
         ///     is written by the versioning module during load and recovery.
