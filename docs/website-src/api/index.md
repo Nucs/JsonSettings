@@ -105,9 +105,8 @@ Save automatically on change (ships in `Nucs.JsonSettings.Autosave`). See [Autos
 | Type | Description |
 |------|-------------|
 | @Nucs.JsonSettings.Autosave.JsonSettingsAutosaveExtensions | `EnableAutosave` / `EnableIAutosave` entry points. |
-| @Nucs.JsonSettings.Autosave.AutosaveModule | The module that drives change detection. |
+| @Nucs.JsonSettings.Autosave.AutosaveModule | The module `EnableAutosave()` attaches: the monitored-property set and the notification-binder slot, on top of `SuspensionModule`. |
 | @Nucs.JsonSettings.Autosave.IgnoreAutosaveAttribute | Excludes a property from autosave monitoring. |
-| @Nucs.JsonSettings.Autosave.ProxyGeneratedAttribute | Marks proxy-generated classes. |
 | @Nucs.JsonSettings.Autosave.NotificationBinder | Binds `INotifyPropertyChanged`/`INotifyCollectionChanged` sources for WPF-style autosave. |
 
 `NotifiyingJsonSettings` (in the `Nucs.JsonSettings.Examples` namespace) is the convenient

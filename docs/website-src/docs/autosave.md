@@ -114,7 +114,10 @@ using (settings.SuspendAutosave()) {
 
 - **Loading does not autosave.** `Load()`, `LoadDefault()` and a versioning reload populate the
   object from disk through its setters; those writes are not user edits and do not save back.
-  Autosave resumes normally afterward.
+  Autosave resumes normally afterward. The populate is bracketed by the
+  `BeforeRepopulate`/`AfterRepopulate` events (see
+  [Modulation API](modulation-api.md#execution-order)) &mdash; how the module knows to suppress,
+  and why it resumes even when a load throws halfway.
 - **Reentrancy is safe.** Writing a monitored property from inside an `AfterSave` handler does not
   trigger another save (it would otherwise recurse); the value is kept and persists on the next
   save. The same holds for mutating a bound collection or nested object from inside the handler —
