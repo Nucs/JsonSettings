@@ -118,7 +118,7 @@
        nuget.g.targets that import AspectInjector.targets. The property logic in both files is
        written to be correct in either order; keep it that way when editing them.
        ==================================================================================== -->
-  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.Autosave\build\Nucs.JsonSettings.Autosave.targets" />
-  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.NotifyChanges\build\Nucs.JsonSettings.NotifyChanges.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.Autosave\build\Nucs.JsonSettings.Autosave.targets" Condition="'$(NucsQaPackageConsumption)' != 'true'" />
+  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.NotifyChanges\build\Nucs.JsonSettings.NotifyChanges.targets" Condition="'$(NucsQaPackageConsumption)' != 'true'" />
 
 </Project>
