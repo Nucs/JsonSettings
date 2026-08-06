@@ -165,11 +165,75 @@ namespace Nucs.JsonSettings.Autosave {
         }
 
         private void SaveOnChange(object sender, PropertyChangedEventArgs e) {
-            _settings.Save();
+            CommitNestedChange();
         }
 
         private void SaveOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) {
-            _settings.Save();
+            CommitNestedChange();
+        }
+
+        /// <summary>
+        ///     Commits the save a nested change earned, honouring the same module gates the
+        ///     woven-setter path honours in <see cref="AutosaveRuntime.OnPropertySet"/>.
+        /// </summary>
+        /// <remarks>
+        ///     These handlers used to call <c>Save()</c> directly, which bypassed every gate the
+        ///     documentation promises: a populate that mutated a bound nested object or filled a
+        ///     get-only collection saved the half-loaded file from inside Load(); an AfterSave
+        ///     handler that mutated a bound collection re-entered Save without bound; and an
+        ///     in-place Add inside a SuspendAutosave() scope saved immediately instead of batching
+        ///     into the resume commit. A nested change now takes the exact decision path a woven
+        ///     setter write takes, so "loads do not autosave", "re-entrancy is safe" and
+        ///     "suspension batches into one save" hold regardless of which pipe reported the
+        ///     change.
+        /// </remarks>
+        private void CommitNestedChange() {
+            var module = TryGetAutosaveModule();
+            if (module is null) {
+                //no module to consult - the binder is being used stand-alone, outside
+                //EnableAutosave(); preserve the old direct behaviour.
+                _settings.Save();
+                return;
+            }
+
+            if (module.IsSaving)
+                return; //re-entered from inside this module's own Save (an AfterSave handler
+                        //mutating a bound collection); saving again would recurse forever
+
+            if (module.IsLoading)
+                return; //a populate is rewriting this instance; the values come from disk and
+                        //must not be written back mid-load
+
+            if (module.AutosavingState == AutosavingState.SuspendedChanged)
+                return; //a save is already owed; nothing further to record
+
+            if (module.UpdatesSuspended) {
+                module.AutosavingState = AutosavingState.SuspendedChanged; //commit on resume
+                return;
+            }
+
+            module.IsSaving = true;
+            try {
+                _settings.Save();
+            } finally {
+                module.IsSaving = false;
+            }
+        }
+
+        /// <summary>
+        ///     Resolves the attached <see cref="AutosaveModule"/>, or null when there is none;
+        ///     the same direct scan as <c>AutosaveRuntime.TryGetAutosaveModule</c>, for the same
+        ///     reason (GetModule throws on absence).
+        /// </summary>
+        private AutosaveModule TryGetAutosaveModule() {
+            var modules = _settings.Modulation.Modules;
+            var len = modules.Count;
+            for (int i = 0; i < len; i++) {
+                if (modules[i] is AutosaveModule module)
+                    return module;
+            }
+
+            return null;
         }
 
         #region IDisposable

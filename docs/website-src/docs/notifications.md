@@ -353,7 +353,8 @@ s.Name = "x";   // -> one Save(), one PropertyChanged("Name")
   default) is what de-dupes, so a no-op write can save without notifying.
 - **Suspension is save-only.** [`SuspendAutosave()`](autosave.md#suspend-autosave) batches saves but
   does not suspend notifications &mdash; each write still raises `PropertyChanged` immediately, so the
-  View stays live while the disk writes coalesce into one.
+  View stays live while the disk writes coalesce into one. Nested changes batch the same way: an
+  in-place collection `Add` inside the scope commits with the one resume save.
 - **Independent opt-outs.** `[IgnoreAutosave]` and `[IgnoreNotify]` are separate; see
   [Ignoring properties](#ignoring-properties).
 - **Loading and reloading.** The initial `Load()` does not notify (it runs before you subscribe). A

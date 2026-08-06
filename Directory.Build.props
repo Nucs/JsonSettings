@@ -324,6 +324,15 @@ Fixed
   The load pipeline resyncs the NotificationBinder after every populate, so the replacement
   instances stay bound and keep saving; get-only collections cannot be replaced and keep the append
   semantics.
+- Nested-change saves now honour every gate the woven-setter path honours. The NotificationBinder's
+  collection / nested-object handlers called Save() directly, so a populate that wrote a bound
+  nested object or filled a get-only collection saved the half-loaded file from inside Load(); an
+  AfterSave handler that mutated a bound collection re-entered Save without bound (a stack
+  overflow, not a catchable exception); and an in-place Add inside a SuspendAutosave() scope saved
+  immediately, once per Add, instead of batching into the resume commit - each contradicting the
+  documented behaviour of loads, re-entrancy and suspension. A nested change now takes exactly the
+  decision path a woven setter write takes (load suppression, re-entrancy guard, suspension
+  accounting), whichever pipe reported it.
 
 Examples (in the repository, not in the packages)
 - A UI example gallery now exercises the packages from real apps on every framework the docs name:

@@ -116,7 +116,8 @@ using (settings.SuspendAutosave()) {
   Autosave resumes normally afterward.
 - **Reentrancy is safe.** Writing a monitored property from inside an `AfterSave` handler does not
   trigger another save (it would otherwise recurse); the value is kept and persists on the next
-  save.
+  save. The same holds for mutating a bound collection or nested object from inside the handler —
+  nested changes take the same gated path as setter writes.
 - **A failing save surfaces at the assignment.** If the triggered `Save()` throws, the exception
   propagates out of the property assignment (the new value is already set in memory).
 - **`EnableAutosave()` is idempotent** &mdash; calling it twice returns the same instance and does
