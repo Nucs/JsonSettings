@@ -1,20 +1,28 @@
 using System;
-using System.Collections.Generic;
-using Module = Nucs.JsonSettings.Modulation.Module;
+using Nucs.JsonSettings.Autosave;
 
-namespace Nucs.JsonSettings.Autosave {
+namespace Nucs.JsonSettings.Modulation {
     /// <summary>
-    ///     The shared save-suspension state a settings instance carries while autosave is enabled.
+    ///     The neutral save-suspension state a settings instance carries while some flavour of
+    ///     autosave is enabled: the re-entrancy and loading gates, and the reference-counted
+    ///     suspension machine.
     /// </summary>
     /// <remarks>
     ///     This stays in the base package on purpose: <see cref="SettingsBag"/>'s dictionary-backed
-    ///     autosave and <c>JsonSettings.LoadJson</c>'s load-suppression both drive this state with the
-    ///     base package alone, and the woven path in <c>Nucs.JsonSettings.Autosave</c> reuses the very
-    ///     same instance. All of the weaving-specific reflection -- the opt-in rules, the
-    ///     <c>NotificationBinder</c>, the <c>SuspendAutosave</c> entry point -- lives in that package
-    ///     instead; this type keeps only the flags and the reference-counted suspension machine.
+    ///     autosave drives these gates with the base package alone, through its own
+    ///     <see cref="SettingsBagAutosaveModule"/>, and nothing here knows about weaving. The woven
+    ///     path's module -- the monitored-property set and the notification-binder slot -- derives
+    ///     from this as <c>AutosaveModule</c> in <c>Nucs.JsonSettings.Autosave</c>, and that
+    ///     package's <c>SuspendAutosave</c> drives either kind through this shared type, which is
+    ///     what keeps the two autosave paths from ever drifting apart on re-entrancy or suspension
+    ///     semantics.
+    ///
+    ///     The loading gate is self-managed: <see cref="Attach"/> subscribes to the socket's
+    ///     repopulate events and brackets <see cref="IsLoading"/> around every populate, so the
+    ///     load pipeline needs no knowledge of any module type to keep a load from autosaving the
+    ///     half-loaded object back to disk.
     /// </remarks>
-    public class AutosaveModule : Module {
+    public class SuspensionModule : Module {
         /// <summary>
         ///     True while this module is committing an autosave, so that a write made from inside a
         ///     save (typically an <c>AfterSave</c> handler that touches a monitored property) does
@@ -33,8 +41,16 @@ namespace Nucs.JsonSettings.Autosave {
         ///     every property through its (woven) setter, so without this a load performed after
         ///     autosave was enabled -- <c>Load()</c>, <c>LoadDefault()</c>, a versioning reload --
         ///     would commit one autosave per property and write the half-loaded object back to
-        ///     disk mid-load. The load path raises this around the populate step.
+        ///     disk mid-load.
         /// </summary>
+        /// <remarks>
+        ///     Bracketed by this module itself, not by the load pipeline: <see cref="Attach"/>
+        ///     subscribes to the socket's repopulate events and raises/drops the flag around every
+        ///     populate. <c>JsonSettings.LoadJson</c> used to reach into the first attached module
+        ///     and set this directly, which coupled the load pipeline to the module type and
+        ///     covered exactly one module; self-subscription gates every attached module and lets
+        ///     the pipeline know nothing about autosave.
+        /// </remarks>
         internal bool IsLoading { get; set; }
 
         //Depth of nested SuspendAutosave scopes. Suspension must be reference-counted: an inner
@@ -68,36 +84,6 @@ namespace Nucs.JsonSettings.Autosave {
         }
 
         /// <summary>
-        ///     The property names a write to which commits a save, resolved once when autosave is
-        ///     enabled.
-        /// </summary>
-        /// <remarks>
-        ///     This used to be computed in the interceptor's constructor, which only existed
-        ///     because a proxy existed. Weaving has no interceptor to hang it on, and the woven
-        ///     advice must not pay for reflection on every single property write, so the set is
-        ///     resolved once here and consulted as a hash lookup thereafter.
-        ///
-        ///     Null means "autosave was attached without a property filter" -- nothing is
-        ///     monitored -- rather than "everything is monitored", so a module that somehow
-        ///     reaches the advice half-initialized stays silent instead of saving on every write.
-        /// </remarks>
-        private HashSet<string>? _monitoredProperties;
-
-        /// <summary>
-        ///     Records which properties this module saves on. Called by EnableAutosave.
-        /// </summary>
-        internal void SetMonitoredProperties(HashSet<string> monitored) {
-            _monitoredProperties = monitored;
-        }
-
-        /// <summary>
-        ///     Whether a write to <paramref name="propertyName"/> should commit a save.
-        /// </summary>
-        public bool IsMonitored(string propertyName) {
-            return _monitoredProperties != null && _monitoredProperties.Contains(propertyName);
-        }
-
-        /// <summary>
         ///     When true, changes will not cause updates.
         /// </summary>
         public virtual bool UpdatesSuspended => AutosavingState != AutosavingState.Running;
@@ -106,16 +92,6 @@ namespace Nucs.JsonSettings.Autosave {
         ///     The state of the autosave module
         /// </summary>
         public virtual AutosavingState AutosavingState { get; set; }
-
-        /// <summary>
-        ///     The notification handler taking care of binding and unbinding to property and collection changes.
-        /// </summary>
-        /// <remarks>
-        ///     Typed as <see cref="IDisposable"/> so the base package holds only the lifetime, not the
-        ///     autosave-specific binder itself: <c>Nucs.JsonSettings.Autosave</c> assigns a
-        ///     <c>NotificationBinder</c> here and this module disposes it when it is torn down.
-        /// </remarks>
-        public IDisposable? NotificationsHandler { get; set; }
 
         /// <summary>
         ///     Will try to trigger save if this module did not lose reference to <see cref="JsonSettings"/> socket.
@@ -141,18 +117,31 @@ namespace Nucs.JsonSettings.Autosave {
             return null;
         }
 
-        protected override void Dispose(bool disposing) {
-            base.Dispose(disposing);
-            NotificationsHandler?.Dispose();
-        }
-    }
-
-    public enum AutosavingState : byte {
-        Running,
-        Suspended,
         /// <summary>
-        ///     There happened a change during <see cref="Suspended"/>
+        ///     Attaches and self-wires the loading gate: subscribes to the socket's repopulate
+        ///     events so <see cref="IsLoading"/> brackets every populate of this instance.
         /// </summary>
-        SuspendedChanged
+        public override void Attach(JsonSettings socket) {
+            base.Attach(socket);
+            socket.BeforeRepopulate += OnSocketBeforeRepopulate;
+            socket.AfterRepopulate += OnSocketAfterRepopulate;
+        }
+
+        public override void Deattach(JsonSettings socket) {
+            base.Deattach(socket);
+            socket.BeforeRepopulate -= OnSocketBeforeRepopulate;
+            socket.AfterRepopulate -= OnSocketAfterRepopulate;
+        }
+
+        private void OnSocketBeforeRepopulate(JsonSettings sender) {
+            IsLoading = true;
+        }
+
+        //Runs from LoadJson's finally, so a populate that threw halfway still drops the gate --
+        //autosave must resume after a failed load exactly as after a successful one, which is why
+        //successfulPopulate is deliberately ignored here.
+        private void OnSocketAfterRepopulate(JsonSettings sender, bool successfulPopulate) {
+            IsLoading = false;
+        }
     }
 }

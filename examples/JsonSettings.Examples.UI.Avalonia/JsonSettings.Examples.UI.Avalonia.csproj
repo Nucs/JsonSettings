@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nucs.JsonSettings.Examples.UI.Avalonia</RootNamespace>
+    <!-- An Avalonia demo app, not a shipped artifact. It exists as the CROSS-PLATFORM proof:
+         every other example is Windows-only, while Nucs.JsonSettings.NotifyChanges claims to be
+         framework-neutral (it depends only on System.ComponentModel) and the library's tests
+         already run on Linux. This project puts a runnable UI behind both claims — the same
+         [Autosave]+[NotifyChangesMixin] class, woven by the same targets, bound by Avalonia's
+         compiled bindings, building and running on Windows, Linux and macOS with no workload
+         (plain NuGet), which is also why it CAN live in JsonSettings.sln while the MAUI example
+         cannot. -->
+    <IsPackable>false</IsPackable>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Compiled bindings: every {Binding} is resolved against x:DataType at build time, so a
+         typo in a settings property name is a build error, not a silent dead binding. Change
+         NOTIFICATION still happens at runtime: the binding subscribes to the
+         INotifyPropertyChanged that [NotifyChangesMixin] weaves INTO the settings class after
+         compilation — proof that the injected interface is a first-class citizen to a XAML
+         framework that never saw it in source. -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- The demo exe's strong-name signature buys nothing (nothing references an app), and the
+         weave invalidates it on every build; restoring it would drag in sn.exe — Windows-only,
+         NETFX-SDK-only — and warn (NJS1001/NJS1003) on every Linux/macOS build of what is meant
+         to be the cross-platform example. The assembly stays signed-then-invalidated, which
+         .NET never verifies at load. These are the documented opt-outs from the packaged
+         targets. -->
+    <NucsAutosaveResignAfterWeaving>false</NucsAutosaveResignAfterWeaving>
+    <NucsNotifyChangesResignAfterWeaving>false</NucsNotifyChangesResignAfterWeaving>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
+    <!-- F12 in a Debug build opens DevTools; Condition keeps it out of Release. -->
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+
+  <!-- AspectInjector is NOT referenced here on purpose: it flows transitively through the
+       Autosave/NotifyChanges project references (neither marks it PrivateAssets), which is
+       exactly the path a NuGet consumer weaves through. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.NotifyChanges\JsonSettings.NotifyChanges.csproj" />
+  </ItemGroup>
+
+</Project>

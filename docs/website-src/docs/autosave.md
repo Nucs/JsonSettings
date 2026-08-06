@@ -106,17 +106,22 @@ using (settings.SuspendAutosave()) {
 ```
 
 > [!NOTE]
-> `SuspendAutosave()` resolves the object's `AutosaveModule`, so call `EnableAutosave()` on the
-> object first.
+> `SuspendAutosave()` resolves the object's suspension module — the `AutosaveModule` on a woven
+> class, the bag's own `SettingsBagAutosaveModule` on a `SettingsBag` — so call `EnableAutosave()`
+> on the object first.
 
 ## Behaviour notes
 
 - **Loading does not autosave.** `Load()`, `LoadDefault()` and a versioning reload populate the
   object from disk through its setters; those writes are not user edits and do not save back.
-  Autosave resumes normally afterward.
+  Autosave resumes normally afterward. The populate is bracketed by the
+  `BeforeRepopulate`/`AfterRepopulate` events (see
+  [Modulation API](modulation-api.md#execution-order)) &mdash; how the module knows to suppress,
+  and why it resumes even when a load throws halfway.
 - **Reentrancy is safe.** Writing a monitored property from inside an `AfterSave` handler does not
   trigger another save (it would otherwise recurse); the value is kept and persists on the next
-  save.
+  save. The same holds for mutating a bound collection or nested object from inside the handler —
+  nested changes take the same gated path as setter writes.
 - **A failing save surfaces at the assignment.** If the triggered `Save()` throws, the exception
   propagates out of the property assignment (the new value is already set in memory).
 - **`EnableAutosave()` is idempotent** &mdash; calling it twice returns the same instance and does
@@ -127,10 +132,11 @@ using (settings.SuspendAutosave()) {
 
 A settings class can become a WPF-bindable ViewModel: raise `PropertyChanged` from its setters for
 the View, and have autosave react to nested `INotifyPropertyChanged` / `INotifyCollectionChanged`
-changes. When a class derives `NotifiyingJsonSettings`, `EnableAutosave()` attaches a
-`NotificationBinder` so autosave also fires on nested collection edits; and `[NotifyChanges]` /
-`[NotifyChangesMixin]` weave the `PropertyChanged` raise into your setters so even auto-properties
-notify, with configurable change guards.
+changes. When a class implements `INotifyPropertyChanged` &mdash; the `NotifiyingJsonSettings` base,
+a `[NotifyChangesMixin]`-woven class, or a hand-written implementation &mdash; `EnableAutosave()`
+attaches a `NotificationBinder` so autosave also fires on nested collection edits; and
+`[NotifyChanges]` / `[NotifyChangesMixin]` weave the `PropertyChanged` raise into your setters so
+even auto-properties notify, with configurable change guards.
 
 See the dedicated **[Notifications &amp; WPF](notifications.md)** guide for the full treatment &mdash;
 producing notifications, the guard modes, the mixin, the ways a settings class can implement the
@@ -149,6 +155,22 @@ bag["Name"] = "value";      // saved
 bag.Remove("Name");         // saved
 bag.AsDynamic().Other = 42; // saved
 ```
+
+## How the weave runs (out of process, since 2.3.0)
+
+AspectInjector's stock in-process MSBuild task leaks file handles into the MSBuild node that hosts
+it, which deterministically broke small **executable** consumers: the SDK's `CreateAppHost` step
+could not read the still-locked `obj\...\<App>.dll` and the build failed with
+`MSB4018` / *"The process cannot access the file ... because it is being used by another process"*
+&mdash; merely referencing the package was enough, no `[Autosave]` class required. Since 2.3.0 the
+package's shipped targets suppress that in-process task and run the **identical** weaver task in a
+short-lived child MSBuild process instead; every leaked handle is closed by the OS when the child
+exits, before `CreateAppHost` runs. Weaving behaviour, parameters and incrementality are unchanged,
+and a project referencing both this package and `Nucs.JsonSettings.NotifyChanges` still weaves
+exactly once. Opt back into the stock in-process weave with
+`<NucsJsonSettingsOutOfProcWeave>false</NucsJsonSettingsOutOfProcWeave>`;
+`<AspectInjector_Enabled>false</AspectInjector_Enabled>` still disables weaving entirely (only safe
+if no class is marked `[Autosave]`/`[NotifyChanges]` &mdash; they would compile and never work).
 
 ## Strong-named consumers
 

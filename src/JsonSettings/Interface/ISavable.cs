@@ -83,6 +83,19 @@ namespace Nucs.JsonSettings {
         event BeforeDeserializeHandler? BeforeDeserialize;
 
         /// <summary>
+        ///     Invoked immediately before a JSON populate rewrites this instance -- on every populate:
+        ///     <see cref="Load()"/>, <see cref="LoadDefault"/>, recovery reloads and direct
+        ///     <see cref="LoadJson"/> calls alike. Handlers must not save until <see cref="AfterRepopulate"/>.
+        /// </summary>
+        event BeforeRepopulateHandler? BeforeRepopulate;
+
+        /// <summary>
+        ///     Invoked after every JSON populate, from a finally -- fires even when the populate threw
+        ///     halfway; <c>successfulPopulate</c> is true only when the populate ran to completion.
+        /// </summary>
+        event AfterRepopulateHandler? AfterRepopulate;
+
+        /// <summary>
         ///     Invoked after deserialization of this instance was successful.
         /// </summary>
         event AfterDeserializeHandler? AfterDeserialize;

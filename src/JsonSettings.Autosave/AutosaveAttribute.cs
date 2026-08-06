@@ -47,8 +47,13 @@ namespace Nucs.JsonSettings.Autosave {
     /// </example>
     [Aspect(Scope.Global)]
     [Injection(typeof(AutosaveAttribute))]
+    //The weave-witness: the same pass that wires the advice below also makes the annotated class
+    //implement the empty IAutosaveWoven, which is how EnableAutosave() can tell a woven class from
+    //one whose build silently skipped AspectInjector (the attribute alone cannot -- it is present
+    //either way). See IAutosaveWoven for the failure mode this closes.
+    [Mixin(typeof(IAutosaveWoven))]
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-    public sealed class AutosaveAttribute : Attribute {
+    public sealed class AutosaveAttribute : Attribute, IAutosaveWoven {
         /// <summary>
         ///     Appended to every instance setter in the annotated scope.
         /// </summary>

@@ -87,22 +87,38 @@
   </PropertyGroup>
 
   <!-- ====================================================================================
-       Apply the packaged re-signing targets to this repository's own projects too.
+       Apply the packaged build targets (out-of-process weave + re-signing) to this
+       repository's own projects too.
 
        src/JsonSettings.Autosave and src/JsonSettings.NotifyChanges each declare aspects, and
-       tests/JsonSettings.Tests consumes both, so all three are rewritten by AspectInjector after
-       CoreCompile and lose the strong-name signature the compiler applied. Consumers get these
-       files from each nupkg's build/ and buildTransitive/ folders; our own build has no nupkg to
-       get them from, so they are imported directly. One copy each, both paths.
+       tests/JsonSettings.Tests and the examples consume them, so those projects are rewritten by
+       AspectInjector after CoreCompile — which means they need BOTH parts of the packaged targets:
+       the out-of-process weave (AspectInjector 2.9.0's in-process task leaks file handles into the
+       MSBuild node; see docs/aspectinjector-2.9.0-apphost-lock.md — inside this repository the
+       symptom was reused worker nodes keeping obj/bin dlls locked and failing unrelated rebuilds)
+       and the re-sign (weaving invalidates the strong-name signature the compiler applied).
+       Consumers get these files from each nupkg's build/ and buildTransitive/ folders; our own
+       build has no nupkg to get them from, so they are imported directly. One copy each, both
+       paths.
 
-       Importing both unconditionally into every project is safe: every target inside is either
-       conditioned on signing being active or hooked to AfterTargets="AspectInjector_InjectAspects",
-       and MSBuild ignores AfterTargets naming a target that a given project never defines. The two
-       files use disjoint target/property names (NucsAutosave_* vs NucsNotifyChanges_*), so a woven
-       project simply runs both re-sign targets; sn -R is idempotent, so the second is a harmless
-       no-op over the assembly the first already re-signed.
+       Importing both unconditionally into every project is safe:
+         - the weave targets are conditioned on $(_InjectAspectsDependsOn), which only
+           AspectInjector.targets sets, so projects without the weaver (src/JsonSettings itself)
+           skip them;
+         - the re-sign targets are conditioned on signing being active and hooked to
+           AfterTargets="AspectInjector_InjectAspects", and MSBuild ignores AfterTargets naming a
+           target that a given project never defines;
+         - the two files use disjoint target/property names (NucsAutosave_* vs NucsNotifyChanges_*),
+           and the weave-mode handshake between them (see the files) makes the FIRST import claim
+           the weave and the second stay dormant, so a woven project weaves once. Both re-sign
+           targets stay wired through the same handshake; where both would act, sn -R is idempotent.
+
+       NOTE the import ORDER relative to package targets differs from a NuGet consumer:
+       Directory.Build.targets is evaluated near the top of Microsoft.Common.targets, BEFORE the
+       nuget.g.targets that import AspectInjector.targets. The property logic in both files is
+       written to be correct in either order; keep it that way when editing them.
        ==================================================================================== -->
-  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.Autosave\build\Nucs.JsonSettings.Autosave.targets" />
-  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.NotifyChanges\build\Nucs.JsonSettings.NotifyChanges.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.Autosave\build\Nucs.JsonSettings.Autosave.targets" Condition="'$(NucsQaPackageConsumption)' != 'true'" />
+  <Import Project="$(MSBuildThisFileDirectory)src\JsonSettings.NotifyChanges\build\Nucs.JsonSettings.NotifyChanges.targets" Condition="'$(NucsQaPackageConsumption)' != 'true'" />
 
 </Project>

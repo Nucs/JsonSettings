@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Nucs.JsonSettings.Examples.UI.Maui.MainPage">
+
+    <!-- BindingContext is the DemoSettings instance itself (set in code-behind): the settings
+         class IS the view model. Change notification comes from the INotifyPropertyChanged
+         that [NotifyChangesMixin] weaves in after compilation. -->
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30,24" Spacing="18">
+
+            <Label
+                Text="Nucs.JsonSettings + [Autosave] + [NotifyChangesMixin] on .NET MAUI"
+                Style="{StaticResource Headline}"
+                SemanticProperties.HeadingLevel="Level1" />
+
+            <Label
+                Text="Every value below is stored in a JSON file and bound straight to the settings object. Change it, close the app, reopen — it comes back. Nothing here calls Save() or raises PropertyChanged by hand: the woven setters do both."
+                Style="{StaticResource SubHeadline}" />
+
+            <Label Text="{Binding LaunchCount, StringFormat='You have launched this app {0} time(s).'}" />
+
+            <Button
+                Text="{Binding ClickLabel}"
+                SemanticProperties.Hint="Increments a counter that is persisted across launches"
+                Clicked="OnCounterClicked"
+                HorizontalOptions="Fill" />
+
+            <Label Text="A note (saved on every keystroke, echoed via [NotifyChangesFor]):" />
+            <Entry
+                Placeholder="type something, then relaunch"
+                Text="{Binding Note}" />
+            <Label Text="{Binding NoteEchoText}" />
+
+            <Button
+                Text="Reset counter and note — one batched save"
+                SemanticProperties.Hint="Writes two properties inside a SuspendAutosave scope, producing a single file save"
+                Clicked="OnReset"
+                HorizontalOptions="Fill" />
+            <Label x:Name="SaveStatus" FontSize="12" TextColor="Gray" />
+
+            <Label
+                Text="{Binding FileName, StringFormat='file: {0}'}"
+                FontSize="11"
+                TextColor="Gray" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nucs.JsonSettings.Examples.UI.WinForms</RootNamespace>
+    <!-- A Windows Forms demo app, not a shipped artifact. It exists for the library's oldest and
+         largest audience — .NET Framework line-of-business applications (the same audience the
+         repository strong-names for; see Directory.Build.props) — and it is the only example that
+         builds the SAME app for net48 and modern .NET, so the lib/net48 asset and the weave are
+         exercised by a real Framework UI, not just by the test matrix. Its centerpiece is the
+         zero-code settings dialog: PropertyGrid.SelectedObject = settings, where every grid edit
+         runs a woven setter and autosaves. -->
+    <IsPackable>false</IsPackable>
+    <OutputType>WinExe</OutputType>
+    <TargetFrameworks>net48;net10.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- AspectInjector is NOT referenced here on purpose: it flows transitively through the
+       Autosave/NotifyChanges project references (neither marks it PrivateAssets), which is
+       exactly the path a NuGet consumer weaves through. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.NotifyChanges\JsonSettings.NotifyChanges.csproj" />
+  </ItemGroup>
+
+</Project>

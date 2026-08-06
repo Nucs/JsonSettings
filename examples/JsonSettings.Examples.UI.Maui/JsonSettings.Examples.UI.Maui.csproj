@@ -1,0 +1,124 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- =====================================================================================
+       A .NET MAUI demo, sibling to the WPF JsonSettings.Examples.UI project. It exercises
+       JsonSettings + [Autosave] IL weaving from a real MAUI (WinUI-hosted) app, and it served
+       as one of the probes that pinned down the AspectInjector 2.9.0 CreateAppHost file-lock
+       (fixed in 2.3.0 — see README.md here and docs/aspectinjector-2.9.0-apphost-lock.md).
+
+       Windows head only. The apphost/CreateAppHost failure this project helped probe is
+       Windows-specific, and restricting the target keeps the example restorable/buildable
+       without the Android/iOS SDKs. The JsonSettings integration itself is platform-neutral;
+       add the other heads back to the TargetFrameworks below to run them (the Platforms/
+       folders for them are kept in the tree for exactly that).
+
+       NOT in JsonSettings.sln on purpose: CI restores and builds the solution on a runner
+       without the maui-windows workload, and a MAUI project fails restore outright
+       (NETSDK1147) when the workload is absent. Build this folder directly instead.
+       ===================================================================================== -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-windows10.0.19041.0</TargetFrameworks>
+
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Nucs.JsonSettings.Examples.UI.Maui</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+
+    <!-- The one project in the repository that opts out of Directory.Build.props signing
+         (the documented per-project escape hatch there). The MAUI assemblies are not
+         strong-named, so signing this app buries the build under CS8002 for every
+         Microsoft.Maui.* reference — and strong-naming an app nobody references buys
+         nothing. The WPF example stays signed because WPF's closure is fully signed. -->
+    <SignAssembly>false</SignAssembly>
+
+    <MauiXamlInflator>SourceGen</MauiXamlInflator>
+
+    <!-- Display name -->
+    <ApplicationTitle>JsonSettings.Examples.UI.Maui</ApplicationTitle>
+
+    <!-- App Identifier -->
+    <ApplicationId>com.nucs.jsonsettings.examples.ui.maui</ApplicationId>
+
+    <!-- Versions -->
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- Unpackaged: produces a plain apphost .exe, which is exactly the CreateAppHost path
+         that the AspectInjector weave used to collide with (fixed in 2.3.0). -->
+    <WindowsPackageType>None</WindowsPackageType>
+
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+
+    <!-- "Maybe try turning off trimming." JsonSettings serializes through Newtonsoft.Json,
+         which is reflection-based and trim-unfriendly; a trimmed build can silently drop the
+         property setters the settings graph needs. The demo therefore never trims. -->
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- App Icon -->
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+
+    <!-- Splash Screen -->
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+
+    <!-- Images -->
+    <MauiImage Include="Resources\Images\*" />
+
+    <!-- Custom Fonts -->
+    <MauiFont Include="Resources\Fonts\*" />
+
+    <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- =====================================================================================
+       Reference switch. Default (false) references the in-repo projects. Set true
+       (dotnet build -p:UseNugetPackages=true) to consume the published packages instead —
+       the same source and the same [Autosave] weaving, only the reference kind differs.
+
+       History: this switch existed to probe the AspectInjector 2.9.0 CreateAppHost file-lock
+       (error MSB4018 / "…<app>.dll is being used by another process"). This app never lost
+       that race — a MAUI build is heavy enough that the leaked handle was reclaimed before
+       CreateAppHost ran — which was itself a documented data point; the small console and
+       WinUI repros failed deterministically. The bug is fixed in 2.3.0 by running the weave
+       out of process.
+
+       The versions below are 2.2.0, the latest PUBLISHED packages, so the switch stays
+       restorable; bump them when 2.3.0 is on nuget.org. Building from INSIDE this repository
+       the 2.2.0 packages are shielded anyway: Directory.Build.targets imports the 2.3.0 weave
+       targets into every project here, including this one (the package's own same-named
+       re-sign targets, imported later via nuget.g.targets, override the repo's — inert either
+       way for this unsigned-relevance demo). Outside this repository, 2.2.0 remains broken
+       for small executable consumers; use 2.3.0.
+       ===================================================================================== -->
+  <PropertyGroup>
+    <UseNugetPackages Condition="'$(UseNugetPackages)' == ''">false</UseNugetPackages>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseNugetPackages)' == 'true'">
+    <PackageReference Include="Nucs.JsonSettings" Version="2.2.0" />
+    <PackageReference Include="Nucs.JsonSettings.Autosave" Version="2.2.0" />
+    <PackageReference Include="Nucs.JsonSettings.NotifyChanges" Version="2.2.0" />
+  </ItemGroup>
+
+  <!-- AspectInjector is intentionally NOT referenced here; it flows transitively through the
+       Autosave reference (which does not mark it PrivateAssets), the same path a NuGet consumer
+       weaves through. -->
+  <ItemGroup Condition="'$(UseNugetPackages)' != 'true'">
+    <ProjectReference Include="..\..\src\JsonSettings\JsonSettings.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.Autosave\JsonSettings.Autosave.csproj" />
+    <ProjectReference Include="..\..\src\JsonSettings.NotifyChanges\JsonSettings.NotifyChanges.csproj" />
+  </ItemGroup>
+
+</Project>

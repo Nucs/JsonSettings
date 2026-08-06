@@ -48,6 +48,10 @@ namespace Nucs.JsonSettings {
 
     public delegate void ConfigurateHandler(JsonSettings sender);
 
+    public delegate void BeforeRepopulateHandler(JsonSettings sender);
+
+    public delegate void AfterRepopulateHandler(JsonSettings sender, bool successfulPopulate);
+
     #endregion
 
     public abstract class JsonSettings : ISavable, IDisposable {
@@ -275,19 +279,28 @@ namespace Nucs.JsonSettings {
         }
 
         public virtual void LoadJson(string json, JsonSerializerSettings? settings = null) {
-            //Populating sets every property through its (woven) setter. If autosave is enabled on
-            //this instance -- e.g. a Load()/LoadDefault() reload after EnableAutosave() -- each of
-            //those writes would otherwise commit an autosave and persist the half-loaded object.
-            //Suppress autosave for the duration of the populate; the writes come from disk, not the
-            //user. Modules are few and this is not a hot path, so the scan is cheap.
-            var autosave = Modulation?.GetModules<AutosaveModule>().FirstOrDefault();
-            if (autosave != null)
-                autosave.IsLoading = true;
+            //Populating sets every property through its (woven) setter and replaces the instances
+            //of writable collection properties (see FileNameIgnoreResolver). The parties that must
+            //know are not named here: an attached SuspensionModule raises its loading gate so the
+            //populate's writes do not autosave the half-loaded object back to disk, and the
+            //autosave package's NotificationBinder moves its nested-change subscriptions to the
+            //replacement instances -- both self-subscribe to the repopulate events this pipeline
+            //raises. (This used to reach into the first AutosaveModule directly and pattern-match
+            //its handler slot for a resync interface; the events invert that dependency, so the
+            //load pipeline knows nothing about autosave at all.)
+            //
+            //AfterRepopulate is raised from the finally: a populate that threw halfway (the
+            //recovery path) has still replaced some values, so subscribers must observe the
+            //survivors -- and drop their loading gates -- on the unwind as well. BeforeRepopulate
+            //is raised inside the try so that AfterRepopulate balances it even if a Before
+            //subscriber itself throws.
+            var populated = false;
             try {
+                OnBeforeRepopulate();
                 JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
+                populated = true;
             } finally {
-                if (autosave != null)
-                    autosave.IsLoading = false;
+                OnAfterRepopulate(populated);
             }
         }
 
@@ -651,6 +664,39 @@ namespace Nucs.JsonSettings {
 
         public virtual event BeforeDeserializeHandler? BeforeDeserialize;
 
+        /// <summary>
+        ///     Raised immediately before a JSON populate rewrites this instance's properties -- on
+        ///     every <see cref="LoadJson"/>, which is where <c>Load()</c>, <c>LoadDefault()</c>,
+        ///     recovery and versioning reloads all funnel their populate.
+        /// </summary>
+        /// <remarks>
+        ///     This pair is the only per-populate signal in the pipeline:
+        ///     <see cref="BeforeDeserialize"/>/<see cref="AfterDeserialize"/> fire once per
+        ///     successful FILE load (never for <c>LoadDefault()</c> or a direct
+        ///     <see cref="LoadJson"/> call), and <see cref="AfterLoad"/> fires once per
+        ///     <c>Load()</c> however many populates recovery ran underneath it. Between this event
+        ///     and <see cref="AfterRepopulate"/> the instance is half-populated, so handlers must
+        ///     not save. The library subscribes here itself: <see cref="Modulation.SuspensionModule"/>
+        ///     brackets its autosave loading gate, and the autosave package's NotificationBinder
+        ///     resyncs its nested-change subscriptions.
+        /// </remarks>
+        public virtual event BeforeRepopulateHandler? BeforeRepopulate;
+
+        /// <summary>
+        ///     Raised after every JSON populate of this instance, from a finally -- including a
+        ///     populate that threw halfway (the recovery path), which has still replaced some
+        ///     values that subscribers must observe while the exception unwinds.
+        ///     <c>successfulPopulate</c> is true only when the populate ran to completion.
+        /// </summary>
+        /// <remarks>
+        ///     A false report means the object graph may be part old values, part replacements.
+        ///     The library's own subscribers deliberately behave identically either way -- the
+        ///     autosave loading gate must drop and the NotificationBinder must track the surviving
+        ///     instances regardless -- so consult the flag when acting on the loaded DATA rather
+        ///     than on graph identity. Handler order is subscription order.
+        /// </remarks>
+        public virtual event AfterRepopulateHandler? AfterRepopulate;
+
         public virtual event AfterDeserializeHandler? AfterDeserialize;
 
         public virtual event AfterLoadHandler? AfterLoad;
@@ -759,6 +805,14 @@ namespace Nucs.JsonSettings {
             BeforeDeserialize?.Invoke(this, ref data);
         }
 
+        protected internal virtual void OnBeforeRepopulate() {
+            BeforeRepopulate?.Invoke(this);
+        }
+
+        protected internal virtual void OnAfterRepopulate(bool successfulPopulate) {
+            AfterRepopulate?.Invoke(this, successfulPopulate);
+        }
+
         protected internal virtual void OnAfterDeserialize() {
             AfterDeserialize?.Invoke(this);
         }
@@ -806,6 +860,33 @@ namespace Nucs.JsonSettings {
                 var prop = base.CreateProperty(member, memberSerialization);
                 if (prop.PropertyName.Equals("FileName", StringComparison.OrdinalIgnoreCase))
                     prop.Ignored = true;
+
+                //Writable collection properties deserialize with Replace rather than Json.NET's
+                //default (Auto), which REUSES a non-null existing collection and APPENDS the
+                //file's items to it. Populating an existing instance is this library's whole load
+                //model -- Load(), LoadDefault(), recovery and versioning all run PopulateObject
+                //over `this` -- so under Auto every reload duplicated collection contents
+                //(["a"] on disk + ["a"] in memory -> ["a","a"]), a collection with non-empty
+                //defaults grew by one copy per application start, and RenameAndLoadDefault
+                //"recovered" a corrupt file while silently keeping the stale pre-corruption
+                //items in memory, then saved them back out as the new "defaults" file.
+                //
+                //The rule is deliberately narrow:
+                //  - properties only, never fields: a serialized backing field can be replaced
+                //    out from under internal references its owner holds (SettingsBag's map).
+                //  - writable only: a get-only collection cannot be assigned, and marking it
+                //    Replace makes Json.NET SKIP it instead of populating it in place -- which
+                //    would silently stop loading it. Get-only collections therefore keep the
+                //    append semantics; use a settable property where reloads must be exact.
+                //  - string is IEnumerable but scalar here; excluded.
+                //
+                //After a replace the instance a NotificationBinder subscribed to is stale; the
+                //binder resyncs itself on the AfterRepopulate event LoadJson raises after every
+                //populate for exactly that reason.
+                if (member is PropertyInfo && prop.Writable && prop.PropertyType != null
+                    && prop.PropertyType != typeof(string)
+                    && typeof(System.Collections.IEnumerable).IsAssignableFrom(prop.PropertyType))
+                    prop.ObjectCreationHandling = ObjectCreationHandling.Replace;
                 return prop;
             }
         }

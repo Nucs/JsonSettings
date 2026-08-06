@@ -67,6 +67,8 @@ The per-object module system. See the [Modulation API](../docs/modulation-api.md
 | @Nucs.JsonSettings.Modulation.Base64Module | Encodes the payload as Base64. |
 | @Nucs.JsonSettings.Modulation.EncryptionModule | Symmetric encryption of the payload (AES-256-CBC by default; AES-GCM/CCM, ChaCha20-Poly1305, AES-CBC-HMAC). See [Encryption](../docs/encryption.md). |
 | @Nucs.JsonSettings.Modulation.ModularityException | Thrown on invalid module attachment/state. |
+| @Nucs.JsonSettings.Modulation.SuspensionModule | The neutral save-suspension state (gates + reference-counted suspension) both autosave paths share. |
+| @Nucs.JsonSettings.Autosave.SettingsBagAutosaveModule | The module `SettingsBag` attaches for its dictionary-backed autosave (base package). |
 
 ---
 
@@ -103,9 +105,8 @@ Save automatically on change (ships in `Nucs.JsonSettings.Autosave`). See [Autos
 | Type | Description |
 |------|-------------|
 | @Nucs.JsonSettings.Autosave.JsonSettingsAutosaveExtensions | `EnableAutosave` / `EnableIAutosave` entry points. |
-| @Nucs.JsonSettings.Autosave.AutosaveModule | The module that drives change detection. |
+| @Nucs.JsonSettings.Autosave.AutosaveModule | The module `EnableAutosave()` attaches: the monitored-property set and the notification-binder slot, on top of `SuspensionModule`. |
 | @Nucs.JsonSettings.Autosave.IgnoreAutosaveAttribute | Excludes a property from autosave monitoring. |
-| @Nucs.JsonSettings.Autosave.ProxyGeneratedAttribute | Marks proxy-generated classes. |
 | @Nucs.JsonSettings.Autosave.NotificationBinder | Binds `INotifyPropertyChanged`/`INotifyCollectionChanged` sources for WPF-style autosave. |
 
 `NotifiyingJsonSettings` (in the `Nucs.JsonSettings.Examples` namespace) is the convenient

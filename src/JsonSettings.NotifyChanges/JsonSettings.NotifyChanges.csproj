@@ -34,14 +34,19 @@
     <ProjectReference Include="..\JsonSettings\JsonSettings.csproj" />
   </ItemGroup>
 
-  <!-- Ship the re-signing targets to consumers. build/ covers a direct reference;
-       buildTransitive/ covers a consumer who picks this package up through another package.
-       Same file in both, matching how AspectInjector ships its own. The target/property names
-       are prefixed NucsNotifyChanges (not NucsAutosave) so a consumer referencing BOTH this and
-       Nucs.JsonSettings.Autosave does not get two MSBuild targets of the same name. -->
+  <!-- Ship the build targets (out-of-process weave + re-signing) to consumers, plus the
+       child project the weave target executes — the targets reference it via
+       $(MSBuildThisFileDirectory), so it must sit NEXT TO the targets in each folder.
+       build/ covers a direct reference; buildTransitive/ covers a consumer who picks this
+       package up through another package. Same files in both, matching how AspectInjector
+       ships its own. The target/property names are prefixed NucsNotifyChanges (not
+       NucsAutosave) so a consumer referencing BOTH this and Nucs.JsonSettings.Autosave does
+       not get two MSBuild targets of the same name. -->
   <ItemGroup>
     <None Include="build\Nucs.JsonSettings.NotifyChanges.targets" Pack="true" PackagePath="build\" Visible="false" />
     <None Include="build\Nucs.JsonSettings.NotifyChanges.targets" Pack="true" PackagePath="buildTransitive\" Visible="false" />
+    <None Include="build\Nucs.JsonSettings.NotifyChanges.Weave.proj" Pack="true" PackagePath="build\" Visible="false" />
+    <None Include="build\Nucs.JsonSettings.NotifyChanges.Weave.proj" Pack="true" PackagePath="buildTransitive\" Visible="false" />
   </ItemGroup>
 
   <!-- See the note on the same item group in JsonSettings.csproj: declared as an item so the

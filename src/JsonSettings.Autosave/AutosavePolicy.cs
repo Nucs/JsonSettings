@@ -5,9 +5,10 @@ using Nucs.JsonSettings.Modulation;
 
 namespace Nucs.JsonSettings.Autosave {
     /// <summary>
-    ///     The opt-in rules that decide which properties autosave watches. Lifted out of
-    ///     <see cref="AutosaveModule"/> -- which stays in the base package as the shared
-    ///     save-suspension state -- so every piece of weaving-specific reflection lives in this
+    ///     The opt-in rules that decide which properties autosave watches. Lifted out of the
+    ///     module -- whose neutral save-suspension state lives in the base package as
+    ///     <see cref="SuspensionModule"/> while the woven path's <see cref="AutosaveModule"/>
+    ///     lives here beside it -- so every piece of weaving-specific reflection lives in this
     ///     package instead of shipping inert in <c>Nucs.JsonSettings</c>.
     /// </summary>
     internal static class AutosavePolicy {

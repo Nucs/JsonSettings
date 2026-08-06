@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:s="using:Nucs.JsonSettings.Examples.UI.Avalonia"
+        x:Class="Nucs.JsonSettings.Examples.UI.Avalonia.MainWindow"
+        x:DataType="s:DemoSettings"
+        Title="Nucs.JsonSettings — Avalonia"
+        MinWidth="420" MinHeight="520">
+
+    <!-- DataContext is the DemoSettings instance itself (set in App.axaml.cs). Every binding
+         below is COMPILED against x:DataType, so a property typo is a build error; change
+         notification comes from the INotifyPropertyChanged that [NotifyChangesMixin] weaves in. -->
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="14">
+
+            <TextBlock FontSize="20" FontWeight="SemiBold"
+                       Text="Nucs.JsonSettings + [Autosave] + [NotifyChangesMixin]" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                       Text="Every control below is bound straight to the settings object. Nothing calls Save() and nothing implements INotifyPropertyChanged by hand — the woven setters do both. Close the app and reopen: everything is still here." />
+
+            <!-- Two-way text + computed fan-out ([NotifyChangesFor]) -->
+            <TextBlock FontWeight="SemiBold" Text="{Binding Greeting}" FontSize="16" />
+            <TextBox Watermark="your name — saved and re-greeted on every keystroke"
+                     Text="{Binding Name}" />
+
+            <!-- bool round-trip driving a live theme swap (handled in App.axaml.cs) -->
+            <ToggleSwitch OnContent="Dark theme" OffContent="Light theme"
+                          IsChecked="{Binding DarkMode}" />
+
+            <!-- off-thread write, marshalled notification -->
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Content="+1 from a background thread" Click="OnBackgroundIncrement" />
+                <TextBlock VerticalAlignment="Center" Text="{Binding Counter}" FontWeight="SemiBold" />
+            </StackPanel>
+
+            <!-- nested ObservableCollection: Add/Remove persist with no setter involved -->
+            <TextBlock FontWeight="SemiBold" Text="Tags (INotifyCollectionChanged autosave)" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox x:Name="NewTagBox" Width="220" Watermark="new tag" />
+                <Button Content="Add" Click="OnAddTag" />
+                <Button Content="Remove selected" Click="OnRemoveTag" />
+            </StackPanel>
+            <ListBox x:Name="TagsList" MinHeight="110" MaxHeight="160"
+                     ItemsSource="{Binding Tags}" />
+
+            <!-- resilience: RecoveryModule surviving a corrupt file, on demand -->
+            <TextBlock FontWeight="SemiBold" Text="Resilience (RecoveryModule)" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                       Text="This button vandalizes the settings file on disk with invalid JSON, then calls Load(). WithRecovery(RenameAndLoadDefault) sets the broken file aside and reloads defaults — the app never sees the exception." />
+            <Button Content="Corrupt the file on disk, then reload" Click="OnCorruptAndRecover" />
+            <TextBlock x:Name="RecoveryStatus" Opacity="0.7" Text="file is healthy" TextWrapping="Wrap" />
+
+            <!-- footer: save feedback, INotifyPropertyChanging log, file location -->
+            <TextBlock x:Name="SaveStatus" Opacity="0.7" Text="not saved yet" />
+            <TextBlock x:Name="ChangingLog" Opacity="0.5" FontSize="11" Text="(INotifyPropertyChanging log)" TextWrapping="Wrap" />
+            <TextBlock x:Name="PathLabel" Opacity="0.5" FontSize="11" TextWrapping="Wrap" />
+
+        </StackPanel>
+    </ScrollViewer>
+
+</Window>

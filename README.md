@@ -192,7 +192,29 @@ On a scenario of exception/failure, one of the following actions can take place:
 
 All recovery properties and methods are suited for inheritance so extending is quite easy.
 
-//TODO: add example
+```C#
+using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings.Modulation.Recovery;
+
+//attach RecoveryModule via the fluent extension and pick what happens on a parse failure:
+var settings = JsonSettings.Configure<MySettings>("config.json")
+                           .WithRecovery(RecoveryAction.RenameAndLoadDefault)
+                           .LoadNow();
+
+settings.SomeProperty = "hello";
+settings.Save();
+
+//...later config.json is corrupted on disk (hand-edited, truncated, a half-finished write).
+//Loading again does NOT throw: the corrupt file is renamed aside and defaults are loaded.
+settings = JsonSettings.Configure<MySettings>("config.json")
+                       .WithRecovery(RecoveryAction.RenameAndLoadDefault)
+                       .LoadNow();
+//config.json is now the freshly-saved default; the corrupt copy is preserved next to it as
+//config.<version>-0.json (or config.0.json when the class is not IVersionable).
+```
+
+Recovery composes with [versioning](#versioning): versioning runs when the file parses, recovery
+catches the parse itself failing.
 
 Versioning
 ---
@@ -215,8 +237,38 @@ There are two ways to specify which version to enforce.
 2. Add `[EnforcedVersion("1.0.0.0")]` attribute to your `IVersionable.Version` property definition.<br/>
     When dealing with inheritance/virtual override, the attribute of the lowest inherited class will be used.
 
+```C#
+using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings.Modulation;
 
-//TODO: example
+//The settings class must implement IVersionable (contributes `Version Version { get; set; }`).
+class MySettings : JsonSettings, IVersionable {
+    public override string FileName { get; set; } = "config.json";
+    public virtual Version Version { get; set; } = new Version(1, 0, 0, 0);
+    public string Theme { get; set; } = "dark";
+
+    public MySettings() { }
+    public MySettings(string fileName) : base(fileName) { }
+}
+
+//1) Pass the enforced version explicitly:
+var settings = JsonSettings.Configure<MySettings>("config.json")
+                           .WithVersioning("1.0.0.0", VersioningResultAction.RenameAndLoadDefault)
+                           .LoadNow();
+
+//Later you ship a new scheme and bump the enforced version. A file still written as 1.0.0.0 no
+//longer matches, so it is renamed to config.1.0.0.0-0.json and a fresh default config.json is saved.
+settings = JsonSettings.Configure<MySettings>("config.json")
+                       .WithVersioning("2.0.0.0", VersioningResultAction.RenameAndLoadDefault)
+                       .LoadNow();
+
+//2) ...or bake the version into the class with [EnforcedVersion] and use the version-less overload:
+//     [EnforcedVersion("2.0.0.0")]
+//     public virtual Version Version { get; set; } = new Version(1, 0, 0, 0);
+var byAttribute = JsonSettings.Configure<MySettings>("config.json")
+                              .WithVersioning(VersioningResultAction.RenameAndLoadDefault)
+                              .LoadNow();
+```
 
 #### Policy
 A comparison between versions is done by the `Policy` which is a `VersioningPolicyHandler` delegate (`(Version, Version) => bool`) passed during the construction of `VersioningModule<T>` or falls back to `static VersioningModule<T>.DefaultPolicy` which can be changed.<br/>
@@ -354,6 +406,17 @@ to be excluded from the monitored properties for changes. This applies to collec
 - Mark the settings class `[Autosave]`
 - Call `mySettings.EnableAutosave()` extension after calling `Load`
 
+#### How the weave runs (out of process, since 2.3.0)
+AspectInjector's stock in-process MSBuild task leaks file handles into the MSBuild node, which
+deterministically failed small **executable** consumers at the SDK's `CreateAppHost` step
+(`MSB4018` / *"The process cannot access the file '&lt;App&gt;.dll' because it is being used by
+another process"*) — merely referencing the package was enough. Since 2.3.0 the shipped build
+targets run the identical weaver task in a short-lived child MSBuild process instead, so every
+leaked handle is closed at child exit before `CreateAppHost` runs; weaving behaviour and
+incrementality are unchanged. Opt back into the in-process weave with
+`<NucsJsonSettingsOutOfProcWeave>false</NucsJsonSettingsOutOfProcWeave>`. See
+`docs/aspectinjector-2.9.0-apphost-lock.md` for the full forensics.
+
 #### Strong-named consumers
 IL weaving rewrites the assembly after the compiler has signed it, and AspectInjector 2.9.0
 [retired its re-signing feature](https://github.com/pamidur/aspect-injector/releases/tag/2.9.0).
@@ -368,7 +431,24 @@ In some scenarios, there might be multiple close changes to the configuration ob
 To prevent that, the developer can create a `SuspendAutosave` object which will postpone the save to when `SuspendAutosave` will be disposed or `Resume` called.
 If there were no changes between the allocation of `SuspendAutosave` object and disposal/resume then save won't be called.
 
-//TODO: example
+```C#
+var settings = JsonSettings.Load<MySettings>("config.json").EnableAutosave();
+
+using (settings.SuspendAutosave()) {
+    settings.Width  = 800;    // does not save yet
+    settings.Height = 600;    // does not save yet
+    settings.Title  = "App";  // does not save yet
+}                             // one save here on dispose — and only if something changed
+
+//or drive it manually instead of a using-block:
+var suspender = settings.SuspendAutosave();
+settings.Width = 1024;
+suspender.Resume();  // commits the single pending save (same as Dispose); a second call is a no-op
+```
+
+`SuspendAutosave()` resolves the object's suspension module — the `AutosaveModule` on a woven
+class, the bag's own `SettingsBagAutosaveModule` on a `SettingsBag` — so call `EnableAutosave()` first. Scopes
+are reference-counted and **nest** — only the outermost one commits, once.
 
 WPF Support with INotifyPropertyChanged/INotifyCollectionChanged
 ---
@@ -460,7 +540,8 @@ d.Other = 42;                    // saved (routes through the bag)
 
 This is a **separate** autosave from the `[Autosave]` weaving used for typed classes — it is
 dictionary-backed, needs no attribute, and is what `SettingsBag.EnableAutosave()` (the instance
-method) turns on. It shares the same `AutosaveModule`, so it inherits the same guarantees:
+method) turns on. Its own `SettingsBagAutosaveModule` shares the `SuspensionModule` state
+machine with the woven path, so it inherits the same guarantees:
 `SuspendAutosave()` (including nesting), reentrancy safety (writing the bag inside an `AfterSave`
 handler does not recurse), and `Remove`/`RemoveWhere` autosave like an index write.
 
@@ -541,10 +622,40 @@ Key points
 - All modules are stored inside `JsonSettings`.`ModuleSocket Modulation { get; }`.
 - `ModuleSocket` stores all modules attached to this `JsonSettings` object.
 - Every settings object gets a new module object allocated for every module configured.
-- Attaching modules is done via static extensions <span style='font-size:11px; padding-left: 3px' >[read more](https://github.com/Nucs/JsonSettings/blob/master/src/Fluent/FluentJsonSettings.cs) </span>
+- Attaching modules is done via static extensions <span style='font-size:11px; padding-left: 3px' >[read more](https://github.com/Nucs/JsonSettings/blob/master/src/JsonSettings/Fluent/FluentJsonSettings.cs) </span>
 - All modules provided by the library have properties and methods that are suited for inheritance so extending is easy.
 
-//TODO: example + example with Construct
+```C#
+using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings.Modulation;
+using Nucs.JsonSettings.Modulation.Recovery;
+
+//Attach a module fluently — by instance, or by type with constructor arguments:
+var settings = JsonSettings.Configure<MySettings>("config.json")
+                           .WithModule(new Base64Module())                                 // your own instance
+                           .WithModule<MySettings, RecoveryModule>(RecoveryAction.LoadDefault) // constructed for you
+                           .LoadNow();
+```
+
+`WithEncryption`, `WithBase64`, `WithVersioning` and `WithRecovery` are all thin wrappers over
+`WithModule` — e.g. `WithRecovery(action)` is exactly `WithModule(new RecoveryModule(action))`.
+
+**With `Construct`.** `Construct<T>(args)` is the constructor-args sibling of `Configure<T>(filename)`:
+both hand back a fresh, fully-configured instance that has **not** read the file yet, so you can wire
+up modules (or seed defaults in memory) before an explicit `Load`/`Save`:
+
+```C#
+//build a fresh instance, attach modules, then load explicitly:
+var settings = JsonSettings.Construct<MySettings>("config.json") // ctor args go to your constructor
+                           .WithModule(new Base64Module())
+                           .WithEncryption("password")
+                           .LoadNow();
+
+//or use it purely in-memory — seed defaults and write them without reading an existing file:
+var seeded = JsonSettings.Construct<MySettings>("config.json");
+seeded.SomeProperty = "default";
+seeded.Save();
+```
 
 ### Execution Order
 The events are many to allow as much interception as possible.<br>
@@ -555,6 +666,8 @@ event BeforeLoadHandler BeforeLoad(JsonSettings sender, ref string source); //so
 event DecryptHandler Decrypt(JsonSettings sender, ref byte[] data);
 event AfterDecryptHandler AfterDecrypt(JsonSettings sender, ref byte[] data);
 event BeforeDeserializeHandler BeforeDeserialize(JsonSettings sender, ref string data);
+event BeforeRepopulateHandler BeforeRepopulate(JsonSettings sender); //brackets the populate itself; fires on EVERY populate incl. LoadDefault and direct LoadJson
+event AfterRepopulateHandler AfterRepopulate(JsonSettings sender, bool successfulPopulate); //from a finally; false when the populate threw halfway
 event AfterDeserializeHandler AfterDeserialize(JsonSettings sender);
 event AfterLoadHandler AfterLoad(JsonSettings sender, bool successfulLoad);
 ```

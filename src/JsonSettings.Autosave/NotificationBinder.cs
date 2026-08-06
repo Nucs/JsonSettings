@@ -11,11 +11,25 @@ using Nucs.JsonSettings.Reflection;
 
 namespace Nucs.JsonSettings.Autosave {
     /// <summary>
-    ///     Takes care of binding nested objects that implement <see cref="INotifyCollectionChanged"/> and/or <see cref="INotifyPropertyChanged"/>. 
+    ///     Takes care of binding nested objects that implement <see cref="INotifyCollectionChanged"/> and/or <see cref="INotifyPropertyChanged"/>.
     /// </summary>
+    /// <remarks>
+    ///     Attached by <c>EnableAutosave()</c> to any settings instance that itself implements
+    ///     <see cref="INotifyPropertyChanged"/> -- the <see cref="NotifiyingJsonSettings"/> base, a
+    ///     <c>[NotifyChangesMixin]</c>-woven class (whose interface exists only after the weave), or
+    ///     a hand-written implementation. It was limited to the notifying BASE CLASS before 2.3.0,
+    ///     which silently excluded mixin classes: their <c>ObservableCollection</c> properties
+    ///     compiled, bound and looked alive, but an in-place Add/Remove never saved.
+    /// </remarks>
     [Serializable]
     public class NotificationBinder : IDisposable {
-        private readonly NotifiyingJsonSettings _settings;
+        private readonly JsonSettings _settings;
+
+        //The same object as _settings, through the interface every subscription goes through. Kept
+        //separately because the settings TYPE no longer proves the capability: the constructor
+        //accepts any JsonSettings and asserts the interface at runtime, which is the only moment a
+        //mixin-injected implementation is visible at all.
+        private readonly INotifyPropertyChanged _notifier;
         private readonly HashSet<string> _properties;
         private readonly ConcurrentDictionary<string, (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue)> _monitoredPropertiesTable;
 
@@ -26,8 +40,22 @@ namespace Nucs.JsonSettings.Autosave {
         private readonly List<INotifyCollectionChanged> _boundCollections = new List<INotifyCollectionChanged>();
         private readonly List<INotifyPropertyChanged> _boundNotifiers = new List<INotifyPropertyChanged>();
 
-        public NotificationBinder(NotifiyingJsonSettings settings) {
+        /// <summary>
+        ///     Kept for source and binary compatibility with pre-2.3.0 callers; the notifying base
+        ///     is just one of the shapes the <see cref="JsonSettings"/> overload accepts.
+        /// </summary>
+        public NotificationBinder(NotifiyingJsonSettings settings) : this((JsonSettings) settings) { }
+
+        public NotificationBinder(JsonSettings settings) {
+            if (!(settings is INotifyPropertyChanged notifier))
+                throw new ArgumentException(
+                    $"NotificationBinder requires a settings instance that implements INotifyPropertyChanged: "
+                  + $"a NotifiyingJsonSettings base, a [NotifyChangesMixin]-woven class, or a hand-written "
+                  + $"implementation. '{settings?.GetType().Name}' provides none of these, so there is no "
+                  + $"PropertyChanged event to observe property replacements through.", nameof(settings));
+
             _settings = settings;
+            _notifier = notifier;
 
             //Watch every opted-in, readable property whose value may be a nested notifier. This is
             //broader than the save-on-assignment set (IsAutosaveMonitored): it deliberately keeps
@@ -56,11 +84,26 @@ namespace Nucs.JsonSettings.Autosave {
             _properties = new HashSet<string>(_monitoredPropertiesTable.Keys);
 
             //bind main event pipe
-            _settings.PropertyChanged += OnPropertyChanged;
+            _notifier.PropertyChanged += OnPropertyChanged;
+
+            //A populate replaces the instances of writable collection properties (Replace
+            //semantics), and only classes that raise PropertyChanged from their setters would
+            //report that through the pipe above -- an auto-property raises nothing while being
+            //populated. Subscribe to the load pipeline's own per-populate signal instead, so
+            //every populate resyncs this binder no matter how the settings class raises its
+            //notifications, and whether or not a module carries this binder.
+            settings.AfterRepopulate += OnSettingsRepopulated;
 
             //bind the current value of each watched property
             foreach (var entry in _monitoredPropertiesTable.Values)
                 Subscribe(entry.CurrentValue);
+        }
+
+        //successfulPopulate is deliberately ignored: a populate that threw halfway has still
+        //replaced some values (the recovery path), and this binder must track the survivors
+        //either way -- resyncing is about graph identity, not about whether the load's data won.
+        private void OnSettingsRepopulated(JsonSettings sender, bool successfulPopulate) {
+            Resync();
         }
 
         private void Subscribe(object value) {
@@ -98,28 +141,123 @@ namespace Nucs.JsonSettings.Autosave {
         ///     mutating a freshly assigned collection still saves.
         /// </remarks>
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e) {
-            if (e.PropertyName != null && _monitoredPropertiesTable.TryGetValue(e.PropertyName, out (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue) propInfo)) {
+            if (e.PropertyName != null)
+                RefreshBinding(e.PropertyName);
+        }
+
+        /// <summary>
+        ///     Moves the nested-change subscriptions for one monitored property from the value bound
+        ///     previously to the value the property holds now. Shared by the PropertyChanged pipe
+        ///     above and by <see cref="Resync"/>; not a save, per the remarks on
+        ///     <see cref="OnPropertyChanged"/>.
+        /// </summary>
+        private void RefreshBinding(string propertyName) {
+            if (_monitoredPropertiesTable.TryGetValue(propertyName, out (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue) propInfo)) {
                 var newValue = ReflectionHelper.Getter(propInfo.Property)(_settings);
                 if (propInfo.CurrentValue != newValue) {
-                    _monitoredPropertiesTable[e.PropertyName] = (propInfo.Property, propInfo.GetMethod, propInfo.SetMethod, newValue);
+                    _monitoredPropertiesTable[propertyName] = (propInfo.Property, propInfo.GetMethod, propInfo.SetMethod, newValue);
                     Subscribe(newValue);
                     Unsubscribe(propInfo.CurrentValue);
                 }
             }
         }
 
+        /// <summary>
+        ///     Re-reads every monitored property and rebinds the ones whose value was replaced.
+        /// </summary>
+        /// <remarks>
+        ///     Runs on the settings' AfterRepopulate event (subscribed in the constructor) after
+        ///     every populate: collection properties deserialize with Replace semantics, and the
+        ///     replace the deserializer performs only reaches <see cref="OnPropertyChanged"/> when
+        ///     the class raises PropertyChanged from its setters. A plain [Autosave] class on the
+        ///     notifying base without the [NotifyChanges] aspect raises nothing during a populate
+        ///     and would otherwise be left subscribed to collections the settings object no longer
+        ///     holds -- every in-place edit after a Load() silently unpersisted. Must not save: it
+        ///     runs inside the load pipeline (the event fires from a finally, so also while a
+        ///     failed populate unwinds), where a save would commit a half-loaded object.
+        /// </remarks>
+        public void Resync() {
+            foreach (var propertyName in _properties)
+                RefreshBinding(propertyName);
+        }
+
         private void SaveOnChange(object sender, PropertyChangedEventArgs e) {
-            _settings.Save();
+            CommitNestedChange();
         }
 
         private void SaveOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) {
-            _settings.Save();
+            CommitNestedChange();
+        }
+
+        /// <summary>
+        ///     Commits the save a nested change earned, honouring the same module gates the
+        ///     woven-setter path honours in <see cref="AutosaveRuntime.OnPropertySet"/>.
+        /// </summary>
+        /// <remarks>
+        ///     These handlers used to call <c>Save()</c> directly, which bypassed every gate the
+        ///     documentation promises: a populate that mutated a bound nested object or filled a
+        ///     get-only collection saved the half-loaded file from inside Load(); an AfterSave
+        ///     handler that mutated a bound collection re-entered Save without bound; and an
+        ///     in-place Add inside a SuspendAutosave() scope saved immediately instead of batching
+        ///     into the resume commit. A nested change now takes the exact decision path a woven
+        ///     setter write takes, so "loads do not autosave", "re-entrancy is safe" and
+        ///     "suspension batches into one save" hold regardless of which pipe reported the
+        ///     change.
+        /// </remarks>
+        private void CommitNestedChange() {
+            var module = TryGetAutosaveModule();
+            if (module is null) {
+                //no module to consult - the binder is being used stand-alone, outside
+                //EnableAutosave(); preserve the old direct behaviour.
+                _settings.Save();
+                return;
+            }
+
+            if (module.IsSaving)
+                return; //re-entered from inside this module's own Save (an AfterSave handler
+                        //mutating a bound collection); saving again would recurse forever
+
+            if (module.IsLoading)
+                return; //a populate is rewriting this instance; the values come from disk and
+                        //must not be written back mid-load
+
+            if (module.AutosavingState == AutosavingState.SuspendedChanged)
+                return; //a save is already owed; nothing further to record
+
+            if (module.UpdatesSuspended) {
+                module.AutosavingState = AutosavingState.SuspendedChanged; //commit on resume
+                return;
+            }
+
+            module.IsSaving = true;
+            try {
+                _settings.Save();
+            } finally {
+                module.IsSaving = false;
+            }
+        }
+
+        /// <summary>
+        ///     Resolves the attached <see cref="AutosaveModule"/>, or null when there is none;
+        ///     the same direct scan as <c>AutosaveRuntime.TryGetAutosaveModule</c>, for the same
+        ///     reason (GetModule throws on absence).
+        /// </summary>
+        private AutosaveModule TryGetAutosaveModule() {
+            var modules = _settings.Modulation.Modules;
+            var len = modules.Count;
+            for (int i = 0; i < len; i++) {
+                if (modules[i] is AutosaveModule module)
+                    return module;
+            }
+
+            return null;
         }
 
         #region IDisposable
 
         public void Dispose() {
-            _settings.PropertyChanged -= OnPropertyChanged;
+            _notifier.PropertyChanged -= OnPropertyChanged;
+            _settings.AfterRepopulate -= OnSettingsRepopulated; //a later load must not resurrect a disposed binder
 
             //unbind every nested notifier we subscribed to, so a collection held elsewhere cannot
             //keep saving through -- or keep alive -- a disposed settings object.
