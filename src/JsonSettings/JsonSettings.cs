@@ -48,9 +48,9 @@ namespace Nucs.JsonSettings {
 
     public delegate void ConfigurateHandler(JsonSettings sender);
 
-    internal delegate void BeforeRepopulateHandler(JsonSettings sender);
+    public delegate void BeforeRepopulateHandler(JsonSettings sender);
 
-    internal delegate void AfterRepopulateHandler(JsonSettings sender, bool successfulPopulate);
+    public delegate void AfterRepopulateHandler(JsonSettings sender, bool successfulPopulate);
 
     #endregion
 
@@ -296,11 +296,11 @@ namespace Nucs.JsonSettings {
             //subscriber itself throws.
             var populated = false;
             try {
-                BeforeRepopulate?.Invoke(this);
+                OnBeforeRepopulate();
                 JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
                 populated = true;
             } finally {
-                AfterRepopulate?.Invoke(this, populated);
+                OnAfterRepopulate(populated);
             }
         }
 
@@ -664,6 +664,39 @@ namespace Nucs.JsonSettings {
 
         public virtual event BeforeDeserializeHandler? BeforeDeserialize;
 
+        /// <summary>
+        ///     Raised immediately before a JSON populate rewrites this instance's properties -- on
+        ///     every <see cref="LoadJson"/>, which is where <c>Load()</c>, <c>LoadDefault()</c>,
+        ///     recovery and versioning reloads all funnel their populate.
+        /// </summary>
+        /// <remarks>
+        ///     This pair is the only per-populate signal in the pipeline:
+        ///     <see cref="BeforeDeserialize"/>/<see cref="AfterDeserialize"/> fire once per
+        ///     successful FILE load (never for <c>LoadDefault()</c> or a direct
+        ///     <see cref="LoadJson"/> call), and <see cref="AfterLoad"/> fires once per
+        ///     <c>Load()</c> however many populates recovery ran underneath it. Between this event
+        ///     and <see cref="AfterRepopulate"/> the instance is half-populated, so handlers must
+        ///     not save. The library subscribes here itself: <see cref="Modulation.SuspensionModule"/>
+        ///     brackets its autosave loading gate, and the autosave package's NotificationBinder
+        ///     resyncs its nested-change subscriptions.
+        /// </remarks>
+        public virtual event BeforeRepopulateHandler? BeforeRepopulate;
+
+        /// <summary>
+        ///     Raised after every JSON populate of this instance, from a finally -- including a
+        ///     populate that threw halfway (the recovery path), which has still replaced some
+        ///     values that subscribers must observe while the exception unwinds.
+        ///     <c>successfulPopulate</c> is true only when the populate ran to completion.
+        /// </summary>
+        /// <remarks>
+        ///     A false report means the object graph may be part old values, part replacements.
+        ///     The library's own subscribers deliberately behave identically either way -- the
+        ///     autosave loading gate must drop and the NotificationBinder must track the surviving
+        ///     instances regardless -- so consult the flag when acting on the loaded DATA rather
+        ///     than on graph identity. Handler order is subscription order.
+        /// </remarks>
+        public virtual event AfterRepopulateHandler? AfterRepopulate;
+
         public virtual event AfterDeserializeHandler? AfterDeserialize;
 
         public virtual event AfterLoadHandler? AfterLoad;
@@ -693,44 +726,6 @@ namespace Nucs.JsonSettings {
         public virtual event RecoveredHandler? Recovered;
 
         internal virtual event ConfigurateHandler? Configurate;
-
-        #endregion
-
-        #region Repopulate events
-
-        /// <summary>
-        ///     Raised immediately before a JSON populate rewrites this instance -- every
-        ///     <see cref="LoadJson"/>, which is where <c>Load()</c>, <c>LoadDefault()</c>, recovery
-        ///     and versioning reloads all funnel their populate.
-        /// </summary>
-        /// <remarks>
-        ///     Internal on purpose: this is the wiring seam through which autosave machinery keeps
-        ///     the load pipeline ignorant of it -- <see cref="Modulation.SuspensionModule"/> brackets
-        ///     its loading gate here (subscribed on attach), and the autosave package's
-        ///     NotificationBinder resyncs its nested-change subscriptions (friend assembly). It is
-        ///     not public lifecycle surface; <see cref="AfterLoad"/> and <see cref="AfterDeserialize"/>
-        ///     are the public signals, and promoting this later is non-breaking whereas retiring a
-        ///     public event is not. Handlers must not save: between Before and After the instance is
-        ///     half-populated, and a save would commit it to disk.
-        /// </remarks>
-        internal event BeforeRepopulateHandler? BeforeRepopulate;
-
-        /// <summary>
-        ///     Raised after every JSON populate of this instance, from a finally -- including a
-        ///     populate that threw halfway (the recovery path), which has still replaced some
-        ///     values that subscribers must observe while the exception unwinds.
-        /// </summary>
-        /// <remarks>
-        ///     See <see cref="BeforeRepopulate"/> for why this is internal.
-        ///     <c>successfulPopulate</c> is true only when the populate ran to completion; false
-        ///     means the object graph may be part old values, part replacements -- the current
-        ///     subscribers behave identically either way on purpose (the loading gate must drop
-        ///     and the binder must track the survivors regardless), but a subscriber that acts on
-        ///     the loaded DATA rather than on graph identity must consult the flag. Handler order
-        ///     is subscription order; all in-repo subscribers are order-independent (the binder's
-        ///     resync only rebinds and never saves, the module handlers only flip the gate).
-        /// </remarks>
-        internal event AfterRepopulateHandler? AfterRepopulate;
 
         #endregion
 
@@ -808,6 +803,14 @@ namespace Nucs.JsonSettings {
 
         protected internal virtual void OnBeforeDeserialize(ref string data) {
             BeforeDeserialize?.Invoke(this, ref data);
+        }
+
+        protected internal virtual void OnBeforeRepopulate() {
+            BeforeRepopulate?.Invoke(this);
+        }
+
+        protected internal virtual void OnAfterRepopulate(bool successfulPopulate) {
+            AfterRepopulate?.Invoke(this, successfulPopulate);
         }
 
         protected internal virtual void OnAfterDeserialize() {

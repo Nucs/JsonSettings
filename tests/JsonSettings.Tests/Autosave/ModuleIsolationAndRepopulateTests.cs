@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -14,7 +15,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
     ///     save-suspension state (<see cref="SuspensionModule"/>) and the bag's own
     ///     <see cref="SettingsBagAutosaveModule"/>, while <see cref="AutosaveModule"/> — the woven
     ///     path's module — lives in Nucs.JsonSettings.Autosave. The two packages meet only through
-    ///     the shared base type and the internal BeforeRepopulate/AfterRepopulate events the load
+    ///     the shared base type and the BeforeRepopulate/AfterRepopulate events the load
     ///     pipeline raises around every populate, which replaced both the load pipeline's direct
     ///     IsLoading bracketing and the INotificationsHandler resync tunnel.
     /// </summary>
@@ -146,6 +147,30 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             o.LoadDefault();
             before.Should().Be(3);
             after.Should().Be(3);
+        }
+
+        /// <summary>
+        ///     Where the pair sits in the load pipeline of a file <c>Load()</c>: nested immediately
+        ///     inside BeforeDeserialize/AfterDeserialize (which fire only for file loads), with
+        ///     AfterLoad outermost. On <c>LoadDefault()</c> and direct <c>LoadJson()</c> calls the
+        ///     repopulate pair fires alone — it is the only per-populate signal.
+        /// </summary>
+        [TestMethod]
+        public void RepopulateEvents_NestDirectlyInsideTheDeserializePair_OnAFileLoad() {
+            using var f = new TempFile();
+            var o = JsonSettings.Load<PlainSettings>(f.FileName);
+            o.A = "persisted";
+            o.Save();
+            var order = new List<string>();
+            o.BeforeDeserialize += (JsonSettings s, ref string data) => order.Add("BeforeDeserialize");
+            o.BeforeRepopulate += s => order.Add("BeforeRepopulate");
+            o.AfterRepopulate += (s, successful) => order.Add("AfterRepopulate");
+            o.AfterDeserialize += s => order.Add("AfterDeserialize");
+            o.AfterLoad += (s, successful) => order.Add("AfterLoad");
+
+            o.Load();
+
+            order.Should().Equal("BeforeDeserialize", "BeforeRepopulate", "AfterRepopulate", "AfterDeserialize", "AfterLoad");
         }
 
         /// <summary>

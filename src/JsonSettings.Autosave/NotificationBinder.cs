@@ -89,9 +89,9 @@ namespace Nucs.JsonSettings.Autosave {
             //A populate replaces the instances of writable collection properties (Replace
             //semantics), and only classes that raise PropertyChanged from their setters would
             //report that through the pipe above -- an auto-property raises nothing while being
-            //populated. Subscribe to the load pipeline's own signal instead (a friend-assembly
-            //internal event), so every populate resyncs this binder no matter how the settings
-            //class raises its notifications, and whether or not a module carries this binder.
+            //populated. Subscribe to the load pipeline's own per-populate signal instead, so
+            //every populate resyncs this binder no matter how the settings class raises its
+            //notifications, and whether or not a module carries this binder.
             settings.AfterRepopulate += OnSettingsRepopulated;
 
             //bind the current value of each watched property

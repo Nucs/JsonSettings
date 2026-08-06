@@ -381,6 +381,14 @@ Breaking changes
   ciphertext and an independent BCL-only reimplementation of the format.
 
 New features
+- New lifecycle events BeforeRepopulate and AfterRepopulate (JsonSettings and ISavable) bracket the
+  JSON populate itself and are the pipeline's only per-populate signal: unlike
+  BeforeDeserialize/AfterDeserialize (successful file loads only) and AfterLoad (once per Load),
+  they also fire for LoadDefault(), versioning and recovery reloads, and direct LoadJson() calls.
+  AfterRepopulate fires from a finally and carries successfulPopulate - false when the populate
+  threw halfway, in which case the object may hold a mix of old and file values. Handlers must not
+  save between the two; the autosave machinery itself rides this pair for load suppression and
+  collection rebinding.
 - Encryption accepts binary secrets, not only a text password:
   - WithEncryption(byte[]) - a binary password, PBKDF2-stretched exactly like a text password.
     It is a DIFFERENT credential from the text password whose UTF-8 bytes match it.
@@ -439,7 +447,7 @@ Autosave (see the breaking-change note above for the [Autosave] requirement)
   reference-counted suspension machine) - and SettingsBag now attaches its own
   SettingsBagAutosaveModule subclass rather than the woven path's module, so the is-AutosaveModule
   resolution scans in the woven advice and the binder can never mistake a bag's module for a woven
-  one. The load pipeline stopped reaching into modules altogether: LoadJson raises internal
+  one. The load pipeline stopped reaching into modules altogether: LoadJson raises the new
   BeforeRepopulate/AfterRepopulate events around every populate - AfterRepopulate fires from the
   finally and reports whether the populate ran to completion - SuspensionModule brackets its own
   IsLoading by subscribing to them on attach, and the NotificationBinder resyncs its nested-change

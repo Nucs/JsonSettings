@@ -666,6 +666,8 @@ event BeforeLoadHandler BeforeLoad(JsonSettings sender, ref string source); //so
 event DecryptHandler Decrypt(JsonSettings sender, ref byte[] data);
 event AfterDecryptHandler AfterDecrypt(JsonSettings sender, ref byte[] data);
 event BeforeDeserializeHandler BeforeDeserialize(JsonSettings sender, ref string data);
+event BeforeRepopulateHandler BeforeRepopulate(JsonSettings sender); //brackets the populate itself; fires on EVERY populate incl. LoadDefault and direct LoadJson
+event AfterRepopulateHandler AfterRepopulate(JsonSettings sender, bool successfulPopulate); //from a finally; false when the populate threw halfway
 event AfterDeserializeHandler AfterDeserialize(JsonSettings sender);
 event AfterLoadHandler AfterLoad(JsonSettings sender, bool successfulLoad);
 ```

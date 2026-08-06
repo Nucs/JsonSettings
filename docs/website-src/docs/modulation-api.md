@@ -40,9 +40,20 @@ event BeforeLoadHandler       BeforeLoad(JsonSettings sender, ref string source)
 event DecryptHandler          Decrypt(JsonSettings sender, ref byte[] data);
 event AfterDecryptHandler     AfterDecrypt(JsonSettings sender, ref byte[] data);
 event BeforeDeserializeHandler BeforeDeserialize(JsonSettings sender, ref string data);
+event BeforeRepopulateHandler BeforeRepopulate(JsonSettings sender);
+event AfterRepopulateHandler  AfterRepopulate(JsonSettings sender, bool successfulPopulate);
 event AfterDeserializeHandler AfterDeserialize(JsonSettings sender);
 event AfterLoadHandler        AfterLoad(JsonSettings sender);
 ```
+
+`BeforeRepopulate`/`AfterRepopulate` bracket the JSON populate itself and are the only
+**per-populate** signal: they also fire for `LoadDefault()`, versioning/recovery reloads and direct
+`LoadJson()` calls, where the rest of the loading events do not. `AfterRepopulate` fires from a
+`finally` and reports `successfulPopulate: false` when the populate threw halfway (the recovery
+path), in which case the object may hold a mix of old and file values &mdash; check the flag before
+acting on loaded data. Do not call `Save()` between the two events: the instance is mid-rewrite.
+The library itself rides this pair &mdash; the autosave module suppresses save-on-write during the
+populate through it, and the `NotificationBinder` rebinds replaced collections after it.
 
 And, in the case of a `JsonException` during `LoadJson`:
 
