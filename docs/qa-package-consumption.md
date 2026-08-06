@@ -57,3 +57,27 @@ exactly what surfaced this).
 `NucsQaPackageConsumption=true` skips the two repository-side imports so the package's targets
 are the only definition, which is precisely a real consumer's configuration. It is inert unless
 passed explicitly.
+
+## 2.3.0 outside-tree launch QA: App11 (WinUI 3)
+
+`D:\App11` — the original 2.2.0 CreateAppHost-failure repro, a WinUI 3 `net8.0-windows10.0.19041.0`
+WinExe — consumes the packed packages from this repo's `artifacts/nuget` folder through its own
+`NuGet.config` (project-local `globalPackagesFolder`, machine cache as read-only fallback; no
+`NucsQaPackageConsumption` needed since it sits outside the tree). The nupkgs are packed into
+`artifacts/nuget` (gitignored) rather than a temp feed *on purpose*: earlier rounds pointed App11
+at a per-session temp directory that later evaporated, breaking its restore.
+
+Verified 2026-08-06 against `Nucs.JsonSettings` + `Nucs.JsonSettings.Autosave` **2.3.0**
+(`dotnet pack -c Release -p:Version=2.3.0 -o artifacts/nuget`, all three packages):
+
+- Default (MSIX-tooling) `-p:Platform=x64 -t:Rebuild` build is green — the exact configuration
+  the 2.2.0 in-process weave deterministically killed with the CreateAppHost file lock.
+- Deployed `Nucs.JsonSettings.dll` carries `ProductVersion 2.3.0+d6e8e60` — that sha is the
+  master merge of `release/2.3.0` (PR #52), whose tree is identical to the branch tip the pack
+  ran from, so the embedded provenance differing from HEAD is cosmetic, not stale binaries.
+- Unpackaged variant (`-p:WindowsPackageType=None -p:BaseOutputPath=bin/unpackaged/`, installed
+  Windows App Runtime 2.3.1) launches: window up and `Responding`, and
+  `Load<SettingsBag>(path).EnableAutosave()` writes `%LOCALAPPDATA%\App11\settings.json` on the
+  first indexer assignment (`Launches: 1`) with the `SafeDictionary` `$type` payload intact.
+- Graceful close (`CloseMainWindow`) → relaunch loads the persisted file and increments to
+  `Launches: 2` — the full load → populate → dictionary-autosave roundtrip on packaged bits.
