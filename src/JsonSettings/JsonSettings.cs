@@ -48,6 +48,10 @@ namespace Nucs.JsonSettings {
 
     public delegate void ConfigurateHandler(JsonSettings sender);
 
+    internal delegate void BeforeRepopulateHandler(JsonSettings sender);
+
+    internal delegate void AfterRepopulateHandler(JsonSettings sender, bool successfulPopulate);
+
     #endregion
 
     public abstract class JsonSettings : ISavable, IDisposable {
@@ -290,11 +294,13 @@ namespace Nucs.JsonSettings {
             //survivors -- and drop their loading gates -- on the unwind as well. BeforeRepopulate
             //is raised inside the try so that AfterRepopulate balances it even if a Before
             //subscriber itself throws.
+            var populated = false;
             try {
                 BeforeRepopulate?.Invoke(this);
                 JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
+                populated = true;
             } finally {
-                AfterRepopulate?.Invoke(this);
+                AfterRepopulate?.Invoke(this, populated);
             }
         }
 
@@ -707,7 +713,7 @@ namespace Nucs.JsonSettings {
         ///     public event is not. Handlers must not save: between Before and After the instance is
         ///     half-populated, and a save would commit it to disk.
         /// </remarks>
-        internal event Action<JsonSettings>? BeforeRepopulate;
+        internal event BeforeRepopulateHandler? BeforeRepopulate;
 
         /// <summary>
         ///     Raised after every JSON populate of this instance, from a finally -- including a
@@ -715,11 +721,16 @@ namespace Nucs.JsonSettings {
         ///     values that subscribers must observe while the exception unwinds.
         /// </summary>
         /// <remarks>
-        ///     See <see cref="BeforeRepopulate"/> for why this is internal. Handler order is
-        ///     subscription order; all in-repo subscribers are order-independent (the binder's
+        ///     See <see cref="BeforeRepopulate"/> for why this is internal.
+        ///     <c>successfulPopulate</c> is true only when the populate ran to completion; false
+        ///     means the object graph may be part old values, part replacements -- the current
+        ///     subscribers behave identically either way on purpose (the loading gate must drop
+        ///     and the binder must track the survivors regardless), but a subscriber that acts on
+        ///     the loaded DATA rather than on graph identity must consult the flag. Handler order
+        ///     is subscription order; all in-repo subscribers are order-independent (the binder's
         ///     resync only rebinds and never saves, the module handlers only flip the gate).
         /// </remarks>
-        internal event Action<JsonSettings>? AfterRepopulate;
+        internal event AfterRepopulateHandler? AfterRepopulate;
 
         #endregion
 

@@ -138,8 +138,9 @@ namespace Nucs.JsonSettings.Modulation {
         }
 
         //Runs from LoadJson's finally, so a populate that threw halfway still drops the gate --
-        //autosave must resume after a failed load exactly as after a successful one.
-        private void OnSocketAfterRepopulate(JsonSettings sender) {
+        //autosave must resume after a failed load exactly as after a successful one, which is why
+        //successfulPopulate is deliberately ignored here.
+        private void OnSocketAfterRepopulate(JsonSettings sender, bool successfulPopulate) {
             IsLoading = false;
         }
     }

@@ -128,8 +128,9 @@ namespace Nucs.JsonSettings.Tests.Autosave {
                 before++;
                 after.Should().Be(before - 1, "Before must precede After for each populate");
             };
-            o.AfterRepopulate += s => {
+            o.AfterRepopulate += (s, successful) => {
                 s.Should().BeSameAs(o);
+                successful.Should().BeTrue("these populates all run to completion");
                 after++;
             };
 
@@ -157,13 +158,18 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             using var f = new TempFile();
             var o = JsonSettings.Load<PlainSettings>(f.FileName);
             int before = 0, after = 0;
+            bool? reportedSuccess = null;
             o.BeforeRepopulate += s => before++;
-            o.AfterRepopulate += s => after++;
+            o.AfterRepopulate += (s, successful) => {
+                after++;
+                reportedSuccess = successful;
+            };
 
             new Action(() => o.LoadJson(@"{""A"": <not json>")).Should().Throw<JsonException>();
 
             before.Should().Be(1);
             after.Should().Be(1, "the finally must release subscribers even on a failed populate");
+            reportedSuccess.Should().BeFalse("a populate that threw must report failure so data-consuming subscribers can tell a torn graph from a loaded one");
         }
 
         /// <summary>
@@ -179,7 +185,7 @@ namespace Nucs.JsonSettings.Tests.Autosave {
             var module = o.Modulation.GetModule<AutosaveModule>();
             bool? duringBefore = null, duringAfter = null;
             o.BeforeRepopulate += s => duringBefore = module.IsLoading;
-            o.AfterRepopulate += s => duringAfter = module.IsLoading;
+            o.AfterRepopulate += (s, successful) => duringAfter = module.IsLoading;
 
             o.Load();
 

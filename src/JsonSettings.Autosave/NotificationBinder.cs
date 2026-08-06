@@ -99,7 +99,10 @@ namespace Nucs.JsonSettings.Autosave {
                 Subscribe(entry.CurrentValue);
         }
 
-        private void OnSettingsRepopulated(JsonSettings sender) {
+        //successfulPopulate is deliberately ignored: a populate that threw halfway has still
+        //replaced some values (the recovery path), and this binder must track the survivors
+        //either way -- resyncing is about graph identity, not about whether the load's data won.
+        private void OnSettingsRepopulated(JsonSettings sender, bool successfulPopulate) {
             Resync();
         }
 
