@@ -286,8 +286,20 @@ namespace Nucs.JsonSettings {
             try {
                 JsonConvert.PopulateObject(json, this, ResolveConfiguration(settings));
             } finally {
-                if (autosave != null)
+                if (autosave != null) {
                     autosave.IsLoading = false;
+
+                    //Collection properties deserialize with Replace (see FileNameIgnoreResolver),
+                    //so the populate above may have swapped instances the NotificationBinder was
+                    //subscribed to -- in-place edits of the NEW collection would then never save.
+                    //Tell the binder to re-read every monitored property and move its
+                    //subscriptions to the values the properties hold now. In the finally, not
+                    //after the try: a populate that threw halfway (the recovery path) has still
+                    //replaced some values, and the binder must track the survivors either way.
+                    //Resync only rebinds; it never saves, so doing it while a failed load is
+                    //unwinding cannot write a half-loaded object to disk.
+                    (autosave.NotificationsHandler as INotificationsHandler)?.Resync();
+                }
             }
         }
 
@@ -806,6 +818,32 @@ namespace Nucs.JsonSettings {
                 var prop = base.CreateProperty(member, memberSerialization);
                 if (prop.PropertyName.Equals("FileName", StringComparison.OrdinalIgnoreCase))
                     prop.Ignored = true;
+
+                //Writable collection properties deserialize with Replace rather than Json.NET's
+                //default (Auto), which REUSES a non-null existing collection and APPENDS the
+                //file's items to it. Populating an existing instance is this library's whole load
+                //model -- Load(), LoadDefault(), recovery and versioning all run PopulateObject
+                //over `this` -- so under Auto every reload duplicated collection contents
+                //(["a"] on disk + ["a"] in memory -> ["a","a"]), a collection with non-empty
+                //defaults grew by one copy per application start, and RenameAndLoadDefault
+                //"recovered" a corrupt file while silently keeping the stale pre-corruption
+                //items in memory, then saved them back out as the new "defaults" file.
+                //
+                //The rule is deliberately narrow:
+                //  - properties only, never fields: a serialized backing field can be replaced
+                //    out from under internal references its owner holds (SettingsBag's map).
+                //  - writable only: a get-only collection cannot be assigned, and marking it
+                //    Replace makes Json.NET SKIP it instead of populating it in place -- which
+                //    would silently stop loading it. Get-only collections therefore keep the
+                //    append semantics; use a settable property where reloads must be exact.
+                //  - string is IEnumerable but scalar here; excluded.
+                //
+                //After a replace the instance a NotificationBinder subscribed to is stale;
+                //LoadJson resyncs the binder right after every populate for exactly that reason.
+                if (member is PropertyInfo && prop.Writable && prop.PropertyType != null
+                    && prop.PropertyType != typeof(string)
+                    && typeof(System.Collections.IEnumerable).IsAssignableFrom(prop.PropertyType))
+                    prop.ObjectCreationHandling = ObjectCreationHandling.Replace;
                 return prop;
             }
         }

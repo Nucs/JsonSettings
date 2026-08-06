@@ -114,6 +114,9 @@ namespace Nucs.JsonSettings.Autosave {
         ///     Typed as <see cref="IDisposable"/> so the base package holds only the lifetime, not the
         ///     autosave-specific binder itself: <c>Nucs.JsonSettings.Autosave</c> assigns a
         ///     <c>NotificationBinder</c> here and this module disposes it when it is torn down.
+        ///     The load pipeline additionally pattern-matches this for <see cref="INotificationsHandler"/>
+        ///     to resync the binder after a populate replaced collection instances; the property stays
+        ///     <see cref="IDisposable"/> so existing assignments keep compiling and binding.
         /// </remarks>
         public IDisposable? NotificationsHandler { get; set; }
 

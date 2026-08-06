@@ -18,9 +18,9 @@
 
        The ONLY differences from the Autosave file are the identifier names: every target,
        property, item and diagnostic code is prefixed NucsNotifyChanges / _NucsNC (codes
-       NJS1003/NJS1004/NJS1006 instead of NJS1001/NJS1002/NJS1005), so a consumer that
-       references BOTH packages imports two targets files with DISTINCT names and MSBuild
-       runs both rather than silently letting one override the other.
+       NJS1003/NJS1004/NJS1006/NJS1008 instead of NJS1001/NJS1002/NJS1005/NJS1007), so a
+       consumer that references BOTH packages imports two targets files with DISTINCT names
+       and MSBuild runs both rather than silently letting one override the other.
 
        TWO PACKAGES, ONE WEAVE. The weave itself must still happen once, not twice - weaving
        twice doubles every aspect's advice. The mode handshake below arranges that: whichever
@@ -64,6 +64,31 @@
           Inputs="@(IntermediateAssembly->'%(FullPath)')"
           Outputs="%(IntermediateAssembly.FullPath).aspectsinjected">
 
+    <PropertyGroup>
+      <_NucsNCWeaveAssembly>@(IntermediateAssembly->'%(FullPath)')</_NucsNCWeaveAssembly>
+      <_NucsNCWeaveRefsFile>$(_NucsNCWeaveAssembly).aspectrefs</_NucsNCWeaveRefsFile>
+    </PropertyGroup>
+
+    <!-- A semicolon in the intermediate path cannot be carried on the child command line
+         (MSBuild splits -property: values on ';'); see the NJS1007 note in the Autosave
+         twin for the fuller story, including why the path is unusable for .NET either way. -->
+    <Error Condition="$(_NucsNCWeaveAssembly.Contains('%3B'))"
+           Code="NJS1008"
+           Text="Nucs.JsonSettings.NotifyChanges: the intermediate assembly path '$(_NucsNCWeaveAssembly)' contains a semicolon, which cannot be passed to the out-of-process weave (MSBuild splits command-line properties on ';') - and which .NET executables cannot run from at all (';' separates the runtime's assembly list). Rename the directory. For a library build that must stay put, &lt;NucsJsonSettingsOutOfProcWeave&gt;false&lt;/NucsJsonSettingsOutOfProcWeave&gt; restores the in-process weave, subject to the file-lock bug it carries." />
+
+    <!-- Content-awareness, the generic half of the re-weave guard: any post-compile rewriter
+         (not just the XamlC one guarded below) can move the assembly past the stamp without
+         recompiling it, and re-weaving a woven assembly stacks the advice. '__a$_instance' is
+         the aspect-singleton member AspectInjector plants in everything it processes and
+         nothing a compiler emits from source; see the full note in the Autosave twin. -->
+    <PropertyGroup>
+      <_NucsNCAlreadyWoven>false</_NucsNCAlreadyWoven>
+      <_NucsNCAlreadyWoven Condition="Exists('$(_NucsNCWeaveAssembly)') and $([System.IO.File]::ReadAllText('$(_NucsNCWeaveAssembly)').Contains('__a$_instance'))">true</_NucsNCAlreadyWoven>
+    </PropertyGroup>
+    <Message Condition="'$(_NucsNCAlreadyWoven)' == 'true'"
+             Importance="low"
+             Text="Nucs.JsonSettings.NotifyChanges: $(MSBuildProjectName) is already woven (a post-compile step moved it past the weave stamp without recompiling); skipping re-weave, re-stamping." />
+
     <ItemGroup>
       <_NucsNCInjectorProbe Include="$(AspectInjector_Location)" Condition="'$(AspectInjector_Location)' != ''" />
       <_NucsNCInjectorProbe Include="@(Analyzer->'%(RootDir)%(Directory)../../../binaries/AspectInjector.dll')" Condition="'%(Analyzer.Filename)' == 'AspectInjector.Analyzer'" />
@@ -73,14 +98,11 @@
       <_NucsNCInjectorDll Condition="'$(_NucsNCInjectorDll)' == '' and Exists('%(_NucsNCInjectorProbe.FullPath)')">%(_NucsNCInjectorProbe.FullPath)</_NucsNCInjectorDll>
     </PropertyGroup>
 
-    <Error Condition="'$(_NucsNCInjectorDll)' == ''"
+    <Error Condition="'$(_NucsNCInjectorDll)' == '' and '$(_NucsNCAlreadyWoven)' != 'true'"
            Code="NJS1006"
            Text="Nucs.JsonSettings.NotifyChanges: cannot locate AspectInjector.dll for the out-of-process weave (probed AspectInjector_Location, the AspectInjector analyzer path, and the NuGet cache). Set &lt;AspectInjector_Location&gt; to the task assembly, or set &lt;NucsJsonSettingsOutOfProcWeave&gt;false&lt;/NucsJsonSettingsOutOfProcWeave&gt; to use AspectInjector's stock in-process weave." />
 
     <PropertyGroup>
-      <_NucsNCWeaveAssembly>@(IntermediateAssembly->'%(FullPath)')</_NucsNCWeaveAssembly>
-      <_NucsNCWeaveRefsFile>$(_NucsNCWeaveAssembly).aspectrefs</_NucsNCWeaveRefsFile>
-
       <_NucsNCWeaveOptimize>$(Optimize)</_NucsNCWeaveOptimize>
       <_NucsNCWeaveOptimize Condition="'$(_NucsNCWeaveOptimize)' == ''">false</_NucsNCWeaveOptimize>
 
@@ -89,10 +111,13 @@
       <_NucsNCWeaveMSBuild Condition="'$(MSBuildRuntimeType)' != 'Core'">&quot;$([System.IO.Path]::Combine('$(MSBuildBinPath)','MSBuild.exe'))&quot;</_NucsNCWeaveMSBuild>
     </PropertyGroup>
 
-    <WriteLinesToFile File="$(_NucsNCWeaveRefsFile)" Lines="@(ReferencePath->'%(FullPath)')" Overwrite="true" />
+    <WriteLinesToFile Condition="'$(_NucsNCAlreadyWoven)' != 'true'"
+                      File="$(_NucsNCWeaveRefsFile)" Lines="@(ReferencePath->'%(FullPath)')" Overwrite="true" />
 
-    <Exec Command="$(_NucsNCWeaveMSBuild) &quot;$(MSBuildThisFileDirectory)Nucs.JsonSettings.NotifyChanges.Weave.proj&quot; -nologo -nodeReuse:false -verbosity:quiet &quot;-consoleLoggerParameters:ErrorsOnly;NoSummary&quot; &quot;-property:NucsWeaveAssembly=$(_NucsNCWeaveAssembly)&quot; &quot;-property:NucsWeaveReferencesFile=$(_NucsNCWeaveRefsFile)&quot; &quot;-property:NucsWeaveInjector=$(_NucsNCInjectorDll)&quot; -property:NucsWeaveOptimize=$(_NucsNCWeaveOptimize) -property:NucsWeaveVerbose=$(AspectInjector_Verbose) -property:NucsWeaveAttachDebugger=$(AspectInjector_Debug)" />
+    <Exec Condition="'$(_NucsNCAlreadyWoven)' != 'true'"
+          Command="$(_NucsNCWeaveMSBuild) &quot;$(MSBuildThisFileDirectory)Nucs.JsonSettings.NotifyChanges.Weave.proj&quot; -nologo -nodeReuse:false -verbosity:quiet &quot;-consoleLoggerParameters:ErrorsOnly;NoSummary&quot; &quot;-property:NucsWeaveAssembly=$(_NucsNCWeaveAssembly)&quot; &quot;-property:NucsWeaveReferencesFile=$(_NucsNCWeaveRefsFile)&quot; &quot;-property:NucsWeaveInjector=$(_NucsNCInjectorDll)&quot; -property:NucsWeaveOptimize=$(_NucsNCWeaveOptimize) -property:NucsWeaveVerbose=$(AspectInjector_Verbose) -property:NucsWeaveAttachDebugger=$(AspectInjector_Debug)" />
 
+    <!-- Runs on the skip path too: the assembly IS woven, so the stamp may honestly say so. -->
     <Touch Files="%(IntermediateAssembly.FullPath).aspectsinjected" AlwaysCreate="true" Time="%(IntermediateAssembly.ModifiedTime)" />
   </Target>
 

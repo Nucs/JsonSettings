@@ -127,10 +127,11 @@ using (settings.SuspendAutosave()) {
 
 A settings class can become a WPF-bindable ViewModel: raise `PropertyChanged` from its setters for
 the View, and have autosave react to nested `INotifyPropertyChanged` / `INotifyCollectionChanged`
-changes. When a class derives `NotifiyingJsonSettings`, `EnableAutosave()` attaches a
-`NotificationBinder` so autosave also fires on nested collection edits; and `[NotifyChanges]` /
-`[NotifyChangesMixin]` weave the `PropertyChanged` raise into your setters so even auto-properties
-notify, with configurable change guards.
+changes. When a class implements `INotifyPropertyChanged` &mdash; the `NotifiyingJsonSettings` base,
+a `[NotifyChangesMixin]`-woven class, or a hand-written implementation &mdash; `EnableAutosave()`
+attaches a `NotificationBinder` so autosave also fires on nested collection edits; and
+`[NotifyChanges]` / `[NotifyChangesMixin]` weave the `PropertyChanged` raise into your setters so
+even auto-properties notify, with configurable change guards.
 
 See the dedicated **[Notifications &amp; WPF](notifications.md)** guide for the full treatment &mdash;
 producing notifications, the guard modes, the mixin, the ways a settings class can implement the

@@ -11,11 +11,25 @@ using Nucs.JsonSettings.Reflection;
 
 namespace Nucs.JsonSettings.Autosave {
     /// <summary>
-    ///     Takes care of binding nested objects that implement <see cref="INotifyCollectionChanged"/> and/or <see cref="INotifyPropertyChanged"/>. 
+    ///     Takes care of binding nested objects that implement <see cref="INotifyCollectionChanged"/> and/or <see cref="INotifyPropertyChanged"/>.
     /// </summary>
+    /// <remarks>
+    ///     Attached by <c>EnableAutosave()</c> to any settings instance that itself implements
+    ///     <see cref="INotifyPropertyChanged"/> -- the <see cref="NotifiyingJsonSettings"/> base, a
+    ///     <c>[NotifyChangesMixin]</c>-woven class (whose interface exists only after the weave), or
+    ///     a hand-written implementation. It was limited to the notifying BASE CLASS before 2.3.0,
+    ///     which silently excluded mixin classes: their <c>ObservableCollection</c> properties
+    ///     compiled, bound and looked alive, but an in-place Add/Remove never saved.
+    /// </remarks>
     [Serializable]
-    public class NotificationBinder : IDisposable {
-        private readonly NotifiyingJsonSettings _settings;
+    public class NotificationBinder : INotificationsHandler {
+        private readonly JsonSettings _settings;
+
+        //The same object as _settings, through the interface every subscription goes through. Kept
+        //separately because the settings TYPE no longer proves the capability: the constructor
+        //accepts any JsonSettings and asserts the interface at runtime, which is the only moment a
+        //mixin-injected implementation is visible at all.
+        private readonly INotifyPropertyChanged _notifier;
         private readonly HashSet<string> _properties;
         private readonly ConcurrentDictionary<string, (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue)> _monitoredPropertiesTable;
 
@@ -26,8 +40,22 @@ namespace Nucs.JsonSettings.Autosave {
         private readonly List<INotifyCollectionChanged> _boundCollections = new List<INotifyCollectionChanged>();
         private readonly List<INotifyPropertyChanged> _boundNotifiers = new List<INotifyPropertyChanged>();
 
-        public NotificationBinder(NotifiyingJsonSettings settings) {
+        /// <summary>
+        ///     Kept for source and binary compatibility with pre-2.3.0 callers; the notifying base
+        ///     is just one of the shapes the <see cref="JsonSettings"/> overload accepts.
+        /// </summary>
+        public NotificationBinder(NotifiyingJsonSettings settings) : this((JsonSettings) settings) { }
+
+        public NotificationBinder(JsonSettings settings) {
+            if (!(settings is INotifyPropertyChanged notifier))
+                throw new ArgumentException(
+                    $"NotificationBinder requires a settings instance that implements INotifyPropertyChanged: "
+                  + $"a NotifiyingJsonSettings base, a [NotifyChangesMixin]-woven class, or a hand-written "
+                  + $"implementation. '{settings?.GetType().Name}' provides none of these, so there is no "
+                  + $"PropertyChanged event to observe property replacements through.", nameof(settings));
+
             _settings = settings;
+            _notifier = notifier;
 
             //Watch every opted-in, readable property whose value may be a nested notifier. This is
             //broader than the save-on-assignment set (IsAutosaveMonitored): it deliberately keeps
@@ -56,7 +84,7 @@ namespace Nucs.JsonSettings.Autosave {
             _properties = new HashSet<string>(_monitoredPropertiesTable.Keys);
 
             //bind main event pipe
-            _settings.PropertyChanged += OnPropertyChanged;
+            _notifier.PropertyChanged += OnPropertyChanged;
 
             //bind the current value of each watched property
             foreach (var entry in _monitoredPropertiesTable.Values)
@@ -98,14 +126,42 @@ namespace Nucs.JsonSettings.Autosave {
         ///     mutating a freshly assigned collection still saves.
         /// </remarks>
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e) {
-            if (e.PropertyName != null && _monitoredPropertiesTable.TryGetValue(e.PropertyName, out (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue) propInfo)) {
+            if (e.PropertyName != null)
+                RefreshBinding(e.PropertyName);
+        }
+
+        /// <summary>
+        ///     Moves the nested-change subscriptions for one monitored property from the value bound
+        ///     previously to the value the property holds now. Shared by the PropertyChanged pipe
+        ///     above and by <see cref="Resync"/>; not a save, per the remarks on
+        ///     <see cref="OnPropertyChanged"/>.
+        /// </summary>
+        private void RefreshBinding(string propertyName) {
+            if (_monitoredPropertiesTable.TryGetValue(propertyName, out (PropertyInfo Property, MethodInfo GetMethod, MethodInfo SetMethod, object CurrentValue) propInfo)) {
                 var newValue = ReflectionHelper.Getter(propInfo.Property)(_settings);
                 if (propInfo.CurrentValue != newValue) {
-                    _monitoredPropertiesTable[e.PropertyName] = (propInfo.Property, propInfo.GetMethod, propInfo.SetMethod, newValue);
+                    _monitoredPropertiesTable[propertyName] = (propInfo.Property, propInfo.GetMethod, propInfo.SetMethod, newValue);
                     Subscribe(newValue);
                     Unsubscribe(propInfo.CurrentValue);
                 }
             }
+        }
+
+        /// <summary>
+        ///     Re-reads every monitored property and rebinds the ones whose value was replaced.
+        /// </summary>
+        /// <remarks>
+        ///     The load pipeline calls this (through <see cref="INotificationsHandler"/>) after every
+        ///     populate: collection properties deserialize with Replace semantics, and the replace the
+        ///     deserializer performs only reaches <see cref="OnPropertyChanged"/> when the class
+        ///     raises PropertyChanged from its setters. A plain [Autosave] class on the notifying
+        ///     base without the [NotifyChanges] aspect raises nothing during a populate and would
+        ///     otherwise be left subscribed to collections the settings object no longer holds --
+        ///     every in-place edit after a Load() silently unpersisted.
+        /// </remarks>
+        public void Resync() {
+            foreach (var propertyName in _properties)
+                RefreshBinding(propertyName);
         }
 
         private void SaveOnChange(object sender, PropertyChangedEventArgs e) {
@@ -119,7 +175,7 @@ namespace Nucs.JsonSettings.Autosave {
         #region IDisposable
 
         public void Dispose() {
-            _settings.PropertyChanged -= OnPropertyChanged;
+            _notifier.PropertyChanged -= OnPropertyChanged;
 
             //unbind every nested notifier we subscribed to, so a collection held elsewhere cannot
             //keep saving through -- or keep alive -- a disposed settings object.

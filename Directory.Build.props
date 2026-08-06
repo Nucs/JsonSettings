@@ -292,6 +292,38 @@ Fixed
   next build, three times after the one after that). The packaged targets now re-stamp the marker
   right after XamlC, the same guard the re-sign step already applied for its own rewrite. Avalonia
   needs no guard by construction: its XAML compiler runs inside CoreCompile, before the weave.
+- Re-weave stacking is now impossible whatever rewrites the assembly, not just for the XamlC case
+  above: before invoking the weaver, the targets read the intermediate assembly and skip the weave
+  when it already carries AspectInjector's injected IL (the '__a$_instance' aspect singleton, which
+  no compiler emits from source). A Fody / ILRepack / obfuscator step that pushes the assembly past
+  the .aspectsinjected stamp therefore costs one detection read on the next incremental build
+  instead of silently doubling the advice per build. A semicolon in the intermediate output path now
+  fails fast as NJS1007/NJS1008 with the actual reason (MSBuild splits child -property: values on
+  ';', and .NET executables cannot start from such paths anyway) instead of a cryptic MSB1006 from
+  the child process.
+- A build that silently skipped the weave can no longer masquerade as working: the [Autosave] aspect
+  now mixes the empty marker interface IAutosaveWoven into every class it processes, and
+  EnableAutosave() throws a JsonSettingsException naming the likely causes (a direct AspectInjector
+  reference with ExcludeAssets="build", a single-pass `msbuild -t:Restore;Build` that evaluates the
+  project before the restored targets exist, AspectInjector_Enabled=false) when the attribute is
+  present but the marker is not. Previously such a class compiled, EnableAutosave() succeeded, and
+  every "saved" change was silently lost. For assemblies woven by versions older than 2.3.0 that
+  cannot be rebuilt, set JsonSettingsAutosaveExtensions.RequireWeaveMarker=false once at startup.
+- EnableAutosave() now binds nested collections on ANY settings class that implements
+  INotifyPropertyChanged - [NotifyChangesMixin] classes and hand-written implementations included -
+  where previously only a NotifiyingJsonSettings base qualified. A mixin class's
+  ObservableCollection compiled, bound in the UI and silently never saved on in-place Add/Remove;
+  the shipped Avalonia example demonstrated exactly that without knowing it. NotificationBinder
+  gained a JsonSettings constructor overload (the NotifiyingJsonSettings one remains) and now
+  implements the new INotificationsHandler.
+- Reloading no longer duplicates collection contents, and recovery genuinely resets them: writable
+  collection properties deserialize with ObjectCreationHandling.Replace. Json.NET's default (Auto)
+  reused the live collection and appended the file's items on every Load() (["a"] reloaded as
+  ["a","a"]), grew default-seeded collections by one copy per application start, and let
+  RenameAndLoadDefault keep - and re-save as the new "defaults" - the stale pre-corruption items.
+  The load pipeline resyncs the NotificationBinder after every populate, so the replacement
+  instances stay bound and keep saving; get-only collections cannot be replaced and keep the append
+  semantics.
 
 Examples (in the repository, not in the packages)
 - A UI example gallery now exercises the packages from real apps on every framework the docs name:

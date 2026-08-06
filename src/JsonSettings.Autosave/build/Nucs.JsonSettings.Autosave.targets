@@ -114,6 +114,45 @@
           Inputs="@(IntermediateAssembly->'%(FullPath)')"
           Outputs="%(IntermediateAssembly.FullPath).aspectsinjected">
 
+    <PropertyGroup>
+      <_NucsAutosaveWeaveAssembly>@(IntermediateAssembly->'%(FullPath)')</_NucsAutosaveWeaveAssembly>
+      <_NucsAutosaveWeaveRefsFile>$(_NucsAutosaveWeaveAssembly).aspectrefs</_NucsAutosaveWeaveRefsFile>
+    </PropertyGroup>
+
+    <!-- MSBuild's command line splits -property: values on ';' with no escape a targets file
+         can reliably produce, so a semicolon anywhere in the intermediate path reaches the
+         child as a torn property and dies as a cryptic MSB1006. Fail it here, by name.
+         (The stock in-process weave would build such a project - and produce an executable
+         that cannot START, because ';' is also the separator of the host's trusted-platform-
+         assemblies list: "Failed to create CoreCLR, HRESULT: 0x80070057". The path is broken
+         for .NET either way; this error is just the honest version.) '%3B' is MSBuild's
+         escape for ';', unescaped when the condition is evaluated - written literally, a raw
+         semicolon inside a condition is a list separator. -->
+    <Error Condition="$(_NucsAutosaveWeaveAssembly.Contains('%3B'))"
+           Code="NJS1007"
+           Text="Nucs.JsonSettings.Autosave: the intermediate assembly path '$(_NucsAutosaveWeaveAssembly)' contains a semicolon, which cannot be passed to the out-of-process weave (MSBuild splits command-line properties on ';') - and which .NET executables cannot run from at all (';' separates the runtime's assembly list). Rename the directory. For a library build that must stay put, &lt;NucsJsonSettingsOutOfProcWeave&gt;false&lt;/NucsJsonSettingsOutOfProcWeave&gt; restores the in-process weave, subject to the file-lock bug it carries." />
+
+    <!-- Content-awareness: skip the weave when the assembly ALREADY carries AspectInjector's
+         injected IL. The stamp discipline above is timestamp-only and other tooling is free
+         to move the assembly past the stamp WITHOUT recompiling it - MAUI's XamlC (guarded
+         below), and equally Fody, ILRepack, obfuscators, any post-compile rewriter. Re-weaving
+         a woven assembly stacks the advice (measured: one save per write becomes two, then
+         three, one per incremental build), so the stamp can never be trusted alone. The
+         '__a$_instance' identifier is the aspect-singleton member AspectInjector plants in
+         every assembly it processes; a fresh CoreCompile output never contains it (source
+         code cannot reference it), so 'marker present' is precisely 'this file was woven and
+         not recompiled since'. Read as text: the identifier is ASCII, and ASCII runs survive
+         lossy UTF-8 decoding of arbitrary binary intact. The read costs one pass over a file
+         this target was about to rewrite anyway, and only ever runs when the stamp says the
+         assembly is newer than the last weave. -->
+    <PropertyGroup>
+      <_NucsAutosaveAlreadyWoven>false</_NucsAutosaveAlreadyWoven>
+      <_NucsAutosaveAlreadyWoven Condition="Exists('$(_NucsAutosaveWeaveAssembly)') and $([System.IO.File]::ReadAllText('$(_NucsAutosaveWeaveAssembly)').Contains('__a$_instance'))">true</_NucsAutosaveAlreadyWoven>
+    </PropertyGroup>
+    <Message Condition="'$(_NucsAutosaveAlreadyWoven)' == 'true'"
+             Importance="low"
+             Text="Nucs.JsonSettings.Autosave: $(MSBuildProjectName) is already woven (a post-compile step moved it past the weave stamp without recompiling); skipping re-weave, re-stamping." />
+
     <!-- Locate the AspectInjector task assembly, first existing candidate wins:
            1. the consumer's explicit AspectInjector_Location (AspectInjector's own knob);
            2. derived from the AspectInjector.Analyzer item the package injects into
@@ -132,15 +171,14 @@
 
     <!-- A hard error, not a fallback to the in-process weave: silently weaving in-process
          would re-arm the CreateAppHost lock this target exists to fix, and silently NOT
-         weaving would ship [Autosave] setters that never save. -->
-    <Error Condition="'$(_NucsAutosaveInjectorDll)' == ''"
+         weaving would ship [Autosave] setters that never save. Waived when the weave is
+         being skipped as already-woven - nothing needs the task assembly then, and a
+         consumer who stripped the analyzers should not fail a build that has no work. -->
+    <Error Condition="'$(_NucsAutosaveInjectorDll)' == '' and '$(_NucsAutosaveAlreadyWoven)' != 'true'"
            Code="NJS1005"
            Text="Nucs.JsonSettings.Autosave: cannot locate AspectInjector.dll for the out-of-process weave (probed AspectInjector_Location, the AspectInjector analyzer path, and the NuGet cache). Set &lt;AspectInjector_Location&gt; to the task assembly, or set &lt;NucsJsonSettingsOutOfProcWeave&gt;false&lt;/NucsJsonSettingsOutOfProcWeave&gt; to use AspectInjector's stock in-process weave." />
 
     <PropertyGroup>
-      <_NucsAutosaveWeaveAssembly>@(IntermediateAssembly->'%(FullPath)')</_NucsAutosaveWeaveAssembly>
-      <_NucsAutosaveWeaveRefsFile>$(_NucsAutosaveWeaveAssembly).aspectrefs</_NucsAutosaveWeaveRefsFile>
-
       <!-- An empty value would trip MSB1005 on the child command line; false matches the
            task's own default. -->
       <_NucsAutosaveWeaveOptimize>$(Optimize)</_NucsAutosaveWeaveOptimize>
@@ -156,17 +194,21 @@
 
     <!-- The reference list goes through a file, not the command line: a large project's
          references overflow the ~32K Windows command-line limit many times over. -->
-    <WriteLinesToFile File="$(_NucsAutosaveWeaveRefsFile)" Lines="@(ReferencePath->'%(FullPath)')" Overwrite="true" />
+    <WriteLinesToFile Condition="'$(_NucsAutosaveAlreadyWoven)' != 'true'"
+                      File="$(_NucsAutosaveWeaveRefsFile)" Lines="@(ReferencePath->'%(FullPath)')" Overwrite="true" />
 
     <!-- -nodeReuse:false so the child leaves no persistent worker behind — a reused node
          holding leaked handles is the second face of this very bug. Weaver diagnostics come
          back in canonical MSBuild error/warning format on stdout, which Exec re-logs as real
          errors/warnings in this build; a failing weave fails the Exec (child MSBuild exits
          non-zero) and therefore the build, same as the in-process task. -->
-    <Exec Command="$(_NucsAutosaveWeaveMSBuild) &quot;$(MSBuildThisFileDirectory)Nucs.JsonSettings.Autosave.Weave.proj&quot; -nologo -nodeReuse:false -verbosity:quiet &quot;-consoleLoggerParameters:ErrorsOnly;NoSummary&quot; &quot;-property:NucsWeaveAssembly=$(_NucsAutosaveWeaveAssembly)&quot; &quot;-property:NucsWeaveReferencesFile=$(_NucsAutosaveWeaveRefsFile)&quot; &quot;-property:NucsWeaveInjector=$(_NucsAutosaveInjectorDll)&quot; -property:NucsWeaveOptimize=$(_NucsAutosaveWeaveOptimize) -property:NucsWeaveVerbose=$(AspectInjector_Verbose) -property:NucsWeaveAttachDebugger=$(AspectInjector_Debug)" />
+    <Exec Condition="'$(_NucsAutosaveAlreadyWoven)' != 'true'"
+          Command="$(_NucsAutosaveWeaveMSBuild) &quot;$(MSBuildThisFileDirectory)Nucs.JsonSettings.Autosave.Weave.proj&quot; -nologo -nodeReuse:false -verbosity:quiet &quot;-consoleLoggerParameters:ErrorsOnly;NoSummary&quot; &quot;-property:NucsWeaveAssembly=$(_NucsAutosaveWeaveAssembly)&quot; &quot;-property:NucsWeaveReferencesFile=$(_NucsAutosaveWeaveRefsFile)&quot; &quot;-property:NucsWeaveInjector=$(_NucsAutosaveInjectorDll)&quot; -property:NucsWeaveOptimize=$(_NucsAutosaveWeaveOptimize) -property:NucsWeaveVerbose=$(AspectInjector_Verbose) -property:NucsWeaveAttachDebugger=$(AspectInjector_Debug)" />
 
     <!-- Same stamp discipline as AspectInjector's own target: marker time == assembly time
-         means up to date; a recompile moves the assembly past the marker and re-weaves. -->
+         means up to date; a recompile moves the assembly past the marker and re-weaves. Runs
+         on the skip path too - that is the point of the skip: the assembly is woven, so the
+         stamp may honestly say so, and the next build is up to date again. -->
     <Touch Files="%(IntermediateAssembly.FullPath).aspectsinjected" AlwaysCreate="true" Time="%(IntermediateAssembly.ModifiedTime)" />
   </Target>
 
@@ -185,7 +227,13 @@
        it should. Avalonia needs no such guard — its CompileAvaloniaXaml runs INSIDE CoreCompile
        (TargetsTriggeredByCompilation), so the weave always runs after it and the stamp stays
        authoritative. MSBuild ignores AfterTargets naming a target the project never defines, so
-       this is inert outside MAUI. -->
+       this is inert outside MAUI.
+
+       Rewriters this target does NOT know by name (Fody, ILRepack, obfuscators...) are caught by
+       the content check inside the weave target instead: a re-armed stamp then costs one
+       marker-detection read per build, not a stacked weave. This XamlC restamp stays because it
+       is cheaper still — with it, the incremental build stays fully up to date and the weave
+       target does not run at all. -->
   <Target Name="NucsAutosave_RestampAfterXamlC"
           AfterTargets="XamlC"
           Condition="'$(_NucsAutosaveWeaveMode)' != 'off' and '$(_InjectAspectsDependsOn)' != '' and '$(DesignTimeBuild)' != 'true' and '@(IntermediateAssembly)' != ''">

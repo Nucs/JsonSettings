@@ -338,12 +338,16 @@ var s = JsonSettings.Load<Settings>("s.json").EnableAutosave();
 s.Name = "x";   // -> one Save(), one PropertyChanged("Name")
 ```
 
-- **No double save.** With a `NotifiyingJsonSettings` base, `EnableAutosave()` also attaches the
+- **No double save.** With a notification-capable settings class (the `NotifiyingJsonSettings` base
+  or any other `INotifyPropertyChanged` implementor), `EnableAutosave()` also attaches the
   `NotificationBinder`, which listens to the object's own `PropertyChanged`. When `[NotifyChanges]`
   raises it, the binder only **rebinds** nested collections; it does not save. So a scalar write saves
   exactly once, and reassigning a nested `ObservableCollection` saves once *and* rebinds the new
   instance for future edits &mdash; `[NotifyChanges]` actually makes that rebinding *more* reliable,
   because it fires even for a plain auto-property collection you never wrote an `OnPropertyChanged` for.
+  Loads don't depend on the event pipe at all: after every `Load()`/`LoadDefault()` populate, the
+  binder is resynced to whatever instances the properties hold, so collections replaced by
+  deserialization keep saving on mutation.
 - **Different change semantics.** Autosave has no change-guard &mdash; it persists *every* monitored
   write, including one that assigns the current value again. `[NotifyChanges]`'s `OnlyChanged` (the
   default) is what de-dupes, so a no-op write can save without notifying.
@@ -408,10 +412,13 @@ s.Name = "changed";                        // saved and notified  ->  prints "Na
 > implementation of the same interface.
 
 > [!NOTE]
-> **Boundary with nested-collection autosave.** `EnableAutosave()` only attaches the
-> [`NotificationBinder`](#reacting-to-notifications--autosave-on-nested-changes) to a
-> `NotifiyingJsonSettings`. A mixin-only class therefore saves on its own property writes but **not**
-> when a nested `ObservableCollection` is mutated in place. If you need that, use the notifying base.
+> **Nested-collection autosave works here too.** Since 2.3.0, `EnableAutosave()` attaches the
+> [`NotificationBinder`](#reacting-to-notifications--autosave-on-nested-changes) to any settings
+> instance that implements `INotifyPropertyChanged` &mdash; which a mixin class does once woven &mdash;
+> so an `ObservableCollection` property saves on in-place `Add`/`Remove` and is re-bound when
+> replaced, exactly as on the notifying base. (Before 2.3.0 the binder was keyed to the
+> `NotifiyingJsonSettings` base class, which a mixin class can never be, so mixin collections
+> silently did not save on mutation.)
 
 ## Ways a settings class can be observable
 

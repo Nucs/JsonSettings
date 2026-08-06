@@ -12,6 +12,18 @@ public static JsonSerializerSettings SerializationSettings { get; set; } = new J
 };
 ```
 
+Since 2.3.0 the default `FileNameIgnoreResolver` additionally marks every **writable collection
+property** (a property, not a field, whose type is `IEnumerable` and not `string`) with
+`ObjectCreationHandling.Replace`. Loading populates the *existing* instance, and Json.NET's default
+(`Auto`) **reuses** a non-null collection and *appends* the file's items to it — so every reload
+duplicated collection contents, a collection with non-empty defaults grew by one copy per
+application start, and a recovery-to-defaults silently kept the stale pre-corruption items. With
+`Replace` the deserializer assigns a fresh collection through the property's (woven) setter, and the
+load pipeline [resyncs the `NotificationBinder`](notifications.md#reacting-to-notifications--autosave-on-nested-changes)
+so the replacement stays bound. Get-only collections cannot be replaced and keep the append
+semantics — prefer a settable property where reload contents must be exact. Supplying your own
+`ContractResolver` (via either override point below) replaces this rule together with the resolver.
+
 To alter the `JsonSerializerSettings`, it helps to understand how the library resolves which settings
 to use during serialization/deserialization:
 
