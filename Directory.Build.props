@@ -31,7 +31,7 @@
     <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
          builds from a source archive rather than a tag. Always the NEXT release's version;
          what it ships is PackageReleaseNotes' first section below. -->
-    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.3.1</VersionPrefix>
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.3.2</VersionPrefix>
   </PropertyGroup>
 
   <!-- ====================================================================================
@@ -238,7 +238,21 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageReleaseNotes>2.3.1
+    <PackageReleaseNotes>2.3.2
+
+Changed
+- Public namespace corrections (source-breaking - update your usings, no behavior change):
+  - NotifiyingJsonSettings moved from Nucs.JsonSettings.Examples to Nucs.JsonSettings. It is the
+    shipped INotifyPropertyChanged base the Autosave and NotifyChanges packages bind to (production
+    API, not a sample) and was the only library type in the .Examples namespace.
+  - The fluent configuration extensions (WithFileName, WithModule, WithEncryption, WithBase64,
+    WithVersioning, WithRecovery, WithDefaultValues, LoadNow) moved from Nucs.JsonSettings.Fluent to
+    Nucs.JsonSettings, so one `using Nucs.JsonSettings;` now covers the whole configure-and-load call.
+  Update imports: replace `using Nucs.JsonSettings.Examples;` and `using Nucs.JsonSettings.Fluent;`
+  with `using Nucs.JsonSettings;`. Members, behavior and the on-disk format are unchanged; KeySize,
+  EncryptionAlgorithm, ISavable and IEncryptedSavable remain in Nucs.JsonSettings.
+
+2.3.1
 
 Fixed
 - Builds no longer fail on locales whose default calendar is not Gregorian - Persian (fa-IR),
