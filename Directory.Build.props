@@ -43,16 +43,8 @@
     <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
 
     <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
-         builds from a source archive rather than a tag. 2.3.1 is the next release: it fixes the
-         weave stamp's "Not a valid Win32 FileTime" build failure on non-Gregorian locales
-         (fa-IR and kin; issue #51 follow-up) - the Touch Time round-trip mixed the current
-         culture's calendar on the format side with the invariant culture on the parse side.
-         2.3.0 before it fixed the AspectInjector 2.9.0 file-handle leak that deterministically
-         failed CreateAppHost for small executable consumers ("<App>.dll ... is being used by
-         another process") by running the weave out of process, plus the XamlC re-weave guard;
-         that one was a MINOR bump because it surfaced new public build knobs
-         (NucsJsonSettingsOutOfProcWeave, AspectInjector_Location honoured, NJS1005/NJS1006).
-         See PackageReleaseNotes below. -->
+         builds from a source archive rather than a tag. Always the NEXT release's version;
+         what it ships is PackageReleaseNotes' first section below. -->
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.3.1</VersionPrefix>
   </PropertyGroup>
 

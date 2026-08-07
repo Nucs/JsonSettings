@@ -21,14 +21,10 @@
            referenced projects for minutes.
 
        The visible symptom, deterministic on small executable consumers (console, WinUI):
-
-           error MSB4018: The "CreateAppHost" task failed unexpectedly.
-           System.IO.IOException: The process cannot access the file '...\<App>.dll'
-           because it is being used by another process.
-
-       because the SDK's _CreateAppHost runs right after the weave and reads the Win32
-       resources out of that same dll. Heavy builds (MAUI) dodge it only by timing. See
-       docs/aspectinjector-2.9.0-apphost-lock.md in the repository for the full forensics.
+       the SDK's CreateAppHost task, which runs right after the weave and reads the Win32
+       resources out of that same dll, fails with "the process cannot access the file ...
+       because it is being used by another process". Heavy builds (MAUI) dodge it only by
+       timing.
 
        THE FIX. Suppress the in-process weave (AspectInjector_Enabled=false) and run the very
        same AspectInjectorTask, with the very same parameters, in a SHORT-LIVED CHILD MSBUILD
@@ -46,8 +42,8 @@
              (Only safe if the project declares no [Autosave]/[NotifyChanges] classes —
              they would compile and silently never work.)
          <NucsJsonSettingsOutOfProcWeave>false</NucsJsonSettingsOutOfProcWeave>
-             opts back into AspectInjector's stock in-process weave (the pre-2.3.0
-             behaviour, subject to the lock bug above). Shared by this package and
+             opts back into AspectInjector's stock in-process weave (subject to the handle
+             leak above). Shared by this package and
              Nucs.JsonSettings.NotifyChanges so one property governs the one weave.
          <AspectInjector_Location>...</AspectInjector_Location>
              honoured here like AspectInjector's own targets honour it: it must point at
@@ -210,22 +206,19 @@
          on the skip path too - that is the point of the skip: the assembly is woven, so the
          stamp may honestly say so, and the next build is up to date again.
 
-         The timestamp travels as a round-trip ("o") string, NOT as
-         %(IntermediateAssembly.ModifiedTime) - the pattern AspectInjector's own target uses
-         and 2.3.0 copied. That metadata is formatted with the CURRENT CULTURE's calendar,
-         while the Touch task parses Time with the invariant culture; under a non-Gregorian
-         locale the two sides disagree and the build dies. Concretely, on fa-IR (default
-         calendar: Persian) the metadata renders August 2026 as year 1405, the invariant parse
-         reads that as GREGORIAN year 1405, and File.SetLastWriteTime rejects anything before
-         1601 with exactly the error of issue #51's follow-up report: "The last access/last
-         write time on file '....aspectsinjected' cannot be set. Not a valid Win32 FileTime."
-         ToString('o') is culture-invariant by definition (always Gregorian, always one shape),
-         the invariant parse round-trips it tick-exact (verified on fa-IR against real MSBuild),
-         and the equality discipline above is fully preserved. The Exists guard matters:
-         GetLastWriteTime on a missing file returns the 1601 epoch, which would reintroduce the
-         same rejection through the back door - the bare AlwaysCreate fallback stamps "now"
-         instead, which the up-to-date check accepts (marker >= assembly), the same relaxation
-         the restamp targets below already rely on. -->
+         The timestamp travels as a round-trip ("o") string rather than as
+         %(IntermediateAssembly.ModifiedTime): MSBuild formats that metadata with the current
+         culture's CALENDAR while the Touch task parses Time with the invariant culture, so on
+         any locale whose default calendar is not Gregorian (Persian, Umm al-Qura, ...) the
+         year comes back centuries out of range and File.SetLastWriteTime rejects it - "Not a
+         valid Win32 FileTime", because FILETIME cannot represent dates before 1601. Every
+         build on such a locale would die at this stamp, right after a successful weave.
+         ToString('o') is culture-invariant on both sides of that trip and preserves the
+         equality discipline tick-exact. The Exists guard matters: GetLastWriteTime on a
+         missing file returns the 1601 epoch, which would reintroduce the same rejection
+         through the back door - the bare AlwaysCreate fallback stamps "now" instead, which
+         the up-to-date check accepts (marker >= assembly), the same relaxation the restamp
+         targets below already rely on. -->
     <PropertyGroup>
       <_NucsAutosaveStampTime Condition="Exists('$(_NucsAutosaveWeaveAssembly)')">$([System.IO.File]::GetLastWriteTime('$(_NucsAutosaveWeaveAssembly)').ToString('o'))</_NucsAutosaveStampTime>
     </PropertyGroup>

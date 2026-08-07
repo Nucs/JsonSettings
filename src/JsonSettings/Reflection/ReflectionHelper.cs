@@ -27,8 +27,9 @@ namespace Nucs.JsonSettings.Reflection {
     ///     is <see langword="false"/> and compiling would throw or drop to a slow interpreter -- it never
     ///     compiles and falls back to the reflective invoke instead. Both paths return behaviourally
     ///     identical delegates; only speed differs, so nothing here reintroduces the runtime code
-    ///     generation that 2.2.0 removed with <c>Castle.DynamicProxy</c>. The reflection it still performs
-    ///     under AOT needs the settings model preserved under trimming exactly as the serializer does.
+    ///     generation the library dropped together with <c>Castle.DynamicProxy</c>. The reflection it
+    ///     still performs under AOT needs the settings model preserved under trimming exactly as the
+    ///     serializer does.
     ///     </para>
     /// </remarks>
     public static class ReflectionHelper {

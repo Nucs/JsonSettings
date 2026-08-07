@@ -36,13 +36,11 @@ namespace Nucs.JsonSettings.NotifyChanges {
     ///     <c>NotifiyingJsonSettings</c>) -- that is a duplicate implementation of the same interface.
     ///     </para>
     ///     <para>
-    ///     Autosave's nested-collection support works here too: since 2.3.0 <c>EnableAutosave()</c>
+    ///     Autosave's nested-collection support works here too: <c>EnableAutosave()</c>
     ///     attaches its <c>NotificationBinder</c> to any settings instance that implements
     ///     <see cref="INotifyPropertyChanged"/> -- which a class carrying this attribute does once
     ///     woven -- so an <c>ObservableCollection</c> property saves on in-place Add/Remove and is
-    ///     re-bound when replaced, exactly as on the notifying base. (Before 2.3.0 the binder was
-    ///     keyed to the <c>NotifiyingJsonSettings</c> base class, which a mixin class can never be,
-    ///     so mixin collections silently did not save on mutation.)
+    ///     re-bound when replaced, exactly as on the notifying base.
     ///     </para>
     /// </remarks>
     /// <example>

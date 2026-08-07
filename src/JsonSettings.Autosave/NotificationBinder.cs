@@ -17,9 +17,9 @@ namespace Nucs.JsonSettings.Autosave {
     ///     Attached by <c>EnableAutosave()</c> to any settings instance that itself implements
     ///     <see cref="INotifyPropertyChanged"/> -- the <see cref="NotifiyingJsonSettings"/> base, a
     ///     <c>[NotifyChangesMixin]</c>-woven class (whose interface exists only after the weave), or
-    ///     a hand-written implementation. It was limited to the notifying BASE CLASS before 2.3.0,
-    ///     which silently excluded mixin classes: their <c>ObservableCollection</c> properties
-    ///     compiled, bound and looked alive, but an in-place Add/Remove never saved.
+    ///     a hand-written implementation. Keying on the interface rather than on the notifying
+    ///     base class is what lets mixin classes participate: their <c>ObservableCollection</c>
+    ///     properties save on in-place Add/Remove like any other notifier's.
     /// </remarks>
     [Serializable]
     public class NotificationBinder : IDisposable {
@@ -41,7 +41,7 @@ namespace Nucs.JsonSettings.Autosave {
         private readonly List<INotifyPropertyChanged> _boundNotifiers = new List<INotifyPropertyChanged>();
 
         /// <summary>
-        ///     Kept for source and binary compatibility with pre-2.3.0 callers; the notifying base
+        ///     Kept for source and binary compatibility with older callers; the notifying base
         ///     is just one of the shapes the <see cref="JsonSettings"/> overload accepts.
         /// </summary>
         public NotificationBinder(NotifiyingJsonSettings settings) : this((JsonSettings) settings) { }
