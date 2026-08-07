@@ -7,7 +7,6 @@ using System.Security.Cryptography;
 using System.Threading;
 using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
 using Nucs.JsonSettings.Tests.CrossVersion;
 using Nucs.JsonSettings.Tests.Utils;

@@ -12,14 +12,11 @@ apiRules:
         uid: System.Runtime.CompilerServices.CompilerGeneratedAttribute
       type: Member
 
-  # Internal helpers that ship inside the assembly but are not part of the Nucs.JsonSettings
-  # public contract; ReflectionHelpers lives under a Microsoft.Xna.* namespace. (The former
-  # third-party Rijndael256 namespace was removed when encryption moved onto
-  # System.Security.Cryptography. EncryptionModule under Nucs.JsonSettings.Modulation is now the
-  # supported entry point, and EncryptionAlgorithm/KeySize are documented public enums.)
-  - exclude:
-      uidRegex: ^Microsoft\.Xna
-      type: Namespace
+  # Internal helpers (e.g. ReflectionHelpers, SafeDictionary) ship inside the assembly but are not
+  # part of the Nucs.JsonSettings public contract. They are internal types, so the default DocFX
+  # filter already hides them and no explicit namespace exclude is needed. EncryptionModule under
+  # Nucs.JsonSettings.Modulation is the supported encryption entry point; EncryptionAlgorithm and
+  # KeySize are public enums in Nucs.JsonSettings.
 
   # Uncomment to also hide the path/file helpers if you want the reference to cover only the
   # settings API surface:

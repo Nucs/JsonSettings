@@ -6,7 +6,6 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Nucs.JsonSettings.Examples;
 using Nucs.JsonSettings.Modulation;
 using Nucs.JsonSettings.Reflection;
 

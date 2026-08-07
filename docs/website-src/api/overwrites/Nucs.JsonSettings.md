@@ -9,8 +9,8 @@ remarks: |
   - <xref href="Nucs.JsonSettings.ISavable" data-throw-if-not-resolved="false"></xref> and <xref href="Nucs.JsonSettings.IEncryptedSavable" data-throw-if-not-resolved="false"></xref> are the savable contracts.
 
   Optional behavior — encryption, Base64, versioning, recovery and autosave — is added per object as
-  modules; see the `Nucs.JsonSettings.Modulation` namespace and the fluent extensions in
-  `Nucs.JsonSettings.Fluent`.
+  modules; see the `Nucs.JsonSettings.Modulation` namespace and the `FluentJsonSettings` fluent
+  extensions in this namespace.
 
   ```csharp
   using Nucs.JsonSettings;

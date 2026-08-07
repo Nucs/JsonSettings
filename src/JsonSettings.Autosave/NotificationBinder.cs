@@ -6,7 +6,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
-using Nucs.JsonSettings.Examples;
 using Nucs.JsonSettings.Reflection;
 
 namespace Nucs.JsonSettings.Autosave {

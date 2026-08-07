@@ -2,7 +2,6 @@ using System;
 using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Examples;
 
 namespace Nucs.JsonSettings.Tests.Autosave {
     /// <summary>

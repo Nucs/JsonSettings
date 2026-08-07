@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Nucs.JsonSettings.NotifyChanges;
-using Nucs.JsonSettings.Examples;
 using Nucs.JsonSettings.Tests.Utils;
 
 namespace Nucs.JsonSettings.Tests.Autosave {

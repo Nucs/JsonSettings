@@ -10,7 +10,6 @@ using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Inline;
 using Nucs.JsonSettings.Modulation;
 using Module = Nucs.JsonSettings.Modulation.Module;

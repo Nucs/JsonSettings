@@ -5,7 +5,6 @@ using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Examples;
 using Nucs.JsonSettings.Modulation;
 using Nucs.JsonSettings.Tests.Utils;
 

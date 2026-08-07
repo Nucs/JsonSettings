@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Nucs.JsonSettings.Examples {
+namespace Nucs.JsonSettings {
     /// <summary>
     ///     A <see cref="JsonSettings"/> that implements <see cref="INotifyPropertyChanged"/> and
     ///     <see cref="INotifyPropertyChanging"/>.

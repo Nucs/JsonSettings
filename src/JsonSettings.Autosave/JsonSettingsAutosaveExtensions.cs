@@ -2,7 +2,6 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection;
-using Nucs.JsonSettings.Examples;
 using Nucs.JsonSettings.Modulation;
 
 namespace Nucs.JsonSettings.Autosave {

@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Tests.Utils;
 
 
