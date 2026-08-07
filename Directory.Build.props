@@ -3,35 +3,21 @@
   <!-- ====================================================================================
        Versioning — ONE place for every project in the repository.
 
-       WHAT WAS BROKEN. Both shipped csprojs hardcoded three separate version properties:
-       <AssemblyVersion>2.0.1</AssemblyVersion>, <FileVersion>2.0.1</FileVersion> and
-       <PackageVersion>2.0.2</PackageVersion>. Command-line properties cannot override a
-       value the project sets unconditionally, so the release workflow's
-       `-p:Version=$TAG` was silently discarded for packaging:
+       Nothing here is unconditional, so anything passed on the command line wins, and
+       $(VersionPrefix) is derived FROM $(Version) when only $(Version) is supplied. That
+       makes a single `-p:Version=<tag>` correct on its own:
 
-           $ dotnet pack src/JsonSettings/JsonSettings.csproj -p:Version=2.1.0
-           -> Nucs.JsonSettings.2.0.2.nupkg
+           -p:Version=1.2.3         -> Assembly 1.2.3, File 1.2.3, Package 1.2.3
+           -p:Version=1.2.3-rc.1    -> Assembly 1.2.3, File 1.2.3, Package 1.2.3-rc.1
 
-       Tagging v2.1.0 would therefore have tried to publish 2.0.2, which is already on
-       nuget.org, and been rejected with a 409. Worse, a single artifact carried three
-       disagreeing versions at once: AssemblyVersion 2.1.0.0 (the workflow passed an EMPTY
-       -p:AssemblyVersion=, which blanked the project value and let the SDK fall back to
-       $(Version)), FileVersion 2.0.1 (project value, never overridden) and PackageVersion
-       2.0.2 (project value, never overridden).
-
-       WHAT REPLACES IT. Nothing below is unconditional, so anything passed on the command
-       line wins, and $(VersionPrefix) is derived FROM $(Version) when only $(Version) is
-       supplied. That makes a single `-p:Version=<tag>` correct on its own:
-
-           -p:Version=2.1.0         -> Assembly 2.1.0, File 2.1.0, Package 2.1.0
-           -p:Version=2.1.0-beta1   -> Assembly 2.1.0, File 2.1.0, Package 2.1.0-beta1
+       Projects must not set version properties unconditionally in their own bodies:
+       command-line properties cannot override an unconditional project value, which would
+       silently discard the release workflow's -p:Version for packaging (and let a single
+       artifact carry disagreeing Assembly/File/Package versions at once).
 
        The prerelease suffix is dropped from AssemblyVersion/FileVersion deliberately: the
-       CLR binds on AssemblyVersion, so 2.1.0-beta1 and 2.1.0 must be the same identity or
-       every consumer needs a binding redirect to move between them. That is the same rule
-       the old workflow expressed as `ASSEMBLY_VERSION=${VERSION%%-*}` in shell — except
-       that computed value was written to an output the packaging job never set, and so
-       always expanded to the empty string.
+       CLR binds on AssemblyVersion, so a prerelease and its final release must be the same
+       assembly identity or every consumer needs a binding redirect to move between them.
 
        BUMPING THE VERSION FOR A LOCAL/DEV BUILD: edit the fallback below. Releases do not
        read it — they are driven entirely by the tag.
@@ -128,12 +114,7 @@
   </PropertyGroup>
 
   <!-- ====================================================================================
-       Shared package identity.
-
-       These were duplicated verbatim across JsonSettings.csproj and
-       JsonSettings.Autosave.csproj — including a 19-line <PackageReleaseNotes> block
-       repeated character for character. Two copies of the same text drift; the copyright
-       year already read 2023 in both shipped projects and 2021 in the Examples project.
+       Shared package identity — defined once here so per-project copies cannot drift.
 
        A project's own value still wins: Directory.Build.props is imported BEFORE the
        project body, so anything a csproj sets afterwards overrides what is here. That is

@@ -21,11 +21,10 @@
          transitively through that project. -->
     <PackageReference Include="Newtonsoft.Json" Version="[13.0.3, )" />
 
-    <!-- Replaces Castle.Core 5.1.1. DynamicProxy builds proxy types at runtime with
-         System.Reflection.Emit, which a Native AOT binary has no code generator to execute —
-         `EnableAutosave()` died with PlatformNotSupportedException there and no annotation or
-         descriptor could fix it (see docs/AOT.md). AspectInjector does the same job at compile
-         time and emits nothing at runtime.
+    <!-- The weaver. Runtime-proxy libraries (Castle DynamicProxy and kin) build proxy types
+         with System.Reflection.Emit, which a Native AOT binary has no code generator to
+         execute (see docs/AOT.md); AspectInjector does the same job at compile time and emits
+         nothing at runtime.
 
          NOT marked PrivateAssets="all" ON PURPOSE. The weaving has to happen in the assembly
          that DECLARES the settings class, which is the consumer's, not ours. AspectInjector

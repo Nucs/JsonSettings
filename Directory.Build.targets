@@ -25,12 +25,10 @@
        on netstandard2.0/net48.
 
        The same mechanism is why the SYSLIB obsoletions and the Roslyn analyzers had never
-       been evaluated against this code at all before the retarget. Those did turn up real
-       defects (a discarded Stream.Read return value corrupting an initialization vector,
-       and a PBKDF2 call whose SHA-1 PRF was an invisible default rather than a documented
-       file-format constant) and they are fixed rather than allowlisted. SYSLIB0051 is the
-       one obsoletion deliberately kept: InvalidVersionException's serialization constructor
-       exists for .NET Framework binary-serialization compatibility.
+       been evaluated against this code before the retarget; the real defects they surfaced
+       are fixed rather than allowlisted. SYSLIB0051 is the one obsoletion deliberately
+       kept: InvalidVersionException's serialization constructor exists for .NET Framework
+       binary-serialization compatibility.
 
        WHAT THE POLICY DOES. Warnings are errors, with an explicit allowlist of exactly the
        codes the repository emits today. The debt stays visible as warnings and nothing is
@@ -49,7 +47,8 @@
   <PropertyGroup Condition="'$(IsPackable)' != 'false'">
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
-    <!-- Every code src/ emits as of the 2.1.0 baseline. One concern per line.
+    <!-- Every code src/ emits as of the frozen baseline (.github/check-warning-baseline.ps1).
+         One concern per line.
            CS0109      member does not hide an inherited member; 'new' is redundant
            CS0168      variable declared but never used
            CS0219      variable assigned but its value is never used
@@ -94,8 +93,8 @@
        tests/JsonSettings.Tests and the examples consume them, so those projects are rewritten by
        AspectInjector after CoreCompile — which means they need BOTH parts of the packaged targets:
        the out-of-process weave (AspectInjector 2.9.0's in-process task leaks file handles into the
-       MSBuild node; see docs/aspectinjector-2.9.0-apphost-lock.md — inside this repository the
-       symptom was reused worker nodes keeping obj/bin dlls locked and failing unrelated rebuilds)
+       MSBuild node — inside this repository the symptom is reused worker nodes keeping obj/bin
+       dlls locked and failing unrelated rebuilds)
        and the re-sign (weaving invalidates the strong-name signature the compiler applied).
        Consumers get these files from each nupkg's build/ and buildTransitive/ folders; our own
        build has no nupkg to get them from, so they are imported directly. One copy each, both

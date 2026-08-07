@@ -14,9 +14,9 @@ namespace Nucs.JsonSettings.Examples.UI {
 
     /// <summary>
     ///     Handed out as <see cref="IAppSettings"/> via
-    ///     <c>EnableIAutosave&lt;AppSettings, IAppSettings&gt;()</c>. Since 2.2.0 that is the same
-    ///     woven instance behind a cast — no interface proxy — so writes through the interface go
-    ///     through the woven setters and keep saving and notifying.
+    ///     <c>EnableIAutosave&lt;AppSettings, IAppSettings&gt;()</c> — the same woven instance
+    ///     behind a cast, no interface proxy — so writes through the interface go through the
+    ///     woven setters and keep saving and notifying.
     /// </summary>
     [Autosave, NotifyChanges]
     public class AppSettings : NotifiyingJsonSettings, IAppSettings {
