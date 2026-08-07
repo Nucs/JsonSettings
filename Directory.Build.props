@@ -273,6 +273,18 @@ Fixed
   MSBuild); the marker-equals-assembly-time up-to-date discipline is unchanged. Note that
   AspectInjector's stock in-process target carries the same defect on its own stamp line, so the
   out-of-process weave (the default since 2.3.0) is now also the only culture-safe path.
+- The settings-file version/archive-counter pattern (VersioningModule.VersionMatcher) matches
+  ASCII digits only ([0-9] instead of regex \d, which in .NET matches every Unicode digit): a
+  settings file hand-named with native digits - natural on a Persian or Arabic keyboard - in its
+  version or counter segment previously MATCHED the pattern and then crashed the load with a raw
+  FormatException from the ASCII-only int.Parse of the archive counter; such names now simply
+  parse as unversioned and are archived accordingly. The counter parse is also explicitly
+  invariant-culture.
+- JsonSettings.Load's corrupt-file exception filter compares ordinally
+  (StartsWith(..., StringComparison.Ordinal)) instead of with the current culture's collation.
+- Verified: the full test suite (net10.0/net8.0/net6.0/net48/net472) runs green with the system
+  culture switched to fa-IR and to tr-TR, the torture locales for non-Gregorian calendars and
+  for casing/decimal rules respectively.
 
 2.3.0
 

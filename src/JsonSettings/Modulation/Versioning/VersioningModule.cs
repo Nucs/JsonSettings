@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -21,7 +22,13 @@ namespace Nucs.JsonSettings.Modulation {
         /// <summary>
         ///     See https://regex101.com/r/7xXzRt/1
         /// </summary>
-        public static readonly Regex VersionMatcher = new Regex(@"(\.\d+\.\d+\.\d+\.\d+(?:\.\d+)?)(?:(?=\.)|-(\d+)|$)", RegexOptions.Compiled | RegexOptions.Multiline);
+        /// <remarks>
+        ///     [0-9] rather than \d on purpose: .NET's \d matches every Unicode digit (Persian,
+        ///     Arabic-Indic, ...), while the int.Parse consuming Groups[2] accepts ASCII only -
+        ///     a filename carrying native digits must simply not match (treated as unversioned)
+        ///     instead of crashing the load with a FormatException.
+        /// </remarks>
+        public static readonly Regex VersionMatcher = new Regex(@"(\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)(?:(?=\.)|-([0-9]+)|$)", RegexOptions.Compiled | RegexOptions.Multiline);
 
         /// <summary>
         ///     Archives the settings file currently occupying <paramref name="loadedPath"/>'s clean
@@ -44,7 +51,7 @@ namespace Nucs.JsonSettings.Modulation {
             //carries one; a bare "name.1.2.3.4.json" matches through the regex's lookahead branch
             //with Groups[2] empty, so guard on its Success rather than the match's. int.Parse("")
             //would otherwise throw a FormatException that escapes Load as a non-JsonSettingsException.
-            int fileVersion = versionMatch.Success && versionMatch.Groups[2].Success ? int.Parse(versionMatch.Groups[2].Value) + 1 : 0;
+            int fileVersion = versionMatch.Success && versionMatch.Groups[2].Success ? int.Parse(versionMatch.Groups[2].Value, CultureInfo.InvariantCulture) + 1 : 0;
             var cleanName = loadedPath;
             if (!string.IsNullOrEmpty(versionMatch.Groups[0].Value))
                 cleanName = cleanName.Replace(versionMatch.Groups[0].Value, "");

@@ -142,3 +142,22 @@ Verified 2026-08-07, all with `-t:Rebuild` so the weave + stamp actually run:
   and D:\App11 (the `[Autosave]`-woven QA consumer above) rebuilds green under fa-IR and still
   launches with its persistence roundtrip intact on the default culture.
 - Suite green after the targets change: 496/496 (net8.0, net6.0), 491/491 (net48, net472).
+
+### Culture sweep (post-fix hardening)
+
+After the stamp fix, the shipped sources were swept for remaining culture traps —
+DateTime/number parse↔format round-trips, casing and comparison rules, Unicode-digit regexes.
+Two found, both fixed:
+
+- `VersioningModule.VersionMatcher` used `\d`, which in .NET matches every Unicode digit,
+  while the `int.Parse` consuming its capture accepts ASCII only — a settings file hand-named
+  with native digits (natural on a Persian keyboard) matched the pattern and crashed `Load`
+  with a raw `FormatException`. Now `[0-9]`: such names parse as unversioned. Proven by probe:
+  `char.IsDigit('۷')` is true and `int.Parse("۷")` throws, and `RenameToArchive` on a
+  Persian-digit filename completes without throwing.
+- `JsonSettings.Load`'s corrupt-file filter used culture-sensitive `StartsWith`; now ordinal.
+
+Verification: the **full suite across all five TFMs** (net10.0/net8.0/net6.0/net48/net472,
+2470 test executions) runs green under `Set-Culture fa-IR` **and** `tr-TR` — the torture
+locales for non-Gregorian calendars and Turkish-I casing/decimal-comma rules respectively —
+via the same try/finally culture-window procedure above.

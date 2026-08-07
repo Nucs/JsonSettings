@@ -533,7 +533,7 @@ namespace Nucs.JsonSettings {
                         return o;
                     } catch (InvalidOperationException e) when (e.Message.Contains("Cannot convert")) {
                         throw new JsonSettingsException("Unable to deserialize settings file, value<->type mismatch. see inner exception", e);
-                    } catch (ArgumentException e) when (e.Message.StartsWith("Invalid")) {
+                    } catch (ArgumentException e) when (e.Message.StartsWith("Invalid", StringComparison.Ordinal)) {
                         throw new JsonSettingsException("Settings file is corrupt.");
                     }
                 } else {
