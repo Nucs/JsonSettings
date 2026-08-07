@@ -43,14 +43,17 @@
     <VersionPrefix Condition="'$(VersionPrefix)' == '' And '$(Version)' != ''">$(Version)</VersionPrefix>
 
     <!-- Fallback for developer builds, `dotnet pack` with no arguments, and anyone who
-         builds from a source archive rather than a tag. 2.3.0 is the next release: it fixes the
-         AspectInjector 2.9.0 file-handle leak that deterministically failed CreateAppHost for
-         small executable consumers of the weaving packages ("<App>.dll ... is being used by
-         another process") by running the weave out of process, plus the XamlC re-weave guard.
-         A MINOR bump rather than a patch because the fix surfaces new public build knobs
+         builds from a source archive rather than a tag. 2.3.1 is the next release: it fixes the
+         weave stamp's "Not a valid Win32 FileTime" build failure on non-Gregorian locales
+         (fa-IR and kin; issue #51 follow-up) - the Touch Time round-trip mixed the current
+         culture's calendar on the format side with the invariant culture on the parse side.
+         2.3.0 before it fixed the AspectInjector 2.9.0 file-handle leak that deterministically
+         failed CreateAppHost for small executable consumers ("<App>.dll ... is being used by
+         another process") by running the weave out of process, plus the XamlC re-weave guard;
+         that one was a MINOR bump because it surfaced new public build knobs
          (NucsJsonSettingsOutOfProcWeave, AspectInjector_Location honoured, NJS1005/NJS1006).
-         See PackageReleaseNotes below and docs/aspectinjector-2.9.0-apphost-lock.md. -->
-    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.3.0</VersionPrefix>
+         See PackageReleaseNotes below. -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">2.3.1</VersionPrefix>
   </PropertyGroup>
 
   <!-- ====================================================================================
@@ -262,7 +265,24 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageReleaseNotes>2.3.0
+    <PackageReleaseNotes>2.3.1
+
+Fixed
+- Builds no longer fail on locales whose default calendar is not Gregorian - Persian (fa-IR),
+  Umm al-Qura Arabic (ar-SA) and kin - with "error MSB3374: The last access/last write time on
+  file '....aspectsinjected' cannot be set. Not a valid Win32 FileTime." (the follow-up report on
+  issue #51). Both weave targets stamped their incrementality marker by feeding
+  %(IntermediateAssembly.ModifiedTime) into the Touch task's Time parameter: MSBuild formats that
+  metadata with the CURRENT CULTURE's calendar while Touch parses Time with the invariant culture,
+  so under fa-IR August 2026 was rendered as Persian year 1405, re-read as Gregorian year 1405,
+  and dates before 1601 cannot be represented as a Win32 FILETIME - every build died at the stamp,
+  right after a successful weave. The timestamp now travels as a culture-invariant round-trip
+  ("o") string (verified tick-exact under fa-IR against both the .NET and the Visual Studio
+  MSBuild); the marker-equals-assembly-time up-to-date discipline is unchanged. Note that
+  AspectInjector's stock in-process target carries the same defect on its own stamp line, so the
+  out-of-process weave (the default since 2.3.0) is now also the only culture-safe path.
+
+2.3.0
 
 Fixed
 - Executable consumers no longer fail in CreateAppHost with "error MSB4018 ... The process cannot

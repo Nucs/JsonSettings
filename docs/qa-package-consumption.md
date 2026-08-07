@@ -100,3 +100,45 @@ nupkgs were packed from, so no repack was warranted):
   validation (it throws on an unwoven `[Autosave]` type), `WovenLaunches++` hit the woven
   setter and wrote `woven.json` on assignment, and a close → relaunch roundtrip incremented
   it 1 → 2 while the SettingsBag file tracked 3 → 4 in parallel.
+
+## Non-Gregorian locale QA: the fa-IR "Not a valid Win32 FileTime" fix (2.3.1)
+
+Issue #51's follow-up report: on the reporter's machine every build of his App11 against the
+published 2.3.0 died with `error MSB3374: The last access/last write time on file
+"...\App11.dll.aspectsinjected" cannot be set. Not a valid Win32 FileTime.` Root cause, in one
+line: the weave targets stamped their marker with
+`<Touch Time="%(IntermediateAssembly.ModifiedTime)">`, MSBuild formats that metadata with the
+**current culture's calendar** while the `Touch` task parses `Time` with the **invariant**
+culture — on fa-IR (default calendar: Persian) August 2026 formats as year **1405**, is re-read
+as *Gregorian* 1405, and pre-1601 dates are unrepresentable as Win32 FILETIMEs. Fixed by
+transporting the stamp as a round-trip `"o"` string (culture-invariant on both sides, and the
+`Exists` guard keeps the missing-file 1601 epoch out).
+
+How to re-run this QA — the culture flip is user-scoped and must be restored, so keep the whole
+thing inside one PowerShell `try/finally`:
+
+```powershell
+$orig = (Get-Culture).Name
+dotnet build-server shutdown
+try {
+    Set-Culture fa-IR          # new processes pick this up; use -nr:false on every build
+    dotnet build <consumer> -t:Rebuild -p:Platform=x64 -nr:false ...
+} finally {
+    Set-Culture $orig
+    dotnet build-server shutdown
+}
+```
+
+Verified 2026-08-07, all with `-t:Rebuild` so the weave + stamp actually run:
+
+- Mechanism, in isolation: a 15-line harness proj with a real `%(ModifiedTime)` → `Touch` pair
+  reproduces MSB3374 under fa-IR (`METADATA=[1405-05-16 ...]`), and the `"o"` property-function
+  pattern stamps the marker **tick-identical** to the source file under the same culture.
+- The regression itself: the reporter's original App11 (downloaded from the issue), bumped to
+  the *published* 2.3.0, fails under fa-IR with his exact error — same code (MSB3374), same
+  message, same `.aspectsinjected` path, thrown from `Nucs.JsonSettings.Autosave.targets(212,5)`.
+- The fix: the same app on locally-packed 2.3.1 builds green under fa-IR through **both** the
+  .NET CLI MSBuild and Visual Studio 2022's Framework `MSBuild.exe` (the reporter builds in VS),
+  and D:\App11 (the `[Autosave]`-woven QA consumer above) rebuilds green under fa-IR and still
+  launches with its persistence roundtrip intact on the default culture.
+- Suite green after the targets change: 496/496 (net8.0, net6.0), 491/491 (net48, net472).

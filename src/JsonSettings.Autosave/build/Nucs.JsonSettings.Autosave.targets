@@ -208,8 +208,31 @@
     <!-- Same stamp discipline as AspectInjector's own target: marker time == assembly time
          means up to date; a recompile moves the assembly past the marker and re-weaves. Runs
          on the skip path too - that is the point of the skip: the assembly is woven, so the
-         stamp may honestly say so, and the next build is up to date again. -->
-    <Touch Files="%(IntermediateAssembly.FullPath).aspectsinjected" AlwaysCreate="true" Time="%(IntermediateAssembly.ModifiedTime)" />
+         stamp may honestly say so, and the next build is up to date again.
+
+         The timestamp travels as a round-trip ("o") string, NOT as
+         %(IntermediateAssembly.ModifiedTime) - the pattern AspectInjector's own target uses
+         and 2.3.0 copied. That metadata is formatted with the CURRENT CULTURE's calendar,
+         while the Touch task parses Time with the invariant culture; under a non-Gregorian
+         locale the two sides disagree and the build dies. Concretely, on fa-IR (default
+         calendar: Persian) the metadata renders August 2026 as year 1405, the invariant parse
+         reads that as GREGORIAN year 1405, and File.SetLastWriteTime rejects anything before
+         1601 with exactly the error of issue #51's follow-up report: "The last access/last
+         write time on file '....aspectsinjected' cannot be set. Not a valid Win32 FileTime."
+         ToString('o') is culture-invariant by definition (always Gregorian, always one shape),
+         the invariant parse round-trips it tick-exact (verified on fa-IR against real MSBuild),
+         and the equality discipline above is fully preserved. The Exists guard matters:
+         GetLastWriteTime on a missing file returns the 1601 epoch, which would reintroduce the
+         same rejection through the back door - the bare AlwaysCreate fallback stamps "now"
+         instead, which the up-to-date check accepts (marker >= assembly), the same relaxation
+         the restamp targets below already rely on. -->
+    <PropertyGroup>
+      <_NucsAutosaveStampTime Condition="Exists('$(_NucsAutosaveWeaveAssembly)')">$([System.IO.File]::GetLastWriteTime('$(_NucsAutosaveWeaveAssembly)').ToString('o'))</_NucsAutosaveStampTime>
+    </PropertyGroup>
+    <Touch Condition="'$(_NucsAutosaveStampTime)' != ''"
+           Files="$(_NucsAutosaveWeaveAssembly).aspectsinjected" AlwaysCreate="true" Time="$(_NucsAutosaveStampTime)" />
+    <Touch Condition="'$(_NucsAutosaveStampTime)' == ''"
+           Files="$(_NucsAutosaveWeaveAssembly).aspectsinjected" AlwaysCreate="true" />
   </Target>
 
   <!-- Guard against OTHER post-compile IL rewriters breaking the stamp discipline.

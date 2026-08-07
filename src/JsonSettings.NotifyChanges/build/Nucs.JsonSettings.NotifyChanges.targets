@@ -117,8 +117,21 @@
     <Exec Condition="'$(_NucsNCAlreadyWoven)' != 'true'"
           Command="$(_NucsNCWeaveMSBuild) &quot;$(MSBuildThisFileDirectory)Nucs.JsonSettings.NotifyChanges.Weave.proj&quot; -nologo -nodeReuse:false -verbosity:quiet &quot;-consoleLoggerParameters:ErrorsOnly;NoSummary&quot; &quot;-property:NucsWeaveAssembly=$(_NucsNCWeaveAssembly)&quot; &quot;-property:NucsWeaveReferencesFile=$(_NucsNCWeaveRefsFile)&quot; &quot;-property:NucsWeaveInjector=$(_NucsNCInjectorDll)&quot; -property:NucsWeaveOptimize=$(_NucsNCWeaveOptimize) -property:NucsWeaveVerbose=$(AspectInjector_Verbose) -property:NucsWeaveAttachDebugger=$(AspectInjector_Debug)" />
 
-    <!-- Runs on the skip path too: the assembly IS woven, so the stamp may honestly say so. -->
-    <Touch Files="%(IntermediateAssembly.FullPath).aspectsinjected" AlwaysCreate="true" Time="%(IntermediateAssembly.ModifiedTime)" />
+    <!-- Runs on the skip path too: the assembly IS woven, so the stamp may honestly say so.
+         Stamped via a round-trip ("o") string rather than %(IntermediateAssembly.ModifiedTime):
+         that metadata is rendered with the current culture's CALENDAR while Touch parses Time
+         with the invariant culture, which kills the build on non-Gregorian locales (fa-IR
+         renders August 2026 as Persian year 1405, the invariant parse reads Gregorian 1405,
+         and pre-1601 is "Not a valid Win32 FileTime" - issue #51's follow-up report). The
+         Exists guard keeps the missing-file 1601 epoch out; the bare fallback stamps "now",
+         which the up-to-date check accepts. Full note in the Autosave twin. -->
+    <PropertyGroup>
+      <_NucsNCStampTime Condition="Exists('$(_NucsNCWeaveAssembly)')">$([System.IO.File]::GetLastWriteTime('$(_NucsNCWeaveAssembly)').ToString('o'))</_NucsNCStampTime>
+    </PropertyGroup>
+    <Touch Condition="'$(_NucsNCStampTime)' != ''"
+           Files="$(_NucsNCWeaveAssembly).aspectsinjected" AlwaysCreate="true" Time="$(_NucsNCStampTime)" />
+    <Touch Condition="'$(_NucsNCStampTime)' == ''"
+           Files="$(_NucsNCWeaveAssembly).aspectsinjected" AlwaysCreate="true" />
   </Target>
 
   <!-- Guard against OTHER post-compile IL rewriters breaking the stamp discipline — rename-only
