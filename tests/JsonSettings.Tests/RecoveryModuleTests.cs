@@ -3,7 +3,6 @@ using System.IO;
 using System.Text;
 using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
 using Nucs.JsonSettings.Modulation.Recovery;
 using Nucs.JsonSettings.Tests.Utils;

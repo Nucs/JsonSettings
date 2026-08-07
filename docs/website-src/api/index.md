@@ -51,7 +51,7 @@ The extension methods that build a configured settings object. See [The Basics](
 
 | Type | Description |
 |------|-------------|
-| @Nucs.JsonSettings.Fluent.FluentJsonSettings | `WithFileName`, `WithModule`, `WithEncryption`, `WithBase64`, `WithVersioning`, `WithRecovery`, `WithDefaultValues`, `LoadNow`. |
+| @Nucs.JsonSettings.FluentJsonSettings | `WithFileName`, `WithModule`, `WithEncryption`, `WithBase64`, `WithVersioning`, `WithRecovery`, `WithDefaultValues`, `LoadNow`. |
 
 ---
 
@@ -109,7 +109,7 @@ Save automatically on change (ships in `Nucs.JsonSettings.Autosave`). See [Autos
 | @Nucs.JsonSettings.Autosave.IgnoreAutosaveAttribute | Excludes a property from autosave monitoring. |
 | @Nucs.JsonSettings.Autosave.NotificationBinder | Binds `INotifyPropertyChanged`/`INotifyCollectionChanged` sources for WPF-style autosave. |
 
-`NotifiyingJsonSettings` (in the `Nucs.JsonSettings.Examples` namespace) is the convenient
+`NotifiyingJsonSettings` (in the `Nucs.JsonSettings` namespace) is the convenient
 `INotifyPropertyChanged` base class for WPF-style settings.
 
 ---

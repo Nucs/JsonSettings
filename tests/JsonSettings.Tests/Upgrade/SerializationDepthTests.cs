@@ -12,7 +12,6 @@ using System.Text;
 using System.Threading;
 using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Tests.Utils;
 
 namespace Nucs.JsonSettings.Tests.Upgrade {

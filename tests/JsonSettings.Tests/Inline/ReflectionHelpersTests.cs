@@ -1,7 +1,6 @@
 using System;
 using AwesomeAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.Xna.Framework.Utilities;
 
 namespace Nucs.JsonSettings.Tests.Inline {
     /// <summary>

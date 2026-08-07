@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
-using Microsoft.Xna.Framework.Utilities;
 using Module = Nucs.JsonSettings.Modulation.Module;
 
 namespace Nucs.JsonSettings {

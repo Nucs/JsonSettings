@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Reflection;
 
-namespace Microsoft.Xna.Framework.Utilities {
+namespace Nucs.JsonSettings {
     internal static partial class ReflectionHelpers {
         /// <summary>
         /// Returns true if the given type represents a non-object type that is not abstract.

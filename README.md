@@ -193,7 +193,7 @@ On a scenario of exception/failure, one of the following actions can take place:
 All recovery properties and methods are suited for inheritance so extending is quite easy.
 
 ```C#
-using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings;
 using Nucs.JsonSettings.Modulation.Recovery;
 
 //attach RecoveryModule via the fluent extension and pick what happens on a parse failure:
@@ -238,7 +238,7 @@ There are two ways to specify which version to enforce.
     When dealing with inheritance/virtual override, the attribute of the lowest inherited class will be used.
 
 ```C#
-using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings;
 using Nucs.JsonSettings.Modulation;
 
 //The settings class must implement IVersionable (contributes `Version Version { get; set; }`).
@@ -626,7 +626,7 @@ Key points
 - All modules provided by the library have properties and methods that are suited for inheritance so extending is easy.
 
 ```C#
-using Nucs.JsonSettings.Fluent;
+using Nucs.JsonSettings;
 using Nucs.JsonSettings.Modulation;
 using Nucs.JsonSettings.Modulation.Recovery;
 

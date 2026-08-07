@@ -4,7 +4,7 @@ using System.Security;
 using Nucs.JsonSettings.Modulation;
 using Nucs.JsonSettings.Modulation.Recovery;
 
-namespace Nucs.JsonSettings.Fluent {
+namespace Nucs.JsonSettings {
     public static class FluentJsonSettings {
         internal static T _withFileName<T>(this T _instance, string filename, bool throwless = false) where T : JsonSettings {
             _instance.FileName = JsonSettings.ResolvePath(_instance, filename, throwless);

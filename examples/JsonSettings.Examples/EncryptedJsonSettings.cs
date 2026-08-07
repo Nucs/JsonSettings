@@ -5,7 +5,6 @@ using System.Linq;
 using System.Security;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Nucs.JsonSettings.Fluent;
 
 namespace Nucs.JsonSettings.Examples {
     static class EncryptedProgram {

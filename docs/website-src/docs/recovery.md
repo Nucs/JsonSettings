@@ -19,7 +19,6 @@ Use the `WithRecovery` fluent extension (from `Nucs.JsonSettings.Modulation.Reco
 ```csharp
 using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation.Recovery;
 
 public class RecoverableSettings : JsonSettings {

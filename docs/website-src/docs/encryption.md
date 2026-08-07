@@ -14,7 +14,6 @@ password string:
 
 ```csharp
 using Nucs.JsonSettings;
-using Nucs.JsonSettings.Fluent;
 
 var settings = JsonSettings.Load<MySettings>("config.json", q => q.WithEncryption("mysecretpassword"));
 // or, explicitly:

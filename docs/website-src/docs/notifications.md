@@ -52,7 +52,6 @@ using System.ComponentModel;
 using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;        // [Autosave], EnableAutosave
 using Nucs.JsonSettings.NotifyChanges;   // [NotifyChanges], [NotifyChangesMixin], [IgnoreNotify], [NotifyChangesFor]
-using Nucs.JsonSettings.Examples;        // NotifiyingJsonSettings
 
 [Autosave]        // persist on change
 [NotifyChanges]   // raise PropertyChanged on change
@@ -76,7 +75,7 @@ No hand-written `OnPropertyChanged()` in any setter; the aspect weaves it in.
 
 ## The `NotifiyingJsonSettings` base
 
-The library ships a small base class in the `Nucs.JsonSettings.Examples` namespace that adds the
+The library ships a small base class in the `Nucs.JsonSettings` namespace that adds the
 event and a raiser:
 
 ```csharp
@@ -475,7 +474,6 @@ monitored &mdash; only the collection's own change events are.
 using System.Collections.ObjectModel;
 using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Examples;
 
 [Autosave]
 public class HouseholdSettings : NotifiyingJsonSettings {

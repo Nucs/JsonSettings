@@ -39,8 +39,8 @@ There are two ways to specify which version to enforce.
 **1. Pass the version to `WithVersioning`:**
 
 ```csharp
+using Nucs.JsonSettings;
 using Nucs.JsonSettings.Autosave;
-using Nucs.JsonSettings.Fluent;
 using Nucs.JsonSettings.Modulation;
 
 // Load version 1.0.0.6
