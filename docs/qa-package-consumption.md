@@ -81,3 +81,22 @@ Verified 2026-08-06 against `Nucs.JsonSettings` + `Nucs.JsonSettings.Autosave` *
   first indexer assignment (`Launches: 1`) with the `SafeDictionary` `$type` payload intact.
 - Graceful close (`CloseMainWindow`) → relaunch loads the persisted file and increments to
   `Launches: 2` — the full load → populate → dictionary-autosave roundtrip on packaged bits.
+
+### Follow-up round: the IL-woven `[Autosave]` path (2026-08-07)
+
+The round above only exercised SettingsBag's dictionary autosave — no weaving. App11 now also
+declares `WovenSettings`, an `[Autosave]` `JsonSettings` subclass, so the package's build
+targets weave the WinExe's own `App11.dll`: the weaver has *real work* in the exact
+configuration whose no-op weave leaked the handle that killed CreateAppHost under 2.2.0.
+Verified at HEAD `9fb859d` (doc-only commit; `src/` tree identical to the tree the 2.3.0
+nupkgs were packed from, so no repack was warranted):
+
+- Both builds green with weaving active: default MSIX-tooling x64 rebuild and the
+  `-p:WindowsPackageType=None` launch variant.
+- Binary proof: `MetadataLoadContext` over the built `App11.dll` shows `WovenSettings :
+  ISavable, IDisposable, IAutosaveWoven` and a `Nucs.JsonSettings 2.3.0.0` reference — the
+  marker interface only the weave injects.
+- Runtime proof: `Load<WovenSettings>(...).EnableAutosave()` passed its weave-marker
+  validation (it throws on an unwoven `[Autosave]` type), `WovenLaunches++` hit the woven
+  setter and wrote `woven.json` on assignment, and a close → relaunch roundtrip incremented
+  it 1 → 2 while the SettingsBag file tracked 3 → 4 in parallel.
