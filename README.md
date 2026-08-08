@@ -347,36 +347,6 @@ var settings = JsonSettings.Load<MySettings>("config.json").EnableAutosave();
 settings.Name = "changed";   // saved
 ```
 
-#### What changed in 2.2.0
-Autosave used to build a runtime proxy with `Castle.Core`, which forced three restrictions
-that are now gone:
-
-| Before (Castle.DynamicProxy) | Now (compile-time weaving) |
-|---|---|
-| Every public property had to be `virtual` | Ordinary properties work; `virtual` is irrelevant |
-| The class could not be `sealed` | `sealed` classes work |
-| `EnableAutosave()` returned a **different** object, so a reference captured beforehand silently did not autosave | Returns the same instance; every reference to it autosaves |
-| Impossible under Native AOT (`System.Reflection.Emit`) | No runtime codegen at all |
-
-In exchange there is one new requirement: the class must carry `[Autosave]`. Calling
-`EnableAutosave()` on a class without it throws `JsonSettingsException` rather than
-silently doing nothing.
-
-`[Autosave]` is **not inherited**. A setter is woven where it is declared, so every class in
-a settings hierarchy that declares properties you want saved needs its own attribute.
-
-Two smaller behavioural notes for anyone migrating from 2.1.0:
-
-- **`virtual` is no longer an opt-out.** Under the proxy, a non-virtual property was silently
-  skipped; some code relied on that to keep a property out of autosaving. Every setter is now
-  woven regardless of `virtual`, so a property that must **not** autosave has to say so with
-  `[IgnoreAutosave]` (or `[JsonIgnore]`).
-- **`EnableAutosave()` is idempotent.** Calling it twice on the same instance returns that
-  instance and does not attach a second autosave module.
-
-The Castle-era `JsonSettingsAutosaveExtensions.Options` field (a `Castle.DynamicProxy.ProxyGenerationOptions`)
-is removed, since the type it exposed no longer exists in the dependency graph.
-
 #### Attributes
 Properties can be marked with `IgnoreAutosaveAttribute` (`JsonIgnoreAttribute` will also work)
 to be excluded from the monitored properties for changes. This applies to collections too: an
@@ -510,7 +480,7 @@ details, the mixin, `INotifyPropertyChanging`, `[NotifyChangesFor]`, `Synchroniz
 marshalling, nested-collection autosave, threading, and a comparison with Fody `PropertyChanged`,
 CommunityToolkit.Mvvm and ReactiveUI.
 
-For a runnable tour, [`examples/JsonSettings.Examples.UI`](examples/JsonSettings.Examples.UI) is a
+For a runnable tour, [`examples/JsonSettings.Examples.UI`](examples/) is a
 WPF app in which every control is a bound settings property — the window's own position/size/title
 persist through the binding, and one tab per integration (guards, `[NotifyChangesFor]`, the
 opt-outs, nested collections, the mixin, raiser conventions, `EnableIAutosave`, marshalling) shows
